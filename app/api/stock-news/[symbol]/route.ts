@@ -56,10 +56,14 @@ async function translateToZh(text: string): Promise<string> {
 
 // Extract first 1-2 key sentences as a brief summary
 function extractSummary(html: string): string {
-  // Strip HTML tags
-  const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  // Remove hyperlink tags and their content (URLs are not real content)
+  let text = html.replace(/<a[^>]*>.*?<\/a>/gi, '');
+  // Strip remaining HTML tags
+  text = text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  // Remove URLs
+  text = text.replace(/https?:\/\/\S+/g, '');
   // Split into sentences
-  const sentences = text.split(/(?<=[.!?。！？])\s+/).filter(s => s.length > 15);
+  const sentences = text.split(/(?<=[.!?。！？])\s+/).filter(s => s.length > 20);
   // Take first 2 sentences, cap at 150 chars
   const summary = sentences.slice(0, 2).join(' ');
   return summary.length > 150 ? summary.slice(0, 147) + '...' : summary;
@@ -108,10 +112,9 @@ export async function GET(
     if (Array.isArray(articles)) {
       for (const article of articles) {
         const title = (article.title || '').toUpperCase();
-        const content = (article.content || '').toUpperCase();
-        const searchText = title + ' ' + content;
 
-        const found = keywords.some(kw => searchText.includes(kw));
+        // ONLY match on title, not content (content mentions many unrelated tickers)
+        const found = keywords.some(kw => title.includes(kw));
         if (found) {
           matched.push(article);
           if (matched.length >= 5) break;
