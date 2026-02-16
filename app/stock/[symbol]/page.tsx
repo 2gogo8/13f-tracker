@@ -76,6 +76,7 @@ export default function StockDetailPage({
   const [summary, setSummary] = useState<InstitutionalSummary | null>(null);
   const [quarterlyTrend, setQuarterlyTrend] = useState<QuarterlyTrendData[]>([]);
   const [historicalData, setHistoricalData] = useState<HistoricalPrice[]>([]);
+  const [stockNews, setStockNews] = useState<{ title: string; text: string; url: string; image?: string; site: string; date: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'active' | 'passive'>('active');
 
@@ -102,6 +103,13 @@ export default function StockDetailPage({
         setSummary(instData.summary || null);
         setQuarterlyTrend(Array.isArray(trendData) ? trendData : []);
         setHistoricalData(historicalDataResponse.historical || []);
+
+        // Fetch news separately (non-blocking)
+        fetch(`/api/stock-news/${symbol}`)
+          .then(r => r.json())
+          .then(d => { if (Array.isArray(d)) setStockNews(d); })
+          .catch(() => {});
+
         setLoading(false);
       } catch (error) {
         console.error('Error fetching stock data:', error);
@@ -474,6 +482,31 @@ export default function StockDetailPage({
             </div>
           )}
         </div>
+
+        {/* 近期發展消息 */}
+        {stockNews.length > 0 && (
+          <div className="apple-card p-8 mb-8">
+            <h2 className="text-2xl font-bold mb-6">📰 近一個月最新發展</h2>
+            <div className="space-y-4">
+              {stockNews.map((news, i) => (
+                <a
+                  key={i}
+                  href={news.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block p-4 bg-black/40 rounded-xl hover:bg-white/[0.03] transition-colors"
+                >
+                  <h3 className="text-sm font-medium text-white mb-2 leading-relaxed">{news.title}</h3>
+                  <p className="text-xs text-gray-400 leading-relaxed mb-3 line-clamp-3">{news.text}</p>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{news.site}</span>
+                    <span>{news.date ? new Date(news.date).toLocaleDateString('zh-TW') : ''}</span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 公司簡介 */}
         {profile && (
