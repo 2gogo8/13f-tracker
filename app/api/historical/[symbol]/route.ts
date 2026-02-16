@@ -57,22 +57,26 @@ export async function GET(
       throw new Error(`FMP API error: ${response.status}`);
     }
 
-    const data: FMPHistoricalResponse = await response.json();
+    const raw = await response.json();
 
-    if (!data.historical || !Array.isArray(data.historical)) {
-      return NextResponse.json({ error: 'Invalid response format' }, { status: 500 });
+    // FMP /stable/ returns a flat array, not { symbol, historical: [...] }
+    const items: Array<{ date: string; open: number; high: number; low: number; close: number; volume: number }> =
+      Array.isArray(raw) ? raw : (raw.historical ?? []);
+
+    if (!items.length) {
+      return NextResponse.json({ symbol, historical: [] });
     }
 
     // Filter to last 730 days (2 years) and sort by date ascending
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - 730);
 
-    const filtered = data.historical
+    const filtered = items
       .filter(item => new Date(item.date) >= cutoffDate)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     const result = {
-      symbol: data.symbol,
+      symbol,
       historical: filtered
     };
 
