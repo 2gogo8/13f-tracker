@@ -281,17 +281,17 @@ export default function Home() {
                             <p className="text-sm text-gray-300 truncate">{stock.name}</p>
                           </div>
                           <div className="w-16 sm:w-24 text-right flex-shrink-0">
-                            <span className="text-xs sm:text-sm text-white font-medium">${stock.price.toFixed(2)}</span>
+                            <span className="text-xs sm:text-sm text-white font-medium">${(stock.price ?? 0).toFixed(2)}</span>
                           </div>
                           <div className="w-16 sm:w-20 text-right flex-shrink-0">
-                            <span className={`text-xs sm:text-sm font-semibold ${stock.changesPercentage >= 0 ? 'text-accent' : 'text-primary'}`}>
-                              {stock.changesPercentage >= 0 ? '+' : ''}
-                              {stock.changesPercentage.toFixed(1)}%
+                            <span className={`text-xs sm:text-sm font-semibold ${(stock.changesPercentage ?? 0) >= 0 ? 'text-accent' : 'text-primary'}`}>
+                              {(stock.changesPercentage ?? 0) >= 0 ? '+' : ''}
+                              {(stock.changesPercentage ?? 0).toFixed(1)}%
                             </span>
                           </div>
                           <div className="w-24 sm:w-32 text-right flex-shrink-0 hidden md:block">
                             <span className="text-xs text-accent font-medium">
-                              機構 +${(stock.totalInvestedChange / 1e9).toFixed(2)}B
+                              機構 +${((stock.totalInvestedChange ?? 0) / 1e9).toFixed(2)}B
                             </span>
                           </div>
                         </Link>

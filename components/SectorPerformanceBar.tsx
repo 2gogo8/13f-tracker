@@ -71,7 +71,7 @@ export default function SectorPerformanceBar({ data }: SectorPerformanceBarProps
                   }`}
                 >
                   {isPositive ? '+' : ''}
-                  {sector.changesPercentage.toFixed(2)}%
+                  {(sector.changesPercentage ?? 0).toFixed(2)}%
                 </span>
               </div>
             </div>

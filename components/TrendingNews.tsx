@@ -57,14 +57,14 @@ export default function TrendingNews({ news }: TrendingNewsProps) {
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-white font-medium">${item.price.toFixed(2)}</span>
+                  <span className="text-white font-medium">${(item.price ?? 0).toFixed(2)}</span>
                   <span
                     className={`text-sm font-semibold ${
                       isPositive ? 'text-accent' : 'text-primary'
                     }`}
                   >
                     {isPositive ? '+' : ''}
-                    {item.changesPercentage.toFixed(2)}%
+                    {(item.changesPercentage ?? 0).toFixed(2)}%
                   </span>
                 </div>
               </div>
