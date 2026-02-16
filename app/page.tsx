@@ -251,6 +251,11 @@ export default function Home() {
       </header>
 
       <div className="max-w-7xl mx-auto">
+        {/* Search Bar */}
+        <div className="mb-8">
+          <SearchBar value={searchTerm} onChange={setSearchTerm} />
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex justify-center gap-4 mb-10">
           <button
@@ -384,8 +389,6 @@ export default function Home() {
             {/* Full List View */}
             {viewMode === 'list' && (
               <div>
-                <SearchBar value={searchTerm} onChange={setSearchTerm} />
-
                 <div className="flex justify-between items-center mb-6 px-1">
                   <p className="text-sm text-gray-500">
                     {filteredStocks.length} 檔股票
