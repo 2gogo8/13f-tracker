@@ -21,6 +21,8 @@ interface CompactStockRowProps {
   price: number;
   changesPercentage: number;
   institutionalHolders?: number;
+  institutionalCount?: number;
+  quarterlyChange?: number;
 }
 
 export default function CompactStockRow({
@@ -30,12 +32,16 @@ export default function CompactStockRow({
   price,
   changesPercentage,
   institutionalHolders,
+  institutionalCount,
+  quarterlyChange,
 }: CompactStockRowProps) {
   const isPositive = changesPercentage >= 0;
+  const hasQuarterlyChange = quarterlyChange !== undefined && quarterlyChange !== 0;
+  const isQuarterlyPositive = quarterlyChange !== undefined && quarterlyChange > 0;
 
   return (
     <Link href={`/stock/${symbol}`}>
-      <div className="flex items-center gap-4 px-4 py-3 hover:bg-white/[0.02] border-b border-white/[0.03] cursor-pointer transition-colors">
+      <div className="flex items-center gap-4 px-4 py-2 hover:bg-white/[0.02] border-b border-white/[0.03] cursor-pointer transition-colors">
         {/* Symbol */}
         <div className="w-20 flex-shrink-0">
           <span className="text-sm font-bold text-primary">{symbol}</span>
@@ -72,11 +78,29 @@ export default function CompactStockRow({
           </span>
         </div>
 
-        {/* Institutional Holders */}
-        {institutionalHolders !== undefined && (
-          <div className="w-20 text-right flex-shrink-0 hidden md:block">
+        {/* Institutional Count */}
+        {institutionalCount !== undefined && (
+          <div className="w-16 text-right flex-shrink-0 hidden md:block">
             <span className="text-xs text-accent font-medium">
-              {institutionalHolders}
+              {institutionalCount}
+            </span>
+          </div>
+        )}
+
+        {/* Quarterly Change */}
+        {quarterlyChange !== undefined && (
+          <div className="w-20 text-right flex-shrink-0 hidden lg:block">
+            <span
+              className={`text-xs font-semibold ${
+                !hasQuarterlyChange
+                  ? 'text-gray-500'
+                  : isQuarterlyPositive
+                  ? 'text-accent'
+                  : 'text-primary'
+              }`}
+            >
+              {hasQuarterlyChange ? (isQuarterlyPositive ? '+' : '') : ''}
+              {quarterlyChange.toFixed(1)}%
             </span>
           </div>
         )}

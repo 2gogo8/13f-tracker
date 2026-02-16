@@ -8,7 +8,9 @@ import PieChart, { PieSlice } from '@/components/PieChart';
 import CompactStockRow from '@/components/CompactStockRow';
 import HeatmapGrid from '@/components/HeatmapGrid';
 import ScannerButtons, { ScannerType } from '@/components/ScannerButtons';
-import { DashboardStock, TopMoverStock, SortOption } from '@/types';
+import SectorPerformanceBar from '@/components/SectorPerformanceBar';
+import TrendingNews from '@/components/TrendingNews';
+import { DashboardStock, TopMoverStock, SortOption, SectorPerformance, TrendingNewsItem } from '@/types';
 
 const sortOptions: SortOption[] = [
   { value: 'symbol', label: '代號 (A-Z)' },
@@ -35,6 +37,8 @@ export default function Home() {
   const [activeScanner, setActiveScanner] = useState<ScannerType>(null);
   const [sectorPieData, setSectorPieData] = useState<PieSlice[]>([]);
   const [sectorQuarter, setSectorQuarter] = useState('');
+  const [sectorPerformance, setSectorPerformance] = useState<SectorPerformance[]>([]);
+  const [trendingNews, setTrendingNews] = useState<TrendingNewsItem[]>([]);
 
   // Fetch industry summary
   useEffect(() => {
@@ -62,6 +66,34 @@ export default function Home() {
       }
     }
     fetchIndustrySummary();
+  }, []);
+
+  // Fetch sector performance
+  useEffect(() => {
+    async function fetchSectorPerformance() {
+      try {
+        const res = await fetch('/api/sector-performance');
+        const data = await res.json();
+        setSectorPerformance(data);
+      } catch (e) {
+        console.error('Error fetching sector performance:', e);
+      }
+    }
+    fetchSectorPerformance();
+  }, []);
+
+  // Fetch trending news
+  useEffect(() => {
+    async function fetchTrendingNews() {
+      try {
+        const res = await fetch('/api/trending-news');
+        const data = await res.json();
+        setTrendingNews(data);
+      } catch (e) {
+        console.error('Error fetching trending news:', e);
+      }
+    }
+    fetchTrendingNews();
   }, []);
 
   // Fetch dashboard data (all stocks with quotes)
@@ -109,20 +141,33 @@ export default function Home() {
       filtered = filtered.filter(stock => institutionalSymbols.has(stock.symbol));
 
       if (activeScanner === 'accumulation') {
+        // Filter stocks where institutional holdings increased >20%
         const accumulationSymbols = new Set(
           topMovers.allStocks
-            .filter(s => s.totalInvestedChange > 0 || s.increasedPositions > s.reducedPositions)
+            .filter(s => {
+              const previousHolding = s.investorsHolding - s.investorsHoldingChange;
+              if (previousHolding <= 0) return false;
+              const changeRatio = s.investorsHoldingChange / previousHolding;
+              return changeRatio > 0.2;
+            })
             .map(s => s.symbol)
         );
         filtered = filtered.filter(stock => accumulationSymbols.has(stock.symbol));
       } else if (activeScanner === 'selling') {
+        // Filter stocks where institutional holdings decreased >20%
         const sellingSymbols = new Set(
           topMovers.allStocks
-            .filter(s => s.totalInvestedChange < 0 || s.reducedPositions > s.increasedPositions)
+            .filter(s => {
+              const previousHolding = s.investorsHolding - s.investorsHoldingChange;
+              if (previousHolding <= 0) return false;
+              const changeRatio = s.investorsHoldingChange / previousHolding;
+              return changeRatio < -0.2;
+            })
             .map(s => s.symbol)
         );
         filtered = filtered.filter(stock => sellingSymbols.has(stock.symbol));
       } else if (activeScanner === 'top-holdings') {
+        // Top 20 by total institutional investment amount
         const topHoldingsSymbols = new Set(
           [...topMovers.allStocks]
             .sort((a, b) => b.totalInvested - a.totalInvested)
@@ -203,6 +248,9 @@ export default function Home() {
             {/* Dashboard View */}
             {viewMode === 'dashboard' && (
               <div className="space-y-12">
+                {/* Sector Performance Bar Chart */}
+                <SectorPerformanceBar data={sectorPerformance} />
+
                 {/* Top Accumulation Leaderboard */}
                 {topMovers && topMovers.topAccumulation.length > 0 && (
                   <div className="apple-card p-4 sm:p-8">
@@ -259,6 +307,9 @@ export default function Home() {
                   />
                 </div>
 
+                {/* Trending News */}
+                <TrendingNews news={trendingNews} />
+
                 {/* Industry Pie Chart */}
                 {sectorPieData.length > 0 && (
                   <PieChart
@@ -307,20 +358,49 @@ export default function Home() {
                     <div className="w-24 text-right flex-shrink-0">股價</div>
                     <div className="w-20 text-right flex-shrink-0">漲跌 %</div>
                     <div className="w-32 flex-shrink-0 hidden lg:block">產業</div>
+                    <div className="w-16 text-right flex-shrink-0 hidden md:block">機構</div>
+                    <div className="w-20 text-right flex-shrink-0 hidden lg:block">季變動</div>
                   </div>
 
                   {/* Stock Rows */}
                   <div className="max-h-[600px] overflow-y-auto">
-                    {filteredStocks.map((stock) => (
-                      <CompactStockRow
-                        key={stock.symbol}
-                        symbol={stock.symbol}
-                        name={stock.name}
-                        sector={stock.sector}
-                        price={stock.price}
-                        changesPercentage={stock.changesPercentage}
-                      />
-                    ))}
+                    {filteredStocks
+                      .filter((stock) => {
+                        // Filter out stocks with 0 institutional holders if data is available
+                        if (topMovers) {
+                          const institutionalData = topMovers.allStocks.find(
+                            (s) => s.symbol === stock.symbol
+                          );
+                          return !institutionalData || institutionalData.investorsHolding > 0;
+                        }
+                        return true;
+                      })
+                      .map((stock) => {
+                        // Look up institutional data
+                        const institutionalData = topMovers?.allStocks.find(
+                          (s) => s.symbol === stock.symbol
+                        );
+                        const previousHolding = institutionalData
+                          ? institutionalData.investorsHolding - institutionalData.investorsHoldingChange
+                          : 0;
+                        const quarterlyChangePercent =
+                          institutionalData && previousHolding > 0
+                            ? (institutionalData.investorsHoldingChange / previousHolding) * 100
+                            : undefined;
+
+                        return (
+                          <CompactStockRow
+                            key={stock.symbol}
+                            symbol={stock.symbol}
+                            name={stock.name}
+                            sector={stock.sector}
+                            price={stock.price}
+                            changesPercentage={stock.changesPercentage}
+                            institutionalCount={institutionalData?.investorsHolding}
+                            quarterlyChange={quarterlyChangePercent}
+                          />
+                        );
+                      })}
                   </div>
 
                   {filteredStocks.length === 0 && (

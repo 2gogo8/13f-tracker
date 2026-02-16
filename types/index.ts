@@ -190,3 +190,21 @@ export interface HistoricalPrice {
   close: number;
   volume: number;
 }
+
+export interface SectorPerformance {
+  sector: string;
+  changesPercentage: number;
+}
+
+export interface TrendingNewsItem {
+  symbol: string;
+  price: number;
+  changesPercentage: number;
+  newsTitle: string;
+  newsUrl: string;
+  newsImage?: string;
+  newsSite: string;
+  newsText: string;
+  publishedDate: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+}
