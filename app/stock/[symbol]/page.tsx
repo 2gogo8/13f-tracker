@@ -8,6 +8,7 @@ import PieChart, { PieSlice } from '@/components/PieChart';
 import PriceChart from '@/components/PriceChart';
 import SupplyChain from '@/components/SupplyChain';
 import CommentSection from '@/components/CommentSection';
+import AIAnalysis from '@/components/AIAnalysis';
 import { getSupplyChain } from '@/data/supply-chain';
 
 function formatNumber(n: number): string {
@@ -360,6 +361,9 @@ export default function StockDetailPage({
             </div>
           </div>
         )}
+
+        {/* AI Analysis */}
+        <AIAnalysis symbol={symbol} />
 
         {/* Comment / Q&A Section */}
         <CommentSection symbol={symbol} />

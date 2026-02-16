@@ -36,6 +36,13 @@ const COMPANY_NAMES: Record<string, string[]> = {
   'AMD': ['Advanced Micro', 'AMD'],
   'ORCL': ['Oracle'],
   'INTC': ['Intel'],
+  'TSM': ['TSMC', 'Taiwan Semi', 'Taiwan Semiconductor'],
+  'BABA': ['Alibaba'],
+  'QCOM': ['Qualcomm'],
+  'ASML': ['ASML'],
+  'MU': ['Micron'],
+  'AMAT': ['Applied Materials'],
+  'LRCX': ['Lam Research'],
 };
 
 // Translate text to Chinese, supports long text by chunking
@@ -138,9 +145,10 @@ export async function GET(
     if (Array.isArray(articles)) {
       for (const article of articles) {
         const title = (article.title || '').toUpperCase();
+        const tickers = (article.tickers || '').toUpperCase();
 
-        // ONLY match on title, not content (content mentions many unrelated tickers)
-        const found = keywords.some(kw => title.includes(kw));
+        // Match on title or tickers field
+        const found = keywords.some(kw => title.includes(kw) || tickers.includes(kw));
         if (found) {
           matched.push(article);
           if (matched.length >= 5) break;
