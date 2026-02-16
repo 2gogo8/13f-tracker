@@ -8,7 +8,6 @@ let cachedData: any = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 30 * 60 * 1000;
 
-// Translate to Traditional Chinese via MyMemory (free)
 async function translateToZh(text: string): Promise<string> {
   try {
     const truncated = text.length > 500 ? text.slice(0, 500) : text;
@@ -25,8 +24,14 @@ async function translateToZh(text: string): Promise<string> {
   }
 }
 
-// Popular stocks to look for news about
-const TARGET_SYMBOLS = ['NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'AMD', 'NFLX', 'JPM'];
+// Extract ticker from article title like "(NASDAQ: NVDA)" or "(NYSE:LLY)"
+function extractTicker(title: string): string {
+  const match = title.match(/\((?:NASDAQ|NYSE|OTC)[:\s]+([A-Z.]+)\)/i);
+  if (match) return match[1];
+  const match2 = title.match(/\$([A-Z]{1,5})\b/);
+  if (match2) return match2[1];
+  return '';
+}
 
 export async function GET() {
   try {
@@ -35,113 +40,71 @@ export async function GET() {
       return NextResponse.json(cachedData);
     }
 
-    // Fetch a large batch of FMP articles (these actually have varied stocks)
+    // Strategy: Get 3 diverse articles from fmp-articles
+    // Pick articles about different stocks
     const articlesRes = await fetch(
-      `https://financialmodelingprep.com/stable/fmp-articles?limit=50&apikey=${API_KEY}`
+      `https://financialmodelingprep.com/stable/fmp-articles?limit=30&apikey=${API_KEY}`
     );
     const articles = await articlesRes.json();
 
-    // Find articles that mention our target symbols
-    const symbolNews: Record<string, any> = {};
-
-    if (Array.isArray(articles)) {
-      for (const article of articles) {
-        const title = (article.title || '').toUpperCase();
-        // Check which symbol this article is about
-        for (const sym of TARGET_SYMBOLS) {
-          if (symbolNews[sym]) continue; // already found one for this symbol
-          // Look for ticker in title like "NVDA", "NASDAQ:NVDA", "(NVDA)", "$NVDA"
-          if (
-            title.includes(`(${sym})`) ||
-            title.includes(`$${sym}`) ||
-            title.includes(`:${sym})`) ||
-            title.includes(`${sym} `) ||
-            title.includes(` ${sym}:`) ||
-            title.includes(` ${sym},`)
-          ) {
-            symbolNews[sym] = article;
-          }
-        }
-        if (Object.keys(symbolNews).length >= 3) break;
-      }
+    if (!Array.isArray(articles) || articles.length === 0) {
+      return NextResponse.json([]);
     }
 
-    // If not enough from articles, also try stock news endpoint for remaining
-    const foundSymbols = Object.keys(symbolNews);
-    const remaining = TARGET_SYMBOLS.filter(s => !foundSymbols.includes(s)).slice(0, 3 - foundSymbols.length);
+    // Pick 3 articles with different tickers
+    const picked: any[] = [];
+    const usedTickers = new Set<string>();
 
-    for (const sym of remaining) {
-      if (Object.keys(symbolNews).length >= 3) break;
-      try {
-        const newsRes = await fetch(
-          `https://financialmodelingprep.com/stable/news/stock?symbol=${sym}&limit=5&apikey=${API_KEY}`
-        );
-        const newsData = await newsRes.json();
-        if (Array.isArray(newsData)) {
-          // Find one that actually mentions this symbol
-          const match = newsData.find((n: any) =>
-            (n.title || '').toUpperCase().includes(sym) ||
-            (n.symbol || '').toUpperCase() === sym
+    for (const article of articles) {
+      if (picked.length >= 3) break;
+      const ticker = extractTicker(article.title || '');
+      if (ticker && usedTickers.has(ticker)) continue;
+      if (ticker) usedTickers.add(ticker);
+      picked.push({ ...article, ticker: ticker || '市場' });
+    }
+
+    // Get quotes for picked tickers and translate
+    const newsPromises = picked.map(async (article) => {
+      const ticker = article.ticker;
+      let price = 0;
+      let changePct = 0;
+
+      if (ticker && ticker !== '市場') {
+        try {
+          const quoteRes = await fetch(
+            `https://financialmodelingprep.com/stable/quote?symbol=${ticker}&apikey=${API_KEY}`
           );
-          if (match) {
-            symbolNews[sym] = {
-              title: match.title,
-              date: match.publishedDate,
-              content: match.text,
-              link: match.url,
-              image: match.image,
-              site: match.site,
-            };
-          }
-        }
-      } catch { /* skip */ }
-    }
-
-    // Build final news items with quotes and translation
-    const symbols = Object.keys(symbolNews).slice(0, 3);
-    
-    const newsPromises = symbols.map(async (symbol) => {
-      try {
-        const article = symbolNews[symbol];
-        
-        // Get quote
-        const quoteRes = await fetch(
-          `https://financialmodelingprep.com/stable/quote?symbol=${symbol}&apikey=${API_KEY}`
-        );
-        const quoteData = await quoteRes.json();
-        const quote = Array.isArray(quoteData) ? quoteData[0] : null;
-
-        // Clean title (strip HTML if from fmp-articles)
-        const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
-        // Clean text
-        const rawText = (article.content || article.text || '').replace(/<[^>]*>/g, '').slice(0, 200);
-
-        // Translate
-        const [titleZh, textZh] = await Promise.all([
-          translateToZh(rawTitle),
-          translateToZh(rawText),
-        ]);
-
-        const changePct = quote?.changesPercentage ?? 0;
-        let sentiment: 'positive' | 'negative' | 'neutral' = 'neutral';
-        if (changePct > 1) sentiment = 'positive';
-        else if (changePct < -1) sentiment = 'negative';
-
-        return {
-          symbol,
-          price: quote?.price ?? 0,
-          changesPercentage: changePct,
-          newsTitle: titleZh,
-          newsUrl: article.link || article.url || '#',
-          newsImage: article.image || null,
-          newsSite: article.site || 'FMP',
-          newsText: textZh,
-          publishedDate: article.date || article.publishedDate || '',
-          sentiment,
-        };
-      } catch {
-        return null;
+          const quoteData = await quoteRes.json();
+          const quote = Array.isArray(quoteData) ? quoteData[0] : null;
+          price = quote?.price ?? 0;
+          changePct = quote?.changesPercentage ?? 0;
+        } catch { /* skip */ }
       }
+
+      const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
+      const rawText = (article.content || '').replace(/<[^>]*>/g, '').slice(0, 200);
+
+      const [titleZh, textZh] = await Promise.all([
+        translateToZh(rawTitle),
+        translateToZh(rawText),
+      ]);
+
+      let sentiment: 'positive' | 'negative' | 'neutral' = 'neutral';
+      if (changePct > 1) sentiment = 'positive';
+      else if (changePct < -1) sentiment = 'negative';
+
+      return {
+        symbol: ticker,
+        price,
+        changesPercentage: changePct,
+        newsTitle: titleZh,
+        newsUrl: article.link || '#',
+        newsImage: article.image || null,
+        newsSite: article.site || 'FMP',
+        newsText: textZh,
+        publishedDate: article.date || '',
+        sentiment,
+      };
     });
 
     const results = await Promise.all(newsPromises);
