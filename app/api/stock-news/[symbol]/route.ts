@@ -38,35 +38,61 @@ const COMPANY_NAMES: Record<string, string[]> = {
   'INTC': ['Intel'],
 };
 
+// Translate text to Chinese, supports long text by chunking
 async function translateToZh(text: string): Promise<string> {
+  if (!text || text.length < 5) return text;
   try {
-    const truncated = text.length > 500 ? text.slice(0, 500) : text;
-    const res = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(truncated)}&langpair=en|zh-TW`,
-      { signal: AbortSignal.timeout(5000) }
+    // Split into ~450 char chunks at sentence boundaries
+    const chunks: string[] = [];
+    let remaining = text;
+    while (remaining.length > 0) {
+      if (remaining.length <= 450) {
+        chunks.push(remaining);
+        break;
+      }
+      // Find a sentence break near 450 chars
+      let splitAt = remaining.lastIndexOf('. ', 450);
+      if (splitAt < 200) splitAt = remaining.lastIndexOf(' ', 450);
+      if (splitAt < 200) splitAt = 450;
+      chunks.push(remaining.slice(0, splitAt + 1));
+      remaining = remaining.slice(splitAt + 1).trim();
+    }
+
+    const translated = await Promise.all(
+      chunks.map(async (chunk) => {
+        try {
+          const res = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=en|zh-TW`,
+            { signal: AbortSignal.timeout(8000) }
+          );
+          const data = await res.json();
+          const t = data?.responseData?.translatedText;
+          if (t && !t.includes('MYMEMORY WARNING')) return t;
+          return chunk;
+        } catch {
+          return chunk;
+        }
+      })
     );
-    const data = await res.json();
-    const translated = data?.responseData?.translatedText;
-    if (translated && !translated.includes('MYMEMORY WARNING')) return translated;
-    return text;
+    return translated.join('');
   } catch {
     return text;
   }
 }
 
-// Extract first 1-2 key sentences as a brief summary
-function extractSummary(html: string): string {
-  // Remove hyperlink tags and their content (URLs are not real content)
-  let text = html.replace(/<a[^>]*>.*?<\/a>/gi, '');
-  // Strip remaining HTML tags
-  text = text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+// Clean HTML to readable text, removing links and tags
+function cleanArticleContent(html: string): string {
+  // Remove hyperlink tags (keep text inside only if it's not a URL)
+  let text = html.replace(/<a[^>]*>([^<]*)<\/a>/gi, '');
+  // Remove all other HTML tags
+  text = text.replace(/<[^>]*>/g, '');
   // Remove URLs
   text = text.replace(/https?:\/\/\S+/g, '');
-  // Split into sentences
-  const sentences = text.split(/(?<=[.!?。！？])\s+/).filter(s => s.length > 20);
-  // Take first 2 sentences, cap at 150 chars
-  const summary = sentences.slice(0, 2).join(' ');
-  return summary.length > 150 ? summary.slice(0, 147) + '...' : summary;
+  // Clean whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  // Remove ticker references like (NASDAQ: XXXX) that add noise
+  text = text.replace(/\(\s*(?:NASDAQ|NYSE|OTC)\s*:\s*[A-Z.]+\s*\)/gi, '');
+  return text;
 }
 
 export async function GET(
@@ -123,20 +149,16 @@ export async function GET(
     }
 
     // Translate and format (limit to 5, translate up to 3 to save API quota)
-    const toTranslate = matched.slice(0, 5);
-    const newsPromises = toTranslate.map(async (article, i) => {
+    // Show up to 3 articles with full content translation
+    const toTranslate = matched.slice(0, 3);
+    const newsPromises = toTranslate.map(async (article) => {
       const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
-      const rawSummary = extractSummary(article.content || '');
+      const rawContent = cleanArticleContent(article.content || '');
 
-      // Only translate first 3 to save MyMemory quota
-      let titleZh = rawTitle;
-      let textZh = rawSummary;
-      if (i < 3) {
-        [titleZh, textZh] = await Promise.all([
-          translateToZh(rawTitle),
-          translateToZh(rawSummary),
-        ]);
-      }
+      const [titleZh, textZh] = await Promise.all([
+        translateToZh(rawTitle),
+        translateToZh(rawContent),
+      ]);
 
       return {
         title: titleZh,

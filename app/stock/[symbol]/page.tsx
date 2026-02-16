@@ -255,7 +255,7 @@ export default function StockDetailPage({
                   className="p-4 bg-black/40 rounded-xl border-l-2 border-accent/50"
                 >
                   <h3 className="text-base font-semibold text-white mb-3 leading-relaxed">{news.title}</h3>
-                  <p className="text-sm text-gray-300 leading-relaxed mb-3">{news.text}</p>
+                  <p className="text-sm text-gray-300 leading-relaxed mb-3 whitespace-pre-line">{news.text}</p>
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{news.site}</span>
                     <div className="flex items-center gap-3">
