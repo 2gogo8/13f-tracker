@@ -1,10 +1,43 @@
 import { NextResponse } from 'next/server';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const API_KEY = process.env.FMP_API_KEY || '';
 
-// Translate to Traditional Chinese via MyMemory (free)
+// Well-known company name mappings for better article matching
+const COMPANY_NAMES: Record<string, string[]> = {
+  'AAPL': ['Apple'],
+  'MSFT': ['Microsoft'],
+  'GOOGL': ['Google', 'Alphabet'],
+  'AMZN': ['Amazon'],
+  'NVDA': ['Nvidia', 'NVIDIA'],
+  'META': ['Meta Platforms', 'Facebook'],
+  'TSLA': ['Tesla'],
+  'BRK.B': ['Berkshire'],
+  'JPM': ['JPMorgan', 'JP Morgan'],
+  'V': ['Visa Inc'],
+  'UNH': ['UnitedHealth'],
+  'MA': ['Mastercard'],
+  'HD': ['Home Depot'],
+  'PG': ['Procter & Gamble', 'Procter and Gamble'],
+  'JNJ': ['Johnson & Johnson', 'Johnson and Johnson'],
+  'XOM': ['Exxon'],
+  'AVGO': ['Broadcom'],
+  'LLY': ['Eli Lilly', 'Lilly'],
+  'COST': ['Costco'],
+  'ABBV': ['AbbVie'],
+  'MRK': ['Merck'],
+  'WMT': ['Walmart'],
+  'PEP': ['PepsiCo', 'Pepsi'],
+  'KO': ['Coca-Cola', 'Coca Cola'],
+  'ADBE': ['Adobe'],
+  'CRM': ['Salesforce'],
+  'NFLX': ['Netflix'],
+  'AMD': ['Advanced Micro', 'AMD'],
+  'ORCL': ['Oracle'],
+  'INTC': ['Intel'],
+};
+
 async function translateToZh(text: string): Promise<string> {
   try {
     const truncated = text.length > 500 ? text.slice(0, 500) : text;
@@ -29,9 +62,34 @@ export async function GET(
   const upperSymbol = symbol.toUpperCase();
 
   try {
-    // Try fmp-articles first (more reliable)
+    // Get company name from profile for matching
+    let companyNames = COMPANY_NAMES[upperSymbol] || [];
+
+    // If not in our map, fetch from profile API
+    if (companyNames.length === 0) {
+      try {
+        const profileRes = await fetch(
+          `https://financialmodelingprep.com/stable/profile?symbol=${upperSymbol}&apikey=${API_KEY}`
+        );
+        const profileData = await profileRes.json();
+        const profile = Array.isArray(profileData) ? profileData[0] : null;
+        if (profile?.companyName) {
+          // Use first word(s) of company name for matching
+          const name = profile.companyName;
+          companyNames = [name];
+          // Also add shortened versions
+          const parts = name.split(' ');
+          if (parts.length > 1) companyNames.push(parts[0]);
+        }
+      } catch { /* skip */ }
+    }
+
+    // Build search keywords: ticker + company names
+    const keywords = [upperSymbol, ...companyNames.map(n => n.toUpperCase())];
+
+    // Fetch articles
     const articlesRes = await fetch(
-      `https://financialmodelingprep.com/stable/fmp-articles?limit=80&apikey=${API_KEY}`
+      `https://financialmodelingprep.com/stable/fmp-articles?limit=100&apikey=${API_KEY}`
     );
     const articles = await articlesRes.json();
 
@@ -40,31 +98,31 @@ export async function GET(
       for (const article of articles) {
         const title = (article.title || '').toUpperCase();
         const content = (article.content || '').toUpperCase();
-        if (
-          title.includes(`(${upperSymbol})`) ||
-          title.includes(`$${upperSymbol}`) ||
-          title.includes(`:${upperSymbol})`) ||
-          title.includes(`${upperSymbol} `) ||
-          title.includes(` ${upperSymbol}:`) ||
-          title.includes(` ${upperSymbol},`) ||
-          content.includes(`(${upperSymbol})`) ||
-          content.includes(`$${upperSymbol}`)
-        ) {
+        const searchText = title + ' ' + content;
+
+        const found = keywords.some(kw => searchText.includes(kw));
+        if (found) {
           matched.push(article);
           if (matched.length >= 5) break;
         }
       }
     }
 
-    // Translate and format
-    const newsPromises = matched.map(async (article) => {
+    // Translate and format (limit to 5, translate up to 3 to save API quota)
+    const toTranslate = matched.slice(0, 5);
+    const newsPromises = toTranslate.map(async (article, i) => {
       const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
       const rawText = (article.content || '').replace(/<[^>]*>/g, '').slice(0, 300);
 
-      const [titleZh, textZh] = await Promise.all([
-        translateToZh(rawTitle),
-        translateToZh(rawText),
-      ]);
+      // Only translate first 3 to save MyMemory quota
+      let titleZh = rawTitle;
+      let textZh = rawText;
+      if (i < 3) {
+        [titleZh, textZh] = await Promise.all([
+          translateToZh(rawTitle),
+          translateToZh(rawText),
+        ]);
+      }
 
       return {
         title: titleZh,
