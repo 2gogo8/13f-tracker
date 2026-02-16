@@ -10,6 +10,7 @@ import HeatmapGrid from '@/components/HeatmapGrid';
 import ScannerButtons, { ScannerType } from '@/components/ScannerButtons';
 import SectorPerformanceBar from '@/components/SectorPerformanceBar';
 import SentimentGauge from '@/components/SentimentGauge';
+import TopPicks from '@/components/TopPicks';
 import TrendingNews from '@/components/TrendingNews';
 import { DashboardStock, TopMoverStock, SortOption, SectorPerformance, TrendingNewsItem } from '@/types';
 
@@ -273,6 +274,9 @@ export default function Home() {
             完整列表
           </button>
         </div>
+
+        {/* Top Picks - Oversold + Large Cap */}
+        <TopPicks />
 
         {loading ? (
           <div className="text-center py-32">
