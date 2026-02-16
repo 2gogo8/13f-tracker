@@ -7,6 +7,7 @@ import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummar
 import PieChart, { PieSlice } from '@/components/PieChart';
 import PriceChart from '@/components/PriceChart';
 import SupplyChain from '@/components/SupplyChain';
+import CommentSection from '@/components/CommentSection';
 import { getSupplyChain } from '@/data/supply-chain';
 
 function formatNumber(n: number): string {
@@ -297,6 +298,13 @@ export default function StockDetailPage({
             </div>
           </div>
 
+          {/* Price Chart - between price and stats */}
+          {historicalData.length > 0 && (
+            <div className="pt-6 pb-2">
+              <PriceChart data={historicalData} symbol={symbol} inline />
+            </div>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 pt-8 border-t border-white/5">
             <div>
               <p className="text-xs text-gray-500 font-light mb-2">市值</p>
@@ -353,6 +361,9 @@ export default function StockDetailPage({
           </div>
         )}
 
+        {/* Comment / Q&A Section */}
+        <CommentSection symbol={symbol} />
+
         {/* Supply Chain */}
         {(() => {
           const suppliers = getSupplyChain(symbol);
@@ -361,10 +372,7 @@ export default function StockDetailPage({
           ) : null;
         })()}
 
-        {/* 2-Year Stock Price Chart */}
-        {historicalData.length > 0 && (
-          <PriceChart data={historicalData} symbol={symbol} />
-        )}
+        {/* Price chart moved into hero card above */}
 
         {/* Institutional Summary */}
         {summary && (

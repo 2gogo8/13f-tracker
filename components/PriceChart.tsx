@@ -10,9 +10,10 @@ interface HistoricalPrice {
 interface PriceChartProps {
   data: HistoricalPrice[];
   symbol: string;
+  inline?: boolean;
 }
 
-export default function PriceChart({ data, symbol }: PriceChartProps) {
+export default function PriceChart({ data, symbol, inline }: PriceChartProps) {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; price: number } | null>(null);
 
   if (!data || data.length === 0) {
@@ -107,7 +108,8 @@ export default function PriceChart({ data, symbol }: PriceChartProps) {
   };
 
   return (
-    <div className="apple-card p-6 sm:p-8">
+    <div className={inline ? '' : 'apple-card p-6 sm:p-8'}>
+      {!inline && (
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl sm:text-2xl font-bold">兩年股價走勢</h2>
         <div className="text-right">
@@ -120,6 +122,7 @@ export default function PriceChart({ data, symbol }: PriceChartProps) {
           </p>
         </div>
       </div>
+      )}
 
       <div className="relative w-full overflow-x-auto">
         <svg
