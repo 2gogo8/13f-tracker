@@ -9,6 +9,7 @@ import CompactStockRow from '@/components/CompactStockRow';
 import HeatmapGrid from '@/components/HeatmapGrid';
 import ScannerButtons, { ScannerType } from '@/components/ScannerButtons';
 import SectorPerformanceBar from '@/components/SectorPerformanceBar';
+import SentimentGauge from '@/components/SentimentGauge';
 import TrendingNews from '@/components/TrendingNews';
 import { DashboardStock, TopMoverStock, SortOption, SectorPerformance, TrendingNewsItem } from '@/types';
 
@@ -250,6 +251,9 @@ export default function Home() {
             {/* Dashboard View */}
             {viewMode === 'dashboard' && (
               <div className="space-y-12">
+                {/* Market Sentiment Gauge */}
+                <SentimentGauge />
+
                 {/* Sector Performance Bar Chart */}
                 <SectorPerformanceBar data={sectorPerformance} />
 
