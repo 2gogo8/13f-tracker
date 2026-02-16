@@ -10,15 +10,12 @@ interface SortSelectProps {
 
 export default function SortSelect({ value, onChange, options }: SortSelectProps) {
   return (
-    <div className="mb-6">
-      <label htmlFor="sort" className="block text-sm text-gray-400 font-light mb-2">
-        排序
-      </label>
+    <div>
       <select
         id="sort"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-4 py-2 bg-secondary border border-border rounded-lg focus:outline-none focus:border-accent text-foreground cursor-pointer transition-all hover:border-accent/50"
+        className="px-5 py-2.5 bg-[#111] rounded-xl focus:ring-1 focus:ring-[#D4AF37]/30 text-foreground cursor-pointer text-sm shadow-[0_2px_15px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_20px_rgba(212,175,55,0.1)]"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

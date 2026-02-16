@@ -114,13 +114,14 @@ export default function Home() {
   }, [searchTerm, sortBy, stocks]);
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <header className="mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-center mb-2 tracking-wider">
-          <span className="text-primary">JG 13F</span> <span className="text-accent">機構報告書</span>
+    <div className="min-h-screen py-16 px-4 md:px-8">
+      <header className="mb-16 text-center">
+        <h1 className="text-5xl md:text-6xl font-bold mb-4 tracking-tight">
+          <span className="gradient-text">JG</span>{' '}
+          <span className="text-white">13F 機構報告書</span>
         </h1>
-        <div className="w-32 h-px bg-gradient-to-r from-transparent via-accent to-transparent mx-auto mb-3"></div>
-        <p className="text-center text-gray-400 font-light">
+        <div className="gradient-line mb-6"></div>
+        <p className="text-gray-400 font-light text-lg tracking-wide">
           S&P 500 機構持倉總覽
         </p>
       </header>
@@ -128,36 +129,36 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <SearchBar value={searchTerm} onChange={setSearchTerm} />
         
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-gray-400">
-            {loading ? '載入中...' : `${filteredStocks.length} 檔`}
+        <div className="flex justify-between items-center mb-8 px-1">
+          <p className="text-sm text-gray-500">
+            {loading ? '' : `${filteredStocks.length} 檔股票`}
           </p>
           <SortSelect value={sortBy} onChange={setSortBy} options={sortOptions} />
         </div>
 
         {loading && stocks.length === 0 ? (
-          <div className="text-center py-20">
+          <div className="text-center py-32">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-            <p className="mt-4 text-gray-400">載入 S&P 500 股票中...</p>
+            <p className="mt-6 text-gray-500 font-light">載入 S&P 500 股票中...</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {filteredStocks.map((stock) => (
                 <StockCard key={stock.symbol} stock={stock} />
               ))}
             </div>
 
             {filteredStocks.length === 0 && !loading && (
-              <div className="text-center py-20">
-                <p className="text-gray-400">找不到符合的股票 &quot;{searchTerm}&quot;</p>
+              <div className="text-center py-32">
+                <p className="text-gray-500 text-lg">找不到符合的股票 &quot;{searchTerm}&quot;</p>
               </div>
             )}
 
             {loading && stocks.length > 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-400">
-                  載入資料中... ({stocks.length} / ~500)
+              <div className="text-center py-12 mt-8">
+                <p className="text-gray-600 text-sm">
+                  載入資料中 ({stocks.length} / ~500)
                 </p>
               </div>
             )}

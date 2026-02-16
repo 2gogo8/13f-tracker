@@ -16,6 +16,11 @@ export default {
         accent: "#D4AF37",       // Gold
         border: "#1A1A1A",       // Subtle border
       },
+      boxShadow: {
+        'apple': '0 2px 20px rgba(0, 0, 0, 0.3)',
+        'apple-hover': '0 4px 30px rgba(196, 30, 58, 0.15)',
+        'apple-gold': '0 4px 30px rgba(212, 175, 55, 0.15)',
+      },
     },
   },
   plugins: [],

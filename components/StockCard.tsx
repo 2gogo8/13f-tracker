@@ -10,18 +10,18 @@ export default function StockCard({ stock }: StockCardProps) {
 
   return (
     <Link href={`/stock/${stock.symbol}`}>
-      <div className="bg-secondary border border-border rounded-lg p-4 hover:border-accent hover:shadow-[0_0_15px_rgba(212,175,55,0.15)] transition-all cursor-pointer h-full">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className="text-lg font-bold text-primary">{stock.symbol}</h3>
-            <p className="text-sm text-gray-400 line-clamp-1">{stock.name}</p>
+      <div className="apple-card p-6 cursor-pointer h-full">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-xl font-bold text-primary mb-1">{stock.symbol}</h3>
+            <p className="text-sm text-gray-400 line-clamp-2 leading-snug">{stock.name}</p>
           </div>
-          <div className="text-right">
-            <p className="text-lg font-bold">
+          <div className="text-right ml-4 flex-shrink-0">
+            <p className="text-xl font-semibold text-white">
               ${stock.price?.toFixed(2) || 'N/A'}
             </p>
             {stock.change !== undefined && (
-              <p className={`text-sm ${isPositive ? 'text-accent' : 'text-primary'}`}>
+              <p className={`text-sm font-medium mt-0.5 ${isPositive ? 'text-accent' : 'text-primary'}`}>
                 {isPositive ? '+' : ''}
                 {stock.changesPercentage?.toFixed(2)}%
               </p>
@@ -29,15 +29,14 @@ export default function StockCard({ stock }: StockCardProps) {
           </div>
         </div>
         
-        <div className="mt-3 pt-3 border-t border-border">
-          <p className="text-xs text-gray-500 font-light">產業</p>
-          <p className="text-sm text-gray-300 font-bold">{stock.sector || 'N/A'}</p>
+        <div className="mt-5 pt-4 border-t border-white/5">
+          <p className="text-xs text-gray-500 mb-1">{stock.sector || 'N/A'}</p>
         </div>
         
         {stock.institutionalHolders !== undefined && (
-          <div className="mt-2">
-            <p className="text-xs text-gray-500 font-light">機構持股數</p>
-            <p className="text-sm text-accent font-bold">
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 mb-1">機構持股</p>
+            <p className="text-base text-accent font-semibold">
               {stock.institutionalHolders}
             </p>
           </div>

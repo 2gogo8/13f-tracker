@@ -12,4 +12,50 @@
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth transitions globally */
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(90deg, #C41E3A 0%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Apple-style card */
+.apple-card {
+  background: #0A0A0A;
+  border: none;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.apple-card:hover {
+  box-shadow: 0 4px 30px rgba(196, 30, 58, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Remove default input styling */
+input:focus,
+select:focus {
+  outline: none;
+}
+
+/* Subtle gradient line */
+.gradient-line {
+  width: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, #C41E3A 0%, #D4AF37 100%);
+  margin: 0 auto;
 }
