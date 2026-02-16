@@ -4,15 +4,13 @@ export const maxDuration = 60;
 
 const API_KEY = process.env.FMP_API_KEY || '';
 
-// Cache for 30 minutes
 let cachedData: any = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 30 * 60 * 1000;
 
-// Translate text to Traditional Chinese using MyMemory API (free, no key needed)
+// Translate to Traditional Chinese via MyMemory (free)
 async function translateToZh(text: string): Promise<string> {
   try {
-    // Truncate to 500 chars to stay within free API limits
     const truncated = text.length > 500 ? text.slice(0, 500) : text;
     const res = await fetch(
       `https://api.mymemory.translated.net/get?q=${encodeURIComponent(truncated)}&langpair=en|zh-TW`,
@@ -20,15 +18,15 @@ async function translateToZh(text: string): Promise<string> {
     );
     const data = await res.json();
     const translated = data?.responseData?.translatedText;
-    // MyMemory returns uppercase warning when quota exceeded
-    if (translated && !translated.includes('MYMEMORY WARNING')) {
-      return translated;
-    }
-    return text; // fallback to original
+    if (translated && !translated.includes('MYMEMORY WARNING')) return translated;
+    return text;
   } catch {
-    return text; // fallback to original
+    return text;
   }
 }
+
+// Popular stocks to look for news about
+const TARGET_SYMBOLS = ['NVDA', 'TSLA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'AMD', 'NFLX', 'JPM'];
 
 export async function GET() {
   try {
@@ -37,62 +35,111 @@ export async function GET() {
       return NextResponse.json(cachedData);
     }
 
-    // Step 1: Try to get most active stocks
-    let topSymbols: string[] = ['NVDA', 'TSLA', 'AAPL'];
+    // Fetch a large batch of FMP articles (these actually have varied stocks)
+    const articlesRes = await fetch(
+      `https://financialmodelingprep.com/stable/fmp-articles?limit=50&apikey=${API_KEY}`
+    );
+    const articles = await articlesRes.json();
 
-    try {
-      const mostActiveResponse = await fetch(
-        `https://financialmodelingprep.com/stable/market-most-active?apikey=${API_KEY}`
-      );
-      const mostActiveData = await mostActiveResponse.json();
+    // Find articles that mention our target symbols
+    const symbolNews: Record<string, any> = {};
 
-      if (Array.isArray(mostActiveData) && mostActiveData.length > 0) {
-        topSymbols = mostActiveData.slice(0, 3).map((stock: { symbol: string }) => stock.symbol);
+    if (Array.isArray(articles)) {
+      for (const article of articles) {
+        const title = (article.title || '').toUpperCase();
+        // Check which symbol this article is about
+        for (const sym of TARGET_SYMBOLS) {
+          if (symbolNews[sym]) continue; // already found one for this symbol
+          // Look for ticker in title like "NVDA", "NASDAQ:NVDA", "(NVDA)", "$NVDA"
+          if (
+            title.includes(`(${sym})`) ||
+            title.includes(`$${sym}`) ||
+            title.includes(`:${sym})`) ||
+            title.includes(`${sym} `) ||
+            title.includes(` ${sym}:`) ||
+            title.includes(` ${sym},`)
+          ) {
+            symbolNews[sym] = article;
+          }
+        }
+        if (Object.keys(symbolNews).length >= 3) break;
       }
-    } catch {
-      console.log('Using fallback stocks (holiday or API error)');
     }
 
-    // Step 2: For each symbol, get quote, news, and translate
-    const newsPromises = topSymbols.map(async (symbol) => {
+    // If not enough from articles, also try stock news endpoint for remaining
+    const foundSymbols = Object.keys(symbolNews);
+    const remaining = TARGET_SYMBOLS.filter(s => !foundSymbols.includes(s)).slice(0, 3 - foundSymbols.length);
+
+    for (const sym of remaining) {
+      if (Object.keys(symbolNews).length >= 3) break;
       try {
-        const [quoteResponse, newsResponse] = await Promise.all([
-          fetch(`https://financialmodelingprep.com/stable/quote?symbol=${symbol}&apikey=${API_KEY}`),
-          fetch(`https://financialmodelingprep.com/stable/news/stock?symbol=${symbol}&limit=1&apikey=${API_KEY}`),
-        ]);
+        const newsRes = await fetch(
+          `https://financialmodelingprep.com/stable/news/stock?symbol=${sym}&limit=5&apikey=${API_KEY}`
+        );
+        const newsData = await newsRes.json();
+        if (Array.isArray(newsData)) {
+          // Find one that actually mentions this symbol
+          const match = newsData.find((n: any) =>
+            (n.title || '').toUpperCase().includes(sym) ||
+            (n.symbol || '').toUpperCase() === sym
+          );
+          if (match) {
+            symbolNews[sym] = {
+              title: match.title,
+              date: match.publishedDate,
+              content: match.text,
+              link: match.url,
+              image: match.image,
+              site: match.site,
+            };
+          }
+        }
+      } catch { /* skip */ }
+    }
 
-        const quoteData = await quoteResponse.json();
+    // Build final news items with quotes and translation
+    const symbols = Object.keys(symbolNews).slice(0, 3);
+    
+    const newsPromises = symbols.map(async (symbol) => {
+      try {
+        const article = symbolNews[symbol];
+        
+        // Get quote
+        const quoteRes = await fetch(
+          `https://financialmodelingprep.com/stable/quote?symbol=${symbol}&apikey=${API_KEY}`
+        );
+        const quoteData = await quoteRes.json();
         const quote = Array.isArray(quoteData) ? quoteData[0] : null;
-        if (!quote) return null;
 
-        const newsData = await newsResponse.json();
-        const news = Array.isArray(newsData) && newsData.length > 0 ? newsData[0] : null;
-        if (!news) return null;
+        // Clean title (strip HTML if from fmp-articles)
+        const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
+        // Clean text
+        const rawText = (article.content || article.text || '').replace(/<[^>]*>/g, '').slice(0, 200);
 
-        // Translate title and text to Chinese
+        // Translate
         const [titleZh, textZh] = await Promise.all([
-          translateToZh(news.title || ''),
-          translateToZh(news.text || ''),
+          translateToZh(rawTitle),
+          translateToZh(rawText),
         ]);
 
+        const changePct = quote?.changesPercentage ?? 0;
         let sentiment: 'positive' | 'negative' | 'neutral' = 'neutral';
-        if ((quote.changesPercentage ?? 0) > 1) sentiment = 'positive';
-        else if ((quote.changesPercentage ?? 0) < -1) sentiment = 'negative';
+        if (changePct > 1) sentiment = 'positive';
+        else if (changePct < -1) sentiment = 'negative';
 
         return {
-          symbol: quote.symbol,
-          price: quote.price ?? 0,
-          changesPercentage: quote.changesPercentage ?? 0,
+          symbol,
+          price: quote?.price ?? 0,
+          changesPercentage: changePct,
           newsTitle: titleZh,
-          newsUrl: news.url,
-          newsImage: news.image,
-          newsSite: news.site,
+          newsUrl: article.link || article.url || '#',
+          newsImage: article.image || null,
+          newsSite: article.site || 'FMP',
           newsText: textZh,
-          publishedDate: news.publishedDate,
+          publishedDate: article.date || article.publishedDate || '',
           sentiment,
         };
-      } catch (error) {
-        console.error(`Error fetching news for ${symbol}:`, error);
+      } catch {
         return null;
       }
     });
