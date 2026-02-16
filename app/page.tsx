@@ -236,15 +236,15 @@ export default function Home() {
   }, [searchTerm, sortBy, stocks, activeScanner, topMovers, oversoldSymbols, oversoldData]);
 
   return (
-    <div className="min-h-screen py-16 px-4 md:px-8">
+    <div className="min-h-screen py-20 px-4 md:px-8">
       {/* Header */}
-      <header className="mb-12 text-center">
-        <h1 className="text-5xl md:text-6xl font-bold mb-4 tracking-tight">
+      <header className="mb-16 text-center">
+        <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">
           <span className="gradient-text">JG</span>{' '}
-          <span className="text-white">13F 機構報告書</span>
+          <span className="text-white glow-white">13F 機構報告書</span>
         </h1>
-        <div className="gradient-line mb-6"></div>
-        <p className="text-gray-400 font-light text-lg tracking-wide">
+        <div className="gradient-line mb-8"></div>
+        <p className="text-gray-500 font-light text-lg tracking-[0.2em] uppercase">
           S&P 500 機構持倉戰情儀表板
         </p>
       </header>
@@ -283,7 +283,7 @@ export default function Home() {
           <>
             {/* Dashboard View */}
             {viewMode === 'dashboard' && (
-              <div className="space-y-12">
+              <div className="space-y-16">
                 {/* Market Sentiment Gauge */}
                 <SentimentGauge />
 

@@ -250,18 +250,18 @@ export default function StockDetailPage({
         </Link>
 
         {/* Hero Section */}
-        <div className="apple-card p-8 md:p-12 mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+        <div className="apple-card p-8 md:p-12 mb-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-10">
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2">{symbol}</h1>
+              <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary glow-red mb-3">{symbol}</h1>
               <p className="text-2xl text-white font-light mb-2">{profile?.companyName || quote.name}</p>
-              <p className="text-sm text-gray-500 font-light">
+              <p className="text-sm text-gray-600 font-light tracking-wide">
                 {profile?.sector} • {profile?.industry}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-5xl font-bold text-white mb-2">${quote.price.toFixed(2)}</p>
-              <p className={`text-2xl font-light ${isPositive ? 'text-accent' : 'text-primary'}`}>
+              <p className="text-5xl font-bold text-white glow-white mb-2">${quote.price.toFixed(2)}</p>
+              <p className={`text-2xl font-light ${isPositive ? 'text-accent glow-gold' : 'text-primary glow-red'}`}>
                 {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{(quote.changesPercentage ?? quote.changePercentage ?? 0).toFixed(2)}%)
               </p>
               {atr14 !== null && (
@@ -331,7 +331,7 @@ export default function StockDetailPage({
 
         {/* 近期重大發展 */}
         {stockNews.length > 0 && (
-          <div className="apple-card p-6 md:p-8 mb-8">
+          <div className="apple-card p-6 md:p-8 mb-10">
             <h2 className="text-2xl font-bold mb-6">📰 近期重大發展</h2>
             <div className="space-y-6">
               {stockNews.map((news, i) => (
@@ -376,9 +376,9 @@ export default function StockDetailPage({
 
         {/* Institutional Summary */}
         {summary && (
-          <div className="apple-card p-8 mb-8">
+          <div className="apple-card p-8 mb-10">
             <h2 className="text-2xl font-bold mb-2">13F 機構持倉摘要</h2>
-            <p className="text-xs text-gray-500 font-light mb-8">統計期間：{summary.date}</p>
+            <p className="text-xs text-gray-500 font-light mb-10">統計期間：{summary.date}</p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-5 bg-black/40 rounded-2xl">
@@ -431,8 +431,8 @@ export default function StockDetailPage({
 
         {/* Quarterly Trend Bar Chart */}
         {quarterlyTrend.length > 0 && (
-          <div className="apple-card p-8 mb-8">
-            <h2 className="text-2xl font-bold mb-8">機構持倉季度趨勢</h2>
+          <div className="apple-card p-8 mb-10">
+            <h2 className="text-2xl font-bold mb-10">機構持倉季度趨勢</h2>
             <div className="flex items-end justify-around gap-4 h-64">
               {quarterlyTrend.map((data, index) => {
                 const prevValue = index > 0 ? quarterlyTrend[index - 1].totalInvested : data.totalInvested;
@@ -469,7 +469,7 @@ export default function StockDetailPage({
 
         {/* Institutional Holdings Pie Chart */}
         {institutionalPieData.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-10">
             <PieChart
               data={institutionalPieData}
               title="機構持股比例"
@@ -479,8 +479,8 @@ export default function StockDetailPage({
         )}
 
         {/* Top 20 Institutional Holders */}
-        <div className="apple-card p-8 mb-8">
-          <div className="flex items-center justify-between mb-8">
+        <div className="apple-card p-8 mb-10">
+          <div className="flex items-center justify-between mb-10">
             <h2 className="text-2xl font-bold">前 20 大機構持倉</h2>
             
             {/* Smart Money Filter Toggle */}
@@ -613,7 +613,7 @@ export default function StockDetailPage({
           <div className="apple-card p-8">
             <h2 className="text-2xl font-bold mb-6">關於 {profile.companyName}</h2>
             {(profile.descriptionZh || profile.description) && (
-              <p className="text-gray-300 leading-relaxed text-base font-light mb-8">
+              <p className="text-gray-300 leading-relaxed text-base font-light mb-10">
                 {profile.descriptionZh || profile.description}
               </p>
             )}

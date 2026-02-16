@@ -30,7 +30,7 @@ export default function SectorPerformanceBar({ data }: SectorPerformanceBarProps
 
   return (
     <div className="apple-card p-8">
-      <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+      <h2 className="font-serif text-2xl font-bold mb-8 flex items-center gap-3">
         <span className="text-accent">📊</span>
         板塊資金流向
       </h2>
@@ -53,7 +53,7 @@ export default function SectorPerformanceBar({ data }: SectorPerformanceBarProps
 
                 {/* Bar */}
                 <div
-                  className={`absolute h-6 rounded transition-all ${
+                  className={`absolute h-6 rounded transition-all chart-metallic ${
                     isPositive ? 'bg-accent' : 'bg-primary'
                   }`}
                   style={{

@@ -8,6 +8,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-inter)', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-playfair)', 'Playfair Display', 'Georgia', 'serif'],
+      },
       colors: {
         background: "#000000",
         foreground: "#ffffff",

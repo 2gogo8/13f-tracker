@@ -7,43 +7,140 @@
   --color-secondary: #0A0A0A;
   --color-accent: #D4AF37;
   --color-border: #1A1A1A;
+  --font-family-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  --font-family-serif: var(--font-playfair), 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
+/* ===== 1. BACKGROUND: Deep Canvas with Noise Texture ===== */
 body {
-  background-color: var(--color-background);
+  background-color: #000000;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 40%, #0d0d0d 0%, #050505 40%, #000000 100%);
   color: var(--color-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+  font-family: var(--font-family-sans);
   font-size: 16px;
-  line-height: 1.6;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  position: relative;
 }
 
-/* Smooth transitions globally */
+/* Noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Ensure content is above noise */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Smooth transitions globally (exclude transform for perf) */
 * {
-  transition: all 0.2s ease-in-out;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.3s ease, opacity 0.2s ease;
 }
 
-/* Gradient text utility */
+/* ===== SERIF HEADINGS ===== */
+.font-serif {
+  font-family: var(--font-family-serif);
+}
+
+/* ===== GRADIENT TEXT ===== */
 .gradient-text {
-  background: linear-gradient(90deg, #C41E3A 0%, #D4AF37 100%);
+  background: linear-gradient(135deg, #C41E3A 0%, #D4AF37 50%, #C41E3A 100%);
+  background-size: 200% 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  animation: shimmer 6s ease-in-out infinite;
 }
 
-/* Apple-style card */
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ===== 2. CARDS: Floating Frosted Glass ===== */
 .apple-card {
-  background: #0A0A0A;
-  border: none;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
-  border-radius: 1rem;
-  transition: all 0.3s ease;
+  background: rgba(12, 12, 12, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid;
+  border-image: linear-gradient(
+    160deg,
+    rgba(212, 175, 55, 0.25) 0%,
+    rgba(212, 175, 55, 0.08) 30%,
+    transparent 60%,
+    rgba(196, 30, 58, 0.08) 100%
+  ) 1;
+  box-shadow:
+    0 4px 40px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  border-radius: 1.25rem;
+  transition: box-shadow 0.4s ease, transform 0.3s ease;
 }
 
 .apple-card:hover {
-  box-shadow: 0 4px 30px rgba(196, 30, 58, 0.15);
+  box-shadow:
+    0 8px 60px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(196, 30, 58, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
   transform: translateY(-2px);
+}
+
+/* ===== 3. DATA GLOW EFFECTS ===== */
+
+/* Gold glow for accent data */
+.glow-gold {
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.4), 0 0 40px rgba(212, 175, 55, 0.15);
+}
+
+/* Red glow for primary/negative data */
+.glow-red {
+  text-shadow: 0 0 20px rgba(196, 30, 58, 0.4), 0 0 40px rgba(196, 30, 58, 0.15);
+}
+
+/* White glow for neutral key data */
+.glow-white {
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.15), 0 0 30px rgba(255, 255, 255, 0.05);
+}
+
+/* ===== CHART JEWELRY EFFECTS ===== */
+
+/* Metallic brushed texture for chart elements */
+.chart-metallic {
+  background-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06), inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Inset jewel effect */
+.chart-jewel {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== 4. TYPOGRAPHY SPACING ===== */
+
+/* Section spacing */
+.section-gap {
+  margin-bottom: 3.5rem;
 }
 
 /* Remove default input styling */
@@ -52,10 +149,31 @@ select:focus {
   outline: none;
 }
 
-/* Subtle gradient line */
+/* Subtle gradient line — wider, more elegant */
 .gradient-line {
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, #C41E3A 0%, #D4AF37 100%);
+  width: 80px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent 0%, #C41E3A 20%, #D4AF37 80%, transparent 100%);
   margin: 0 auto;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.2);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.4);
+}
+
+/* ===== SELECTION ===== */
+::selection {
+  background: rgba(196, 30, 58, 0.3);
+  color: #fff;
 }
