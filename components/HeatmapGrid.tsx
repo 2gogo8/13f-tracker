@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 interface HeatmapStock {
   symbol: string;
   changeValue: number; // totalInvestedChange percentage
@@ -47,14 +49,15 @@ export default function HeatmapGrid({ stocks }: HeatmapGridProps) {
   return (
     <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
       {stocks.map((stock) => (
-        <div
+        <Link
           key={stock.symbol}
+          href={`/stock/${stock.symbol}`}
           className="aspect-square rounded flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-105 transition-transform shadow-lg"
           style={{ backgroundColor: getColorForChange(stock.changeValue) }}
           title={`${stock.symbol}: ${stock.changeValue > 0 ? '+' : ''}${stock.changeValue.toFixed(1)}%`}
         >
           {stock.symbol}
-        </div>
+        </Link>
       ))}
     </div>
   );

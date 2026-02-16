@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import SearchBar from '@/components/SearchBar';
 import SortSelect from '@/components/SortSelect';
 import PieChart, { PieSlice } from '@/components/PieChart';
@@ -204,45 +205,46 @@ export default function Home() {
               <div className="space-y-12">
                 {/* Top Accumulation Leaderboard */}
                 {topMovers && topMovers.topAccumulation.length > 0 && (
-                  <div className="apple-card p-8">
+                  <div className="apple-card p-4 sm:p-8">
                     <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
                       <span className="text-accent">🏆</span>
                       機構加碼排行 Top 10
                     </h2>
                     <div className="space-y-1">
                       {topMovers.topAccumulation.map((stock, index) => (
-                        <div
+                        <Link
                           key={stock.symbol}
-                          className={`flex items-center gap-4 px-4 py-3 rounded-lg ${
+                          href={`/stock/${stock.symbol}`}
+                          className={`flex items-center gap-2 sm:gap-4 px-2 sm:px-4 py-3 rounded-lg transition-colors overflow-hidden ${
                             index === 0 ? 'bg-accent/10 border border-accent/20' : 'hover:bg-white/[0.02]'
                           }`}
                         >
-                          <div className="w-8 text-center flex-shrink-0">
-                            <span className={`text-lg font-bold ${index === 0 ? 'text-accent' : 'text-gray-500'}`}>
+                          <div className="w-6 sm:w-8 text-center flex-shrink-0">
+                            <span className={`text-base sm:text-lg font-bold ${index === 0 ? 'text-accent' : 'text-gray-500'}`}>
                               {index + 1}
                             </span>
                           </div>
-                          <div className="w-20 flex-shrink-0">
-                            <span className="text-sm font-bold text-primary">{stock.symbol}</span>
+                          <div className="w-12 sm:w-20 flex-shrink-0">
+                            <span className="text-xs sm:text-sm font-bold text-primary">{stock.symbol}</span>
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 hidden sm:block">
                             <p className="text-sm text-gray-300 truncate">{stock.name}</p>
                           </div>
-                          <div className="w-24 text-right flex-shrink-0">
-                            <span className="text-sm text-white font-medium">${stock.price.toFixed(2)}</span>
+                          <div className="w-16 sm:w-24 text-right flex-shrink-0">
+                            <span className="text-xs sm:text-sm text-white font-medium">${stock.price.toFixed(2)}</span>
                           </div>
-                          <div className="w-20 text-right flex-shrink-0">
-                            <span className={`text-sm font-semibold ${stock.changesPercentage >= 0 ? 'text-accent' : 'text-primary'}`}>
+                          <div className="w-16 sm:w-20 text-right flex-shrink-0">
+                            <span className={`text-xs sm:text-sm font-semibold ${stock.changesPercentage >= 0 ? 'text-accent' : 'text-primary'}`}>
                               {stock.changesPercentage >= 0 ? '+' : ''}
-                              {stock.changesPercentage.toFixed(2)}%
+                              {stock.changesPercentage.toFixed(1)}%
                             </span>
                           </div>
-                          <div className="w-32 text-right flex-shrink-0 hidden md:block">
+                          <div className="w-24 sm:w-32 text-right flex-shrink-0 hidden md:block">
                             <span className="text-xs text-accent font-medium">
                               機構 +${(stock.totalInvestedChange / 1e9).toFixed(2)}B
                             </span>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   </div>
@@ -277,7 +279,7 @@ export default function Home() {
                     <HeatmapGrid
                       stocks={topMovers.allStocks.map(s => ({
                         symbol: s.symbol,
-                        changeValue: (s.totalInvestedChange / s.totalInvested) * 100,
+                        changeValue: s.totalInvested > 0 ? (s.totalInvestedChange / s.totalInvested) * 100 : 0,
                       }))}
                     />
                   </div>

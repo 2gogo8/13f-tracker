@@ -181,3 +181,12 @@ export interface TopMoverStock {
   newPositions: number;
   closedPositions: number;
 }
+
+export interface HistoricalPrice {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}

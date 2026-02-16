@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { use } from 'react';
 import Link from 'next/link';
-import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummary, QuarterlyTrendData } from '@/types';
+import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummary, QuarterlyTrendData, HistoricalPrice } from '@/types';
 import PieChart, { PieSlice } from '@/components/PieChart';
+import PriceChart from '@/components/PriceChart';
 
 function formatNumber(n: number): string {
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
@@ -74,29 +75,33 @@ export default function StockDetailPage({
   const [holders, setHolders] = useState<FMPInstitutionalHolder[]>([]);
   const [summary, setSummary] = useState<InstitutionalSummary | null>(null);
   const [quarterlyTrend, setQuarterlyTrend] = useState<QuarterlyTrendData[]>([]);
+  const [historicalData, setHistoricalData] = useState<HistoricalPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'active' | 'passive'>('active');
 
   useEffect(() => {
     async function fetchStockData() {
       try {
-        const [quoteRes, profileRes, instRes, trendRes] = await Promise.all([
+        const [quoteRes, profileRes, instRes, trendRes, historicalRes] = await Promise.all([
           fetch(`/api/quote/${symbol}`),
           fetch(`/api/profile/${symbol}`),
           fetch(`/api/institutional/${symbol}`),
           fetch(`/api/institutional-trend/${symbol}`),
+          fetch(`/api/historical/${symbol}`),
         ]);
 
         const quoteData = await quoteRes.json();
         const profileData = await profileRes.json();
         const instData = await instRes.json();
         const trendData = await trendRes.json();
+        const historicalDataResponse = await historicalRes.json();
 
         setQuote(quoteData[0] || null);
         setProfile(profileData[0] || null);
         setHolders(instData.holders || []);
         setSummary(instData.summary || null);
         setQuarterlyTrend(Array.isArray(trendData) ? trendData : []);
+        setHistoricalData(historicalDataResponse.historical || []);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching stock data:', error);
@@ -230,6 +235,11 @@ export default function StockDetailPage({
             </div>
           </div>
         </div>
+
+        {/* 2-Year Stock Price Chart */}
+        {historicalData.length > 0 && (
+          <PriceChart data={historicalData} symbol={symbol} />
+        )}
 
         {/* Institutional Summary */}
         {summary && (
