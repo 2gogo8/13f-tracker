@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { use } from 'react';
 import Link from 'next/link';
-import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummary } from '@/types';
+import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummary, QuarterlyTrendData } from '@/types';
 import PieChart, { PieSlice } from '@/components/PieChart';
 
 function formatNumber(n: number): string {
@@ -20,6 +20,49 @@ function formatShares(n: number): string {
   return n.toLocaleString();
 }
 
+// Smart Money classification
+type InvestorType = 'passive' | 'active';
+
+function classifyInvestor(investorName: string): InvestorType {
+  const name = investorName.toUpperCase();
+  const passiveKeywords = [
+    'VANGUARD',
+    'BLACKROCK',
+    'STATE STREET',
+    'ISHARES',
+    'SPDR',
+    'INDEX',
+    'PASSIVE',
+    'ETF TRUST',
+    'SCHWAB',
+    'SSG',
+    'SSGA'
+  ];
+  
+  for (const keyword of passiveKeywords) {
+    if (name.includes(keyword)) {
+      return 'passive';
+    }
+  }
+  
+  return 'active';
+}
+
+function getConvictionWeight(holder: FMPInstitutionalHolder): number | null {
+  // Try portfolioPercent or securityPercentOfPortfolio from API
+  if (holder.portfolioPercent !== undefined && holder.portfolioPercent !== null) {
+    return holder.portfolioPercent;
+  }
+  if (holder.securityPercentOfPortfolio !== undefined && holder.securityPercentOfPortfolio !== null) {
+    return holder.securityPercentOfPortfolio;
+  }
+  // FMP weight field might be the portfolio weight (0-100)
+  if (holder.weight !== undefined && holder.weight !== null && holder.weight > 0) {
+    return holder.weight;
+  }
+  return null;
+}
+
 export default function StockDetailPage({ 
   params 
 }: { 
@@ -30,25 +73,30 @@ export default function StockDetailPage({
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [holders, setHolders] = useState<FMPInstitutionalHolder[]>([]);
   const [summary, setSummary] = useState<InstitutionalSummary | null>(null);
+  const [quarterlyTrend, setQuarterlyTrend] = useState<QuarterlyTrendData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<'all' | 'active' | 'passive'>('active');
 
   useEffect(() => {
     async function fetchStockData() {
       try {
-        const [quoteRes, profileRes, instRes] = await Promise.all([
+        const [quoteRes, profileRes, instRes, trendRes] = await Promise.all([
           fetch(`/api/quote/${symbol}`),
           fetch(`/api/profile/${symbol}`),
           fetch(`/api/institutional/${symbol}`),
+          fetch(`/api/institutional-trend/${symbol}`),
         ]);
 
         const quoteData = await quoteRes.json();
         const profileData = await profileRes.json();
         const instData = await instRes.json();
+        const trendData = await trendRes.json();
 
         setQuote(quoteData[0] || null);
         setProfile(profileData[0] || null);
         setHolders(instData.holders || []);
         setSummary(instData.summary || null);
+        setQuarterlyTrend(Array.isArray(trendData) ? trendData : []);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching stock data:', error);
@@ -81,6 +129,28 @@ export default function StockDetailPage({
   }
 
   const isPositive = quote.change >= 0;
+
+  // Filter and sort holders based on Smart Money filter
+  const filteredAndSortedHolders = (() => {
+    let filtered = [...holders];
+    
+    if (filterType === 'active') {
+      // Sort active managers first, then passive
+      filtered.sort((a, b) => {
+        const typeA = classifyInvestor(a.investorName);
+        const typeB = classifyInvestor(b.investorName);
+        if (typeA === 'active' && typeB === 'passive') return -1;
+        if (typeA === 'passive' && typeB === 'active') return 1;
+        return 0;
+      });
+    } else if (filterType === 'passive') {
+      // Show only passive
+      filtered = filtered.filter(h => classifyInvestor(h.investorName) === 'passive');
+    }
+    // 'all' shows everything as-is
+    
+    return filtered;
+  })();
 
   // Prepare pie chart data for institutional holdings
   const pieColors = [
@@ -216,6 +286,44 @@ export default function StockDetailPage({
           </div>
         )}
 
+        {/* Quarterly Trend Bar Chart */}
+        {quarterlyTrend.length > 0 && (
+          <div className="apple-card p-8 mb-8">
+            <h2 className="text-2xl font-bold mb-8">機構持倉季度趨勢</h2>
+            <div className="flex items-end justify-around gap-4 h-64">
+              {quarterlyTrend.map((data, index) => {
+                const prevValue = index > 0 ? quarterlyTrend[index - 1].totalInvested : data.totalInvested;
+                const isIncrease = data.totalInvested >= prevValue;
+                const maxValue = Math.max(...quarterlyTrend.map(d => d.totalInvested));
+                const heightPercent = (data.totalInvested / maxValue) * 100;
+                const barColor = index === 0 ? '#666' : isIncrease ? '#D4AF37' : '#C41E3A';
+                
+                return (
+                  <div key={data.quarter} className="flex-1 flex flex-col items-center">
+                    <div className="w-full flex flex-col items-center justify-end" style={{ height: '200px' }}>
+                      <div className="text-xs text-gray-400 mb-2 font-medium">
+                        {formatNumber(data.totalInvested)}
+                      </div>
+                      <div 
+                        className="w-full rounded-t-lg transition-all duration-300 hover:opacity-80"
+                        style={{ 
+                          backgroundColor: barColor,
+                          height: `${heightPercent}%`,
+                          minHeight: '8px'
+                        }}
+                      />
+                    </div>
+                    <div className="mt-3 text-center">
+                      <p className="text-sm font-semibold text-white">{data.quarter}</p>
+                      <p className="text-xs text-gray-500 mt-1">{data.investorsHolding} 機構</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Institutional Holdings Pie Chart */}
         {institutionalPieData.length > 0 && (
           <div className="mb-8">
@@ -229,7 +337,43 @@ export default function StockDetailPage({
 
         {/* Top 20 Institutional Holders */}
         <div className="apple-card p-8 mb-8">
-          <h2 className="text-2xl font-bold mb-8">前 20 大機構持倉</h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold">前 20 大機構持倉</h2>
+            
+            {/* Smart Money Filter Toggle */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilterType('all')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === 'all'
+                    ? 'bg-primary text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                全部
+              </button>
+              <button
+                onClick={() => setFilterType('active')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === 'active'
+                    ? 'bg-primary text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                🎯 主動型優先
+              </button>
+              <button
+                onClick={() => setFilterType('passive')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  filterType === 'passive'
+                    ? 'bg-primary text-white'
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                🏦 被動型
+              </button>
+            </div>
+          </div>
           
           {holders.length === 0 ? (
             <p className="text-gray-500 text-center py-12 font-light">暫無機構持倉資料</p>
@@ -239,30 +383,60 @@ export default function StockDetailPage({
                 <thead>
                   <tr className="text-gray-500 border-b border-white/5">
                     <th className="text-left py-4 px-3 font-light">#</th>
+                    <th className="text-left py-4 px-3 font-light">類型</th>
                     <th className="text-left py-4 px-3 font-light">機構名稱</th>
                     <th className="text-right py-4 px-3 font-light">持股數</th>
                     <th className="text-right py-4 px-3 font-light">持倉市值</th>
                     <th className="text-right py-4 px-3 font-light">持股比例</th>
+                    <th className="text-right py-4 px-3 font-light">信念權重</th>
                     <th className="text-right py-4 px-3 font-light">增減股數</th>
                     <th className="text-right py-4 px-3 font-light">增減%</th>
                     <th className="text-center py-4 px-3 font-light">狀態</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {holders.map((h, i) => {
+                  {filteredAndSortedHolders.map((h, i) => {
                     const chgPct = h.changeInSharesNumberPercentage;
                     const isUp = h.changeInSharesNumber > 0;
                     const isDown = h.changeInSharesNumber < 0;
+                    const investorType = classifyInvestor(h.investorName);
+                    const convictionWeight = getConvictionWeight(h);
+                    
                     return (
                       <tr key={`${h.cik}-${i}`} className="hover:bg-white/[0.02] transition-colors">
                         <td className="py-4 px-3 text-gray-500 border-b border-white/5">{i + 1}</td>
                         <td className="py-4 px-3 border-b border-white/5">
-                          <p className="font-medium text-sm">{h.investorName}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">自 {h.firstAdded} • {h.holdingPeriod}Q</p>
+                          <span className="text-xs">
+                            {investorType === 'passive' ? '🏦' : '🎯'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-3 border-b border-white/5">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <p className="font-medium text-sm">{h.investorName}</p>
+                              <p className="text-xs text-gray-500 mt-0.5">自 {h.firstAdded} • {h.holdingPeriod}Q</p>
+                            </div>
+                          </div>
                         </td>
                         <td className="text-right py-4 px-3 font-semibold border-b border-white/5">{formatShares(h.sharesNumber)}</td>
                         <td className="text-right py-4 px-3 font-semibold border-b border-white/5">{formatNumber(h.marketValue)}</td>
                         <td className="text-right py-4 px-3 font-semibold border-b border-white/5">{h.ownership?.toFixed(2)}%</td>
+                        <td className="text-right py-4 px-3 font-semibold border-b border-white/5">
+                          {convictionWeight !== null ? (
+                            <span className={`${
+                              convictionWeight > 10 
+                                ? 'text-primary font-bold' 
+                                : convictionWeight > 5 
+                                ? 'text-primary' 
+                                : ''
+                            }`}>
+                              {convictionWeight.toFixed(2)}%
+                              {convictionWeight > 10 ? ' ⚡' : convictionWeight > 5 ? ' 🔥' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">N/A</span>
+                          )}
+                        </td>
                         <td className={`text-right py-4 px-3 border-b border-white/5 ${isUp ? 'text-accent' : isDown ? 'text-primary' : 'text-gray-500'}`}>
                           {isUp ? '+' : ''}{formatShares(h.changeInSharesNumber)}
                         </td>

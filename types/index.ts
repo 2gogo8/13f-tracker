@@ -115,6 +115,15 @@ export interface FMPInstitutionalHolder {
   firstAdded: string;
   performance: number;
   performancePercentage: number;
+  portfolioPercent?: number;
+  securityPercentOfPortfolio?: number;
+}
+
+export interface QuarterlyTrendData {
+  quarter: string;
+  totalInvested: number;
+  investorsHolding: number;
+  totalShares: number;
 }
 
 export interface InstitutionalSummary {
