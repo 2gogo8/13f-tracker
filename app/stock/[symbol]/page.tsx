@@ -143,6 +143,24 @@ export default function StockDetailPage({
 
   const isPositive = quote.change >= 0;
 
+  // Calculate ATR (14-day Average True Range)
+  const atr14 = (() => {
+    if (historicalData.length < 15) return null;
+    // historicalData is newest-first, reverse for chronological
+    const sorted = [...historicalData].reverse();
+    const trValues: number[] = [];
+    for (let i = 1; i < sorted.length && trValues.length < 14; i++) {
+      const high = sorted[i].high ?? 0;
+      const low = sorted[i].low ?? 0;
+      const prevClose = sorted[i - 1].close ?? 0;
+      const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
+      trValues.push(tr);
+    }
+    if (trValues.length === 0) return null;
+    return trValues.reduce((a, b) => a + b, 0) / trValues.length;
+  })();
+  const atrPercent = atr14 && quote.price ? (atr14 / quote.price) * 100 : null;
+
   // Filter and sort holders based on Smart Money filter
   const filteredAndSortedHolders = (() => {
     let filtered = [...holders];
@@ -217,6 +235,21 @@ export default function StockDetailPage({
               <p className={`text-2xl font-light ${isPositive ? 'text-accent' : 'text-primary'}`}>
                 {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{(quote.changesPercentage ?? quote.changePercentage ?? 0).toFixed(2)}%)
               </p>
+              {atr14 !== null && (
+                <div className="mt-3 flex items-center gap-3 justify-end">
+                  <span className="text-xs text-gray-500">ATR(14)</span>
+                  <span className="text-sm font-semibold text-white">${atr14.toFixed(2)}</span>
+                  {atrPercent !== null && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      atrPercent >= 4 ? 'bg-red-900/40 text-red-400' :
+                      atrPercent >= 2 ? 'bg-yellow-900/40 text-yellow-400' :
+                      'bg-green-900/40 text-green-400'
+                    }`}>
+                      {atrPercent.toFixed(1)}% 波動
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
