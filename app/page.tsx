@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import StockCard from '@/components/StockCard';
 import SearchBar from '@/components/SearchBar';
 import SortSelect from '@/components/SortSelect';
+import PieChart, { PieSlice } from '@/components/PieChart';
 import { SP500Stock, StockQuote, InstitutionalHolder, StockWithQuote, SortOption } from '@/types';
 
 const sortOptions: SortOption[] = [
@@ -21,6 +22,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('symbol');
+  const [sectorPieData, setSectorPieData] = useState<PieSlice[]>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -72,6 +74,29 @@ export default function Home() {
           setFilteredStocks([...enrichedStocks]);
         }
 
+        // Calculate sector distribution
+        const sectorCounts: Record<string, number> = {};
+        sp500Data.forEach(stock => {
+          const sector = stock.sector || 'Unknown';
+          sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+        });
+
+        // Color palette for sectors
+        const sectorColors = [
+          '#C41E3A', '#D4AF37', '#8B0000', '#B8860B', '#FF6B6B',
+          '#FFD700', '#CD5C5C', '#DAA520', '#E8A87C', '#85677B',
+          '#A0522D', '#8B4513'
+        ];
+
+        const sectorData: PieSlice[] = Object.entries(sectorCounts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([sector, count], index) => ({
+            label: sector,
+            value: count,
+            color: sectorColors[index % sectorColors.length]
+          }));
+
+        setSectorPieData(sectorData);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -128,6 +153,18 @@ export default function Home() {
 
       <div className="max-w-7xl mx-auto">
         <SearchBar value={searchTerm} onChange={setSearchTerm} />
+
+        {/* Sector Distribution Pie Chart */}
+        {sectorPieData.length > 0 && (
+          <div className="mb-8">
+            <PieChart
+              data={sectorPieData}
+              title="S&P 500 產業分佈"
+              subtitle="最新成分股產業比重"
+              size={300}
+            />
+          </div>
+        )}
         
         <div className="flex justify-between items-center mb-8 px-1">
           <p className="text-sm text-gray-500">

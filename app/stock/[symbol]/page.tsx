@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { use } from 'react';
 import Link from 'next/link';
 import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummary } from '@/types';
+import PieChart, { PieSlice } from '@/components/PieChart';
 
 function formatNumber(n: number): string {
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
@@ -80,6 +81,36 @@ export default function StockDetailPage({
   }
 
   const isPositive = quote.change >= 0;
+
+  // Prepare pie chart data for institutional holdings
+  const pieColors = [
+    '#C41E3A', '#D4AF37', '#8B0000', '#B8860B', '#FF6B6B', 
+    '#FFD700', '#CD5C5C', '#DAA520', '#E8A87C', '#85677B'
+  ];
+
+  const institutionalPieData: PieSlice[] = holders.length > 0 ? (() => {
+    const top10 = holders.slice(0, 10);
+    const rest = holders.slice(10);
+    
+    const top10Data: PieSlice[] = top10.map((holder, index) => ({
+      label: holder.investorName,
+      value: holder.ownership || 0,
+      color: pieColors[index] || '#666'
+    }));
+
+    if (rest.length > 0) {
+      const restOwnership = rest.reduce((sum, h) => sum + (h.ownership || 0), 0);
+      if (restOwnership > 0) {
+        top10Data.push({
+          label: '其他機構',
+          value: restOwnership,
+          color: '#555'
+        });
+      }
+    }
+
+    return top10Data;
+  })() : [];
 
   return (
     <div className="min-h-screen py-12 px-4 md:px-8">
@@ -182,6 +213,17 @@ export default function StockDetailPage({
                 <p className="text-xs text-gray-500 font-light">清倉</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Institutional Holdings Pie Chart */}
+        {institutionalPieData.length > 0 && (
+          <div className="mb-8">
+            <PieChart
+              data={institutionalPieData}
+              title="機構持股比例"
+              size={300}
+            />
           </div>
         )}
 
