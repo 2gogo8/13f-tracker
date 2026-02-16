@@ -244,6 +244,38 @@ export default function StockDetailPage({
           </div>
         </div>
 
+        {/* 近期重大發展 */}
+        {stockNews.length > 0 && (
+          <div className="apple-card p-6 md:p-8 mb-8">
+            <h2 className="text-2xl font-bold mb-6">📰 近期重大發展</h2>
+            <div className="space-y-6">
+              {stockNews.map((news, i) => (
+                <div
+                  key={i}
+                  className="p-4 bg-black/40 rounded-xl border-l-2 border-accent/50"
+                >
+                  <h3 className="text-base font-semibold text-white mb-3 leading-relaxed">{news.title}</h3>
+                  <p className="text-sm text-gray-300 leading-relaxed mb-3">{news.text}</p>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>{news.site}</span>
+                    <div className="flex items-center gap-3">
+                      <span>{news.date ? new Date(news.date).toLocaleDateString('zh-TW') : ''}</span>
+                      <a
+                        href={news.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent hover:text-accent/80"
+                      >
+                        原文 →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 2-Year Stock Price Chart */}
         {historicalData.length > 0 && (
           <PriceChart data={historicalData} symbol={symbol} />
@@ -482,31 +514,6 @@ export default function StockDetailPage({
             </div>
           )}
         </div>
-
-        {/* 近期發展消息 */}
-        {stockNews.length > 0 && (
-          <div className="apple-card p-8 mb-8">
-            <h2 className="text-2xl font-bold mb-6">📰 近一個月最新發展</h2>
-            <div className="space-y-4">
-              {stockNews.map((news, i) => (
-                <a
-                  key={i}
-                  href={news.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block p-4 bg-black/40 rounded-xl hover:bg-white/[0.03] transition-colors"
-                >
-                  <h3 className="text-sm font-medium text-white mb-2 leading-relaxed">{news.title}</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed mb-3 line-clamp-3">{news.text}</p>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{news.site}</span>
-                    <span>{news.date ? new Date(news.date).toLocaleDateString('zh-TW') : ''}</span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* 公司簡介 */}
         {profile && (
