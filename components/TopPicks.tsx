@@ -6,13 +6,15 @@ import Link from 'next/link';
 interface PickStock {
   symbol: string;
   price: number;
-  sma20: number;
-  atr14: number;
+  sma50: number;
   deviation: number;
   signal: string;
-  name?: string;
-  marketCap?: number;
+  name: string;
+  marketCap: number;
 }
+
+// 10 mega-caps to scan
+const SYMBOLS = ['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','NFLX','CRM','PYPL'];
 
 export default function TopPicks() {
   const [picks, setPicks] = useState<PickStock[]>([]);
@@ -21,11 +23,42 @@ export default function TopPicks() {
   useEffect(() => {
     async function fetchPicks() {
       try {
-        const res = await fetch('/api/top-picks');
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setPicks(data.slice(0, 5));
+        // Fetch quotes for all symbols (each is cached 5min on server)
+        const results = await Promise.allSettled(
+          SYMBOLS.map(sym =>
+            fetch(`/api/quote/${sym}`).then(r => r.json()).then(d => d[0] || null)
+          )
+        );
+
+        const oversold: PickStock[] = [];
+        for (const r of results) {
+          if (r.status !== 'fulfilled' || !r.value) continue;
+          const q = r.value;
+          if (!q.priceAvg50 || !q.priceAvg200 || !q.price) continue;
+
+          // Estimate volatility from 52-week range
+          const range52w = (q.yearHigh ?? 0) - (q.yearLow ?? 0);
+          const estimatedATR = range52w / 52; // rough weekly vol → daily proxy
+          if (estimatedATR <= 0) continue;
+
+          // Use SMA50 as baseline (available from quote)
+          const deviation = (q.price - q.priceAvg50) / estimatedATR;
+
+          if (deviation < -2) {
+            oversold.push({
+              symbol: q.symbol,
+              price: q.price,
+              sma50: q.priceAvg50,
+              deviation,
+              signal: deviation < -3 ? 'deep-value' : 'oversold',
+              name: q.name || q.symbol,
+              marketCap: q.marketCap || 0,
+            });
+          }
         }
+
+        oversold.sort((a, b) => a.deviation - b.deviation);
+        setPicks(oversold.slice(0, 5));
       } catch {
         // silent
       }
@@ -38,14 +71,14 @@ export default function TopPicks() {
   if (picks.length === 0) return null;
 
   return (
-    <div className="apple-card p-6 md:p-8 mb-16 border-accent/20">
+    <div className="apple-card p-6 md:p-8 mb-16">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="font-serif text-xl font-bold text-accent glow-gold">
             負乖離精選
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            超跌訊號 + 市值 &gt; $10B — 按乖離程度排序
+            超跌訊號 + 大型股 — 按乖離程度排序
           </p>
         </div>
         <span className="text-xs px-3 py-1 rounded-full bg-blue-900/30 text-blue-400 font-medium">
@@ -85,14 +118,14 @@ export default function TopPicks() {
             </div>
 
             <div className="mt-2 text-[10px] text-gray-600">
-              SMA20 ${stock.sma20.toFixed(2)}
+              50MA ${stock.sma50.toFixed(2)}
             </div>
           </Link>
         ))}
       </div>
 
       <p className="text-[10px] text-gray-600 mt-4 text-center">
-        篩選條件：現價 &lt; SMA(20) − 2×ATR(14)，市值 &gt; $10B。僅供參考，非投資建議。
+        篩選條件：現價 &lt; 50MA − 2×估計ATR。僅供參考，非投資建議。
       </p>
     </div>
   );
