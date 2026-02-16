@@ -12,7 +12,6 @@ interface PickStock {
   signal: string;
   name?: string;
   marketCap?: number;
-  changesPercentage?: number;
 }
 
 export default function TopPicks() {
@@ -22,37 +21,11 @@ export default function TopPicks() {
   useEffect(() => {
     async function fetchPicks() {
       try {
-        // Fetch oversold stocks
-        const res = await fetch('/api/oversold-scanner');
-        const oversold = await res.json();
-        if (!Array.isArray(oversold) || oversold.length === 0) {
-          setLoading(false);
-          return;
+        const res = await fetch('/api/top-picks');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setPicks(data.slice(0, 5));
         }
-
-        // Fetch quotes for these stocks to get market cap
-        const symbols = oversold.map((s: PickStock) => s.symbol);
-        const quotePromises = symbols.map((sym: string) =>
-          fetch(`/api/quote/${sym}`).then(r => r.json()).catch(() => [])
-        );
-        const quotes = await Promise.all(quotePromises);
-
-        const enriched: PickStock[] = [];
-        oversold.forEach((stock: PickStock, i: number) => {
-          const q = quotes[i]?.[0];
-          if (q && q.marketCap >= 10_000_000_000) { // > $10B (100億)
-            enriched.push({
-              ...stock,
-              name: q.name,
-              marketCap: q.marketCap,
-              changesPercentage: q.changesPercentage ?? 0,
-            });
-          }
-        });
-
-        // Sort by most oversold
-        enriched.sort((a, b) => a.deviation - b.deviation);
-        setPicks(enriched.slice(0, 5));
       } catch {
         // silent
       }
@@ -87,21 +60,17 @@ export default function TopPicks() {
             href={`/stock/${stock.symbol}`}
             className="group relative p-4 rounded-xl bg-black/40 border border-white/5 hover:border-accent/30 transition-all"
           >
-            {/* Rank */}
             <div className="absolute top-2 right-3 text-xs text-gray-600 font-mono">
               #{i + 1}
             </div>
 
-            {/* Symbol */}
             <p className="text-lg font-bold text-primary glow-red mb-0.5">{stock.symbol}</p>
             <p className="text-[11px] text-gray-500 truncate mb-3">{stock.name}</p>
 
-            {/* Price */}
             <p className="text-xl font-bold text-white glow-white mb-1">
               ${stock.price.toFixed(2)}
             </p>
 
-            {/* Signal badge */}
             <div className="flex items-center gap-2 mt-2">
               <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
                 stock.signal === 'deep-value'
@@ -115,7 +84,6 @@ export default function TopPicks() {
               </span>
             </div>
 
-            {/* SMA20 vs Price */}
             <div className="mt-2 text-[10px] text-gray-600">
               SMA20 ${stock.sma20.toFixed(2)}
             </div>
