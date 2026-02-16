@@ -12,134 +12,110 @@ export interface PieChartProps {
   data: PieSlice[];
   title: string;
   subtitle?: string;
-  size?: number;
+  size?: number; // kept for API compat, ignored
 }
 
 function formatValue(n: number): string {
   if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}兆`;
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(0)}億`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}百萬`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(0)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M`;
   return n.toLocaleString();
 }
 
-export default function PieChart({ data, title, subtitle, size = 280 }: PieChartProps) {
+export default function PieChart({ data, title, subtitle }: PieChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  // Calculate total and percentages
-  const total = data.reduce((sum, slice) => sum + slice.value, 0);
-  const dataWithPercentages = data.map(slice => ({
-    ...slice,
-    percentage: (slice.value / total) * 100
-  }));
+  const total = data.reduce((sum, s) => sum + s.value, 0);
+  if (total === 0) return null;
 
-  // Generate SVG path for pie slice
-  const createArc = (startAngle: number, endAngle: number, radius: number = 90) => {
-    const start = polarToCartesian(100, 100, radius, endAngle);
-    const end = polarToCartesian(100, 100, radius, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+  // Sort descending
+  const sorted = [...data]
+    .map((s) => ({ ...s, pct: (s.value / total) * 100 }))
+    .sort((a, b) => b.value - a.value);
 
-    return [
-      `M 100 100`,
-      `L ${start.x} ${start.y}`,
-      `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
-      'Z'
-    ].join(' ');
-  };
-
-  const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
-    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
-    return {
-      x: centerX + radius * Math.cos(angleInRadians),
-      y: centerY + radius * Math.sin(angleInRadians)
-    };
-  };
-
-  // Calculate angles for each slice
-  let currentAngle = 0;
-  const slicesWithAngles = dataWithPercentages.map((slice, index) => {
-    const angle = (slice.value / total) * 360;
-    const startAngle = currentAngle;
-    const endAngle = currentAngle + angle;
-    currentAngle += angle;
-
-    return {
-      ...slice,
-      startAngle,
-      endAngle,
-      path: createArc(startAngle, endAngle)
-    };
-  });
+  const maxPct = sorted[0]?.pct || 1;
 
   return (
-    <div className="apple-card p-8">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-1">{title}</h2>
-        {subtitle && <p className="text-sm text-gray-400 font-light">{subtitle}</p>}
+    <div className="apple-card p-6 md:p-8">
+      <div className="mb-8">
+        <h2 className="font-serif text-2xl font-bold mb-1">{title}</h2>
+        {subtitle && <p className="text-sm text-gray-500 font-light">{subtitle}</p>}
       </div>
 
-      <div className="flex flex-col lg:flex-row items-center lg:items-start gap-8">
-        {/* Pie Chart */}
-        <div className="relative" style={{ width: size, height: size }}>
-          <svg
-            viewBox="0 0 200 200"
-            className="w-full h-full"
-            style={{ filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3))' }}
-          >
-            {slicesWithAngles.map((slice, index) => (
-              <g key={index}>
-                <path
-                  d={slice.path}
-                  fill={slice.color}
-                  stroke="rgba(0, 0, 0, 0.3)"
-                  strokeWidth="0.5"
-                  className="transition-all duration-200 cursor-pointer"
-                  style={{
-                    opacity: hoveredIndex === null || hoveredIndex === index ? 1 : 0.5,
-                    transform: hoveredIndex === index ? 'scale(1.05)' : 'scale(1)',
-                    transformOrigin: '100px 100px'
-                  }}
-                  onMouseEnter={() => setHoveredIndex(index)}
-                  onMouseLeave={() => setHoveredIndex(null)}
-                />
-              </g>
-            ))}
-          </svg>
+      {/* Stacked overview bar */}
+      <div className="h-3 rounded-full overflow-hidden flex mb-8" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        {sorted.map((s, i) => (
+          <div
+            key={i}
+            className="h-full transition-opacity duration-200 cursor-pointer"
+            style={{
+              width: `${s.pct}%`,
+              backgroundColor: s.color,
+              opacity: hoveredIndex === null || hoveredIndex === i ? 1 : 0.3,
+            }}
+            onMouseEnter={() => setHoveredIndex(i)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          />
+        ))}
+      </div>
 
-          {/* Tooltip */}
-          {hoveredIndex !== null && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/90 border border-white/10 rounded-xl px-4 py-3 pointer-events-none z-10 backdrop-blur-sm">
-              <p className="text-sm font-semibold text-white whitespace-nowrap">
-                {dataWithPercentages[hoveredIndex].label}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                {formatValue(dataWithPercentages[hoveredIndex].value)} ({dataWithPercentages[hoveredIndex].percentage.toFixed(1)}%)
-              </p>
-            </div>
-          )}
-        </div>
+      {/* Horizontal bars */}
+      <div className="space-y-3">
+        {sorted.map((s, i) => {
+          const barWidth = (s.pct / maxPct) * 100;
+          const isHovered = hoveredIndex === i;
 
-        {/* Legend */}
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
-          {dataWithPercentages.map((slice, index) => (
+          return (
             <div
-              key={index}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/[0.02] transition-colors cursor-pointer"
-              onMouseEnter={() => setHoveredIndex(index)}
+              key={i}
+              className="group cursor-pointer"
+              onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              <div
-                className="w-4 h-4 rounded-sm flex-shrink-0"
-                style={{ backgroundColor: slice.color }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{slice.label}</p>
-                <p className="text-xs text-gray-500">
-                  {formatValue(slice.value)} ({slice.percentage.toFixed(1)}%)
-                </p>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{
+                      backgroundColor: s.color,
+                      boxShadow: isHovered ? `0 0 8px ${s.color}80` : 'none',
+                    }}
+                  />
+                  <span className={`text-sm font-medium truncate transition-colors ${
+                    isHovered ? 'text-white' : 'text-gray-300'
+                  }`}>
+                    {s.label}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                  <span className="text-xs text-gray-500 tabular-nums">{formatValue(s.value)}</span>
+                  <span className={`text-sm font-bold tabular-nums w-14 text-right transition-colors ${
+                    isHovered ? 'text-white glow-white' : 'text-accent'
+                  }`}>
+                    {s.pct.toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <div
+                  className="h-full rounded-full chart-metallic transition-all duration-300"
+                  style={{
+                    width: `${barWidth}%`,
+                    backgroundColor: s.color,
+                    opacity: hoveredIndex === null || isHovered ? 1 : 0.4,
+                    boxShadow: isHovered ? `0 0 12px ${s.color}40` : 'none',
+                  }}
+                />
               </div>
             </div>
-          ))}
-        </div>
+          );
+        })}
+      </div>
+
+      {/* Total */}
+      <div className="mt-6 pt-4 border-t border-white/5 flex justify-between items-center">
+        <span className="text-xs text-gray-600">總計</span>
+        <span className="text-sm font-semibold text-gray-400">{formatValue(total)}</span>
       </div>
     </div>
   );
