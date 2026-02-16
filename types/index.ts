@@ -157,3 +157,27 @@ export interface SortOption {
   value: string;
   label: string;
 }
+
+export interface DashboardStock {
+  symbol: string;
+  name: string;
+  sector: string;
+  price: number;
+  change: number;
+  changesPercentage: number;
+}
+
+export interface TopMoverStock {
+  symbol: string;
+  name: string;
+  price: number;
+  changesPercentage: number;
+  totalInvested: number;
+  totalInvestedChange: number;
+  investorsHolding: number;
+  investorsHoldingChange: number;
+  increasedPositions: number;
+  reducedPositions: number;
+  newPositions: number;
+  closedPositions: number;
+}
