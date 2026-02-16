@@ -7,12 +7,12 @@ import SortSelect from '@/components/SortSelect';
 import { SP500Stock, StockQuote, InstitutionalHolder, StockWithQuote, SortOption } from '@/types';
 
 const sortOptions: SortOption[] = [
-  { value: 'symbol', label: 'Symbol (A-Z)' },
-  { value: 'holders', label: 'Most Institutional Holders' },
-  { value: 'price-high', label: 'Highest Price' },
-  { value: 'price-low', label: 'Lowest Price' },
-  { value: 'change-high', label: 'Biggest Gainers' },
-  { value: 'change-low', label: 'Biggest Losers' },
+  { value: 'symbol', label: '代號 (A-Z)' },
+  { value: 'holders', label: '機構持股數' },
+  { value: 'price-high', label: '最高股價' },
+  { value: 'price-low', label: '最低股價' },
+  { value: 'change-high', label: '最大漲幅' },
+  { value: 'change-low', label: '最大跌幅' },
 ];
 
 export default function Home() {
@@ -116,11 +116,12 @@ export default function Home() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <header className="mb-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-center mb-2">
-          <span className="text-primary">13F</span> Tracker
+        <h1 className="text-4xl md:text-5xl font-bold text-center mb-2 tracking-wider">
+          <span className="text-primary">JG 13F</span> <span className="text-accent">機構報告書</span>
         </h1>
-        <p className="text-center text-gray-400">
-          S&P 500 Institutional Holdings Viewer
+        <div className="w-32 h-px bg-gradient-to-r from-transparent via-accent to-transparent mx-auto mb-3"></div>
+        <p className="text-center text-gray-400 font-light">
+          S&P 500 機構持倉總覽
         </p>
       </header>
 
@@ -129,15 +130,15 @@ export default function Home() {
         
         <div className="flex justify-between items-center mb-6">
           <p className="text-gray-400">
-            {loading ? 'Loading...' : `${filteredStocks.length} stocks`}
+            {loading ? '載入中...' : `${filteredStocks.length} 檔`}
           </p>
           <SortSelect value={sortBy} onChange={setSortBy} options={sortOptions} />
         </div>
 
         {loading && stocks.length === 0 ? (
           <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <p className="mt-4 text-gray-400">Loading S&P 500 stocks...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+            <p className="mt-4 text-gray-400">載入 S&P 500 股票中...</p>
           </div>
         ) : (
           <>
@@ -149,14 +150,14 @@ export default function Home() {
 
             {filteredStocks.length === 0 && !loading && (
               <div className="text-center py-20">
-                <p className="text-gray-400">No stocks found matching &quot;{searchTerm}&quot;</p>
+                <p className="text-gray-400">找不到符合的股票 &quot;{searchTerm}&quot;</p>
               </div>
             )}
 
             {loading && stocks.length > 0 && (
               <div className="text-center py-8">
                 <p className="text-gray-400">
-                  Loading data... ({stocks.length} / ~500)
+                  載入資料中... ({stocks.length} / ~500)
                 </p>
               </div>
             )}

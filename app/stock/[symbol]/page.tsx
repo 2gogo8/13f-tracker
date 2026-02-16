@@ -61,8 +61,8 @@ export default function StockDetailPage({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p className="mt-4 text-gray-400">Loading {symbol}...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+          <p className="mt-4 text-gray-400">載入中 {symbol}...</p>
         </div>
       </div>
     );
@@ -85,11 +85,11 @@ export default function StockDetailPage({
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
         <Link href="/" className="text-primary hover:text-accent mb-6 inline-block text-sm">
-          ← Back to S&P 500
+          ← 返回 S&P 500
         </Link>
 
         {/* Header */}
-        <div className="bg-secondary border border-gray-800 rounded-lg p-6 mb-6">
+        <div className="bg-secondary border border-border rounded-lg p-6 mb-6 hover:border-accent/30 transition-colors">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-primary">{symbol}</h1>
@@ -100,110 +100,110 @@ export default function StockDetailPage({
             </div>
             <div className="text-right">
               <p className="text-4xl font-bold">${quote.price.toFixed(2)}</p>
-              <p className={`text-xl ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+              <p className={`text-xl ${isPositive ? 'text-accent' : 'text-primary'}`}>
                 {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{(quote.changesPercentage ?? quote.changePercentage ?? 0).toFixed(2)}%)
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6 pt-6 border-t border-gray-800">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6 pt-6 border-t border-border">
             <div>
-              <p className="text-xs text-gray-500">Market Cap</p>
-              <p className="text-sm font-medium">{formatNumber(quote.marketCap)}</p>
+              <p className="text-xs text-gray-500 font-light">市值</p>
+              <p className="text-sm font-bold">{formatNumber(quote.marketCap)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">Volume</p>
-              <p className="text-sm font-medium">{formatShares(quote.volume)}</p>
+              <p className="text-xs text-gray-500 font-light">成交量</p>
+              <p className="text-sm font-bold">{formatShares(quote.volume)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">52W Range</p>
-              <p className="text-sm font-medium">${quote.yearLow.toFixed(0)} - ${quote.yearHigh.toFixed(0)}</p>
+              <p className="text-xs text-gray-500 font-light">52週區間</p>
+              <p className="text-sm font-bold">${quote.yearLow.toFixed(0)} - ${quote.yearHigh.toFixed(0)}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">50D Avg</p>
-              <p className="text-sm font-medium">${quote.priceAvg50?.toFixed(2) || 'N/A'}</p>
+              <p className="text-xs text-gray-500 font-light">50日均</p>
+              <p className="text-sm font-bold">${quote.priceAvg50?.toFixed(2) || 'N/A'}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500">200D Avg</p>
-              <p className="text-sm font-medium">${quote.priceAvg200?.toFixed(2) || 'N/A'}</p>
+              <p className="text-xs text-gray-500 font-light">200日均</p>
+              <p className="text-sm font-bold">${quote.priceAvg200?.toFixed(2) || 'N/A'}</p>
             </div>
           </div>
         </div>
 
         {/* Institutional Summary */}
         {summary && (
-          <div className="bg-secondary border border-gray-800 rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold mb-1">13F Institutional Summary</h2>
-            <p className="text-xs text-gray-500 mb-4">Period: {summary.date}</p>
+          <div className="bg-secondary border border-border rounded-lg p-6 mb-6 hover:border-accent/30 transition-colors">
+            <h2 className="text-xl font-bold mb-1">13F 機構持倉摘要</h2>
+            <p className="text-xs text-gray-500 font-light mb-4">統計期間：{summary.date}</p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-              <div className="text-center p-3 bg-background rounded-lg">
+              <div className="text-center p-3 bg-background rounded-lg border border-border">
                 <p className="text-2xl font-bold text-primary">{summary.investorsHolding?.toLocaleString()}</p>
-                <p className="text-xs text-gray-500 mt-1">Institutional Holders</p>
-                <p className={`text-xs mt-0.5 ${summary.investorsHoldingChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {summary.investorsHoldingChange >= 0 ? '+' : ''}{summary.investorsHoldingChange} vs prev Q
+                <p className="text-xs text-gray-500 font-light mt-1">持倉機構數</p>
+                <p className={`text-xs mt-0.5 ${summary.investorsHoldingChange >= 0 ? 'text-accent' : 'text-primary'}`}>
+                  {summary.investorsHoldingChange >= 0 ? '+' : ''}{summary.investorsHoldingChange} 較上季
                 </p>
               </div>
-              <div className="text-center p-3 bg-background rounded-lg">
+              <div className="text-center p-3 bg-background rounded-lg border border-border">
                 <p className="text-2xl font-bold">{formatNumber(summary.totalInvested)}</p>
-                <p className="text-xs text-gray-500 mt-1">Total Invested</p>
-                <p className={`text-xs mt-0.5 ${summary.totalInvestedChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                <p className="text-xs text-gray-500 font-light mt-1">總投資金額</p>
+                <p className={`text-xs mt-0.5 ${summary.totalInvestedChange >= 0 ? 'text-accent' : 'text-primary'}`}>
                   {summary.totalInvestedChange >= 0 ? '+' : ''}{formatNumber(summary.totalInvestedChange)}
                 </p>
               </div>
-              <div className="text-center p-3 bg-background rounded-lg">
+              <div className="text-center p-3 bg-background rounded-lg border border-border">
                 <p className="text-2xl font-bold">{summary.ownershipPercent?.toFixed(1)}%</p>
-                <p className="text-xs text-gray-500 mt-1">Institutional Ownership</p>
+                <p className="text-xs text-gray-500 font-light mt-1">機構持股比例</p>
               </div>
-              <div className="text-center p-3 bg-background rounded-lg">
+              <div className="text-center p-3 bg-background rounded-lg border border-border">
                 <p className="text-2xl font-bold">{summary.putCallRatio?.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">Put/Call Ratio</p>
-                <p className={`text-xs mt-0.5 ${(summary.putCallRatio || 0) <= 1 ? 'text-green-500' : 'text-red-500'}`}>
-                  {(summary.putCallRatio || 0) <= 1 ? 'Bullish' : 'Bearish'}
+                <p className="text-xs text-gray-500 font-light mt-1">看跌/看漲比</p>
+                <p className={`text-xs mt-0.5 ${(summary.putCallRatio || 0) <= 1 ? 'text-accent' : 'text-primary'}`}>
+                  {(summary.putCallRatio || 0) <= 1 ? '偏多' : '偏空'}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-4 gap-3">
-              <div className="text-center p-2 bg-background rounded-lg">
-                <p className="text-lg font-bold text-green-500">{summary.increasedPositions}</p>
-                <p className="text-xs text-gray-500">Increased</p>
+              <div className="text-center p-2 bg-background rounded-lg border border-border">
+                <p className="text-lg font-bold text-accent">{summary.increasedPositions}</p>
+                <p className="text-xs text-gray-500 font-light">增持</p>
               </div>
-              <div className="text-center p-2 bg-background rounded-lg">
-                <p className="text-lg font-bold text-red-500">{summary.reducedPositions}</p>
-                <p className="text-xs text-gray-500">Reduced</p>
+              <div className="text-center p-2 bg-background rounded-lg border border-border">
+                <p className="text-lg font-bold text-primary">{summary.reducedPositions}</p>
+                <p className="text-xs text-gray-500 font-light">減持</p>
               </div>
-              <div className="text-center p-2 bg-background rounded-lg">
+              <div className="text-center p-2 bg-background rounded-lg border border-border">
                 <p className="text-lg font-bold text-accent">{summary.newPositions}</p>
-                <p className="text-xs text-gray-500">New</p>
+                <p className="text-xs text-gray-500 font-light">新進</p>
               </div>
-              <div className="text-center p-2 bg-background rounded-lg">
+              <div className="text-center p-2 bg-background rounded-lg border border-border">
                 <p className="text-lg font-bold text-gray-400">{summary.closedPositions}</p>
-                <p className="text-xs text-gray-500">Closed</p>
+                <p className="text-xs text-gray-500 font-light">清倉</p>
               </div>
             </div>
           </div>
         )}
 
         {/* Top 20 Institutional Holders */}
-        <div className="bg-secondary border border-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Top 20 Institutional Holders</h2>
+        <div className="bg-secondary border border-border rounded-lg p-6 mb-6 hover:border-accent/30 transition-colors">
+          <h2 className="text-xl font-bold mb-4">前 20 大機構持倉</h2>
           
           {holders.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">No institutional holders data available</p>
+            <p className="text-gray-400 text-center py-8">暫無機構持倉資料</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-800 text-gray-500">
-                    <th className="text-left py-2 px-2 font-medium">#</th>
-                    <th className="text-left py-2 px-2 font-medium">Institution</th>
-                    <th className="text-right py-2 px-2 font-medium">Shares</th>
-                    <th className="text-right py-2 px-2 font-medium">Market Value</th>
-                    <th className="text-right py-2 px-2 font-medium">Ownership</th>
-                    <th className="text-right py-2 px-2 font-medium">Δ Shares</th>
-                    <th className="text-right py-2 px-2 font-medium">Δ %</th>
-                    <th className="text-center py-2 px-2 font-medium">Status</th>
+                  <tr className="border-b border-border text-gray-500">
+                    <th className="text-left py-2 px-2 font-light">#</th>
+                    <th className="text-left py-2 px-2 font-light">機構名稱</th>
+                    <th className="text-right py-2 px-2 font-light">持股數</th>
+                    <th className="text-right py-2 px-2 font-light">持倉市值</th>
+                    <th className="text-right py-2 px-2 font-light">持股比例</th>
+                    <th className="text-right py-2 px-2 font-light">增減股數</th>
+                    <th className="text-right py-2 px-2 font-light">增減%</th>
+                    <th className="text-center py-2 px-2 font-light">狀態</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,30 +212,30 @@ export default function StockDetailPage({
                     const isUp = h.changeInSharesNumber > 0;
                     const isDown = h.changeInSharesNumber < 0;
                     return (
-                      <tr key={`${h.cik}-${i}`} className="border-b border-gray-800/50 hover:bg-background transition-colors">
+                      <tr key={`${h.cik}-${i}`} className="border-b border-border/50 hover:bg-background/50 hover:shadow-[0_0_10px_rgba(212,175,55,0.1)] transition-all">
                         <td className="py-2.5 px-2 text-gray-500">{i + 1}</td>
                         <td className="py-2.5 px-2">
                           <p className="font-medium text-sm">{h.investorName}</p>
-                          <p className="text-xs text-gray-500">Since {h.firstAdded} • {h.holdingPeriod}Q</p>
+                          <p className="text-xs text-gray-500">自 {h.firstAdded} • {h.holdingPeriod}Q</p>
                         </td>
-                        <td className="text-right py-2.5 px-2">{formatShares(h.sharesNumber)}</td>
-                        <td className="text-right py-2.5 px-2">{formatNumber(h.marketValue)}</td>
-                        <td className="text-right py-2.5 px-2">{h.ownership?.toFixed(2)}%</td>
-                        <td className={`text-right py-2.5 px-2 ${isUp ? 'text-green-500' : isDown ? 'text-red-500' : 'text-gray-400'}`}>
+                        <td className="text-right py-2.5 px-2 font-bold">{formatShares(h.sharesNumber)}</td>
+                        <td className="text-right py-2.5 px-2 font-bold">{formatNumber(h.marketValue)}</td>
+                        <td className="text-right py-2.5 px-2 font-bold">{h.ownership?.toFixed(2)}%</td>
+                        <td className={`text-right py-2.5 px-2 ${isUp ? 'text-accent' : isDown ? 'text-primary' : 'text-gray-400'}`}>
                           {isUp ? '+' : ''}{formatShares(h.changeInSharesNumber)}
                         </td>
-                        <td className={`text-right py-2.5 px-2 ${isUp ? 'text-green-500' : isDown ? 'text-red-500' : 'text-gray-400'}`}>
+                        <td className={`text-right py-2.5 px-2 ${isUp ? 'text-accent' : isDown ? 'text-primary' : 'text-gray-400'}`}>
                           {isUp ? '+' : ''}{chgPct?.toFixed(1)}%
                         </td>
                         <td className="text-center py-2.5 px-2">
                           {h.isNew ? (
-                            <span className="text-xs bg-green-900/50 text-green-400 px-2 py-0.5 rounded">NEW</span>
+                            <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded border border-accent/30">新進</span>
                           ) : h.isSoldOut ? (
-                            <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded">SOLD</span>
+                            <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30">清倉</span>
                           ) : isUp ? (
-                            <span className="text-xs text-green-500">▲</span>
+                            <span className="text-xs text-accent">▲</span>
                           ) : isDown ? (
-                            <span className="text-xs text-red-500">▼</span>
+                            <span className="text-xs text-primary">▼</span>
                           ) : (
                             <span className="text-xs text-gray-500">—</span>
                           )}
@@ -251,25 +251,25 @@ export default function StockDetailPage({
 
         {/* Company Description */}
         {profile?.description && (
-          <div className="bg-secondary border border-gray-800 rounded-lg p-6">
-            <h2 className="text-xl font-bold mb-4">About {profile.companyName}</h2>
+          <div className="bg-secondary border border-border rounded-lg p-6 hover:border-accent/30 transition-colors">
+            <h2 className="text-xl font-bold mb-4">關於 {profile.companyName}</h2>
             <p className="text-gray-300 leading-relaxed text-sm">{profile.description}</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-800">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border">
               <div>
-                <p className="text-xs text-gray-500">CEO</p>
-                <p className="text-sm">{profile.ceo || 'N/A'}</p>
+                <p className="text-xs text-gray-500 font-light">執行長</p>
+                <p className="text-sm font-bold">{profile.ceo || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Employees</p>
-                <p className="text-sm">{Number(profile.fullTimeEmployees).toLocaleString() || 'N/A'}</p>
+                <p className="text-xs text-gray-500 font-light">員工數</p>
+                <p className="text-sm font-bold">{Number(profile.fullTimeEmployees).toLocaleString() || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">HQ</p>
-                <p className="text-sm">{profile.city}, {profile.state}</p>
+                <p className="text-xs text-gray-500 font-light">總部</p>
+                <p className="text-sm font-bold">{profile.city}, {profile.state}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Website</p>
-                <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-accent">
+                <p className="text-xs text-gray-500 font-light">官網</p>
+                <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:text-accent transition-colors">
                   {profile.website?.replace('https://', '')}
                 </a>
               </div>

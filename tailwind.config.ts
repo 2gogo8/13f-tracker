@@ -11,9 +11,10 @@ export default {
       colors: {
         background: "#000000",
         foreground: "#ffffff",
-        primary: "#ff6b00",
-        secondary: "#1a1a1a",
-        accent: "#ff8533",
+        primary: "#C41E3A",      // Deep red (Cartier)
+        secondary: "#0A0A0A",    // Card background
+        accent: "#D4AF37",       // Gold
+        border: "#1A1A1A",       // Subtle border
       },
     },
   },
