@@ -82,7 +82,9 @@ export async function GET() {
       }
 
       const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
-      const rawText = (article.content || '').replace(/<[^>]*>/g, '').slice(0, 200);
+      const fullText = (article.content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+      const sentences = fullText.split(/(?<=[.!?。！？])\s+/).filter((s: string) => s.length > 15);
+      const rawText = sentences.slice(0, 2).join(' ').slice(0, 150);
 
       const [titleZh, textZh] = await Promise.all([
         translateToZh(rawTitle),

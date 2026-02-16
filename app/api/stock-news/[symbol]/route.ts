@@ -54,6 +54,17 @@ async function translateToZh(text: string): Promise<string> {
   }
 }
 
+// Extract first 1-2 key sentences as a brief summary
+function extractSummary(html: string): string {
+  // Strip HTML tags
+  const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  // Split into sentences
+  const sentences = text.split(/(?<=[.!?。！？])\s+/).filter(s => s.length > 15);
+  // Take first 2 sentences, cap at 150 chars
+  const summary = sentences.slice(0, 2).join(' ');
+  return summary.length > 150 ? summary.slice(0, 147) + '...' : summary;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ symbol: string }> }
@@ -112,15 +123,15 @@ export async function GET(
     const toTranslate = matched.slice(0, 5);
     const newsPromises = toTranslate.map(async (article, i) => {
       const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
-      const rawText = (article.content || '').replace(/<[^>]*>/g, '').slice(0, 300);
+      const rawSummary = extractSummary(article.content || '');
 
       // Only translate first 3 to save MyMemory quota
       let titleZh = rawTitle;
-      let textZh = rawText;
+      let textZh = rawSummary;
       if (i < 3) {
         [titleZh, textZh] = await Promise.all([
           translateToZh(rawTitle),
-          translateToZh(rawText),
+          translateToZh(rawSummary),
         ]);
       }
 
