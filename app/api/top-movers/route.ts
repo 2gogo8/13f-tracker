@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 60;
+
 const FMP_API_KEY = process.env.FMP_API_KEY;
 const FMP_BASE_URL = 'https://financialmodelingprep.com';
 
