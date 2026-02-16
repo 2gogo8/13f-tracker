@@ -249,28 +249,43 @@ export default function StockDetailPage({
           )}
         </div>
 
-        {/* Company Description */}
-        {profile?.description && (
+        {/* 公司簡介 */}
+        {profile && (
           <div className="apple-card p-8">
-            <h2 className="text-2xl font-bold mb-6">關於 {profile.companyName}</h2>
-            <p className="text-gray-300 leading-relaxed text-base font-light mb-8">{profile.description}</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-6 border-t border-white/5">
+            <h2 className="text-2xl font-bold mb-6">公司簡介</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+              <div>
+                <p className="text-xs text-gray-500 font-light mb-2">公司名稱</p>
+                <p className="text-base font-semibold">{profile.companyName}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-light mb-2">產業類別</p>
+                <p className="text-base font-semibold">{profile.sector} / {profile.industry}</p>
+              </div>
               <div>
                 <p className="text-xs text-gray-500 font-light mb-2">執行長</p>
-                <p className="text-sm font-semibold">{profile.ceo || 'N/A'}</p>
+                <p className="text-base font-semibold">{profile.ceo || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-light mb-2">員工數</p>
-                <p className="text-sm font-semibold">{Number(profile.fullTimeEmployees).toLocaleString() || 'N/A'}</p>
+                <p className="text-xs text-gray-500 font-light mb-2">員工人數</p>
+                <p className="text-base font-semibold">{Number(profile.fullTimeEmployees).toLocaleString() || 'N/A'} 人</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-light mb-2">總部</p>
-                <p className="text-sm font-semibold">{profile.city}, {profile.state}</p>
+                <p className="text-xs text-gray-500 font-light mb-2">總部所在地</p>
+                <p className="text-base font-semibold">{profile.city}, {profile.state} {profile.country}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 font-light mb-2">官網</p>
-                <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:text-accent/80 transition-colors">
-                  {profile.website?.replace('https://', '')}
+                <p className="text-xs text-gray-500 font-light mb-2">上市交易所</p>
+                <p className="text-base font-semibold">{quote.exchange}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-light mb-2">IPO 日期</p>
+                <p className="text-base font-semibold">{profile.ipoDate || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 font-light mb-2">官方網站</p>
+                <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-base text-accent hover:text-accent/80 transition-colors">
+                  {profile.website?.replace('https://www.', '').replace('https://', '')}
                 </a>
               </div>
             </div>
