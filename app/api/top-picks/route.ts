@@ -39,9 +39,15 @@ export async function GET() {
       const batch = LARGE_CAP_SYMBOLS.slice(i, i + 30);
       const results = await Promise.allSettled(
         batch.map(async (symbol) => {
-          // Fetch historical + quote in parallel
+          // Calculate date range: ~35 calendar days back for 21 trading days
+          const fromDate = new Date();
+          fromDate.setDate(fromDate.getDate() - 40);
+          const fromStr = fromDate.toISOString().slice(0, 10);
+          const toStr = new Date().toISOString().slice(0, 10);
+
+          // Fetch historical (limited range) + quote in parallel
           const [histRes, quoteRes] = await Promise.all([
-            fetch(`https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(8000) }),
+            fetch(`https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&from=${fromStr}&to=${toStr}&apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(8000) }),
             fetch(`https://financialmodelingprep.com/stable/quote?symbol=${symbol}&apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(8000) }),
           ]);
 
