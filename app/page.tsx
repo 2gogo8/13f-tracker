@@ -74,7 +74,7 @@ export default function Home() {
       try {
         const res = await fetch('/api/sector-performance');
         const data = await res.json();
-        setSectorPerformance(data);
+        if (Array.isArray(data)) setSectorPerformance(data);
       } catch (e) {
         console.error('Error fetching sector performance:', e);
       }
@@ -88,7 +88,7 @@ export default function Home() {
       try {
         const res = await fetch('/api/trending-news');
         const data = await res.json();
-        setTrendingNews(data);
+        if (Array.isArray(data)) setTrendingNews(data);
       } catch (e) {
         console.error('Error fetching trending news:', e);
       }
@@ -101,9 +101,11 @@ export default function Home() {
     async function fetchDashboardData() {
       try {
         const response = await fetch('/api/dashboard');
-        const data: DashboardStock[] = await response.json();
-        setStocks(data);
-        setFilteredStocks(data);
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setStocks(data);
+          setFilteredStocks(data);
+        }
         setLoading(false);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -119,7 +121,7 @@ export default function Home() {
       try {
         const response = await fetch('/api/top-movers');
         const data = await response.json();
-        setTopMovers(data);
+        if (data && data.topAccumulation) setTopMovers(data);
       } catch (error) {
         console.error('Error fetching top movers:', error);
       }
