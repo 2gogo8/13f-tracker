@@ -29,6 +29,9 @@ export default function SentimentGauge() {
 
   const { overall, label, emoji, signals } = data;
 
+  // Don't show gauge if no signals (market closed / API failure)
+  if (signals.length === 0) return null;
+
   // Gauge needle rotation: -90deg (0) to +90deg (100)
   const rotation = -90 + (overall / 100) * 180;
 
@@ -43,10 +46,9 @@ export default function SentimentGauge() {
 
   return (
     <div className="apple-card p-6">
-      <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-        <span>{emoji}</span>
+      <h2 className="font-serif text-xl font-bold mb-4 flex items-center gap-2">
         市場情緒指標
-        <span className="text-sm font-normal text-gray-500 ml-2">Fear & Greed</span>
+        <span className="text-sm font-sans font-normal text-gray-500 ml-2">Fear & Greed</span>
       </h2>
 
       <div className="flex flex-col md:flex-row items-center gap-6">

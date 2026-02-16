@@ -332,7 +332,7 @@ export default function StockDetailPage({
         {/* 近期重大發展 */}
         {stockNews.length > 0 && (
           <div className="apple-card p-6 md:p-8 mb-10">
-            <h2 className="text-2xl font-bold mb-6">📰 近期重大發展</h2>
+            <h2 className="text-2xl font-bold mb-6">近期重大發展</h2>
             <div className="space-y-6">
               {stockNews.map((news, i) => (
                 <div

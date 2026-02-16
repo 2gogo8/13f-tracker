@@ -11,8 +11,8 @@ export default function TrendingNews({ news }: TrendingNewsProps) {
   if (news.length === 0) {
     return (
       <div className="apple-card p-8">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-          <span className="text-accent">🔥</span>
+        <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-3">
+          
           今日熱點戰情
         </h2>
         <div className="text-center py-8">
@@ -30,8 +30,8 @@ export default function TrendingNews({ news }: TrendingNewsProps) {
 
   return (
     <div className="apple-card p-8">
-      <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-        <span className="text-accent">🔥</span>
+      <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-3">
+        
         今日熱點戰情
       </h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

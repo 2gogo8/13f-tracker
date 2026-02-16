@@ -71,7 +71,7 @@ export default function CommentSection({ symbol }: CommentSectionProps) {
 
   return (
     <div className="apple-card p-6 md:p-8 mb-8">
-      <h2 className="text-2xl font-bold mb-2">💬 提問與討論</h2>
+      <h2 className="font-serif text-2xl font-bold mb-2">提問與討論</h2>
       <p className="text-sm text-gray-500 mb-6">
         對 {symbol} 有疑問？留下你的問題，JG 會定期回覆
       </p>

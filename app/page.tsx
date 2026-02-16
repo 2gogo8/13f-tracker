@@ -260,7 +260,7 @@ export default function Home() {
                 : 'bg-[#111] text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
             }`}
           >
-            📊 儀表板
+            儀表板
           </button>
           <button
             onClick={() => setViewMode('list')}
@@ -270,7 +270,7 @@ export default function Home() {
                 : 'bg-[#111] text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
             }`}
           >
-            📋 完整列表
+            完整列表
           </button>
         </div>
 
@@ -293,8 +293,8 @@ export default function Home() {
                 {/* Top Accumulation Leaderboard */}
                 {topMovers && topMovers.topAccumulation.length > 0 && (
                   <div className="apple-card p-4 sm:p-8">
-                    <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                      <span className="text-accent">🏆</span>
+                    <h2 className="font-serif text-2xl font-bold mb-6 flex items-center gap-3">
+                      
                       機構加碼排行 Top 10
                     </h2>
                     <div className="space-y-1">
@@ -362,7 +362,7 @@ export default function Home() {
                 {/* Heatmap */}
                 {topMovers && topMovers.allStocks.length > 0 && (
                   <div className="apple-card p-8">
-                    <h2 className="text-2xl font-bold mb-6">機構持倉熱力圖</h2>
+                    <h2 className="font-serif text-2xl font-bold mb-6">機構持倉熱力圖</h2>
                     <p className="text-sm text-gray-400 mb-6">
                       綠色 = 機構加碼 | 紅色 = 機構減倉 | 灰色 = 持平
                     </p>

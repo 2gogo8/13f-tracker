@@ -57,8 +57,8 @@ export default function SupplyChain({ symbol, suppliers }: SupplyChainProps) {
 
   return (
     <div className="apple-card p-6 md:p-8">
-      <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-        🔗 供應鏈圖譜
+      <h2 className="font-serif text-2xl font-bold mb-2 flex items-center gap-2">
+        供應鏈圖譜
       </h2>
       <p className="text-sm text-gray-500 mb-6">
         {symbol} 的關鍵供應商與合作夥伴（共 {suppliers.length} 家，台灣 {twCount} 家）

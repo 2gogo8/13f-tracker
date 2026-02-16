@@ -14,25 +14,25 @@ export default function ScannerButtons({
   const scanners = [
     {
       type: 'accumulation' as ScannerType,
-      emoji: '🔥',
+      emoji: '',
       label: '大戶加碼',
       description: '機構投資人正在買入',
     },
     {
       type: 'selling' as ScannerType,
-      emoji: '📉',
+      emoji: '',
       label: '機構拋售',
       description: '機構投資人正在減倉',
     },
     {
       type: 'top-holdings' as ScannerType,
-      emoji: '💎',
+      emoji: '',
       label: '避險基金最愛',
       description: '最高機構持倉金額',
     },
     {
       type: 'oversold' as ScannerType,
-      emoji: '🔵',
+      emoji: '',
       label: '負乖離雷達',
       description: '超跌訊號：現價 < SMA20 - 2×ATR',
     },
@@ -55,7 +55,6 @@ export default function ScannerButtons({
           }`}
           title={scanner.description}
         >
-          <span className="mr-2">{scanner.emoji}</span>
           {scanner.label}
         </button>
       ))}
