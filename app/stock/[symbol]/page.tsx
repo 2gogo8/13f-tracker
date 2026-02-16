@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummary, QuarterlyTrendData, HistoricalPrice } from '@/types';
 import PieChart, { PieSlice } from '@/components/PieChart';
 import PriceChart from '@/components/PriceChart';
+import SupplyChain from '@/components/SupplyChain';
+import { getSupplyChain } from '@/data/supply-chain';
 
 function formatNumber(n: number): string {
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
@@ -350,6 +352,14 @@ export default function StockDetailPage({
             </div>
           </div>
         )}
+
+        {/* Supply Chain */}
+        {(() => {
+          const suppliers = getSupplyChain(symbol);
+          return suppliers.length > 0 ? (
+            <SupplyChain symbol={symbol} suppliers={suppliers} />
+          ) : null;
+        })()}
 
         {/* 2-Year Stock Price Chart */}
         {historicalData.length > 0 && (
