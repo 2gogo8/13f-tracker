@@ -1,6 +1,6 @@
 'use client';
 
-export type ScannerType = 'accumulation' | 'selling' | 'top-holdings' | null;
+export type ScannerType = 'accumulation' | 'selling' | 'top-holdings' | 'oversold' | null;
 
 interface ScannerButtonsProps {
   activeScanner: ScannerType;
@@ -29,6 +29,12 @@ export default function ScannerButtons({
       emoji: '💎',
       label: '避險基金最愛',
       description: '最高機構持倉金額',
+    },
+    {
+      type: 'oversold' as ScannerType,
+      emoji: '🔵',
+      label: '負乖離雷達',
+      description: '超跌訊號：現價 < SMA20 - 2×ATR',
     },
   ];
 

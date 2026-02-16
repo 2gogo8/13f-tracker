@@ -23,6 +23,8 @@ interface CompactStockRowProps {
   institutionalHolders?: number;
   institutionalCount?: number;
   quarterlyChange?: number;
+  oversoldSignal?: string; // 'deep-value' | 'oversold' | 'overbought'
+  deviation?: number;
 }
 
 export default function CompactStockRow({
@@ -34,6 +36,8 @@ export default function CompactStockRow({
   institutionalHolders,
   institutionalCount,
   quarterlyChange,
+  oversoldSignal,
+  deviation,
 }: CompactStockRowProps) {
   const isPositive = changesPercentage >= 0;
   const hasQuarterlyChange = quarterlyChange !== undefined && quarterlyChange !== 0;
@@ -58,6 +62,20 @@ export default function CompactStockRow({
             ${price.toFixed(2)}
           </span>
         </div>
+
+        {/* Oversold Signal */}
+        {oversoldSignal && (
+          <div className="w-16 text-center flex-shrink-0">
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+              oversoldSignal === 'deep-value' ? 'bg-green-900/40 text-green-400' :
+              oversoldSignal === 'oversold' ? 'bg-blue-900/40 text-blue-400' :
+              oversoldSignal === 'overbought' ? 'bg-red-900/40 text-red-400' : ''
+            }`}>
+              {oversoldSignal === 'deep-value' ? '🟢' : oversoldSignal === 'oversold' ? '🔵' : '🔴'}
+              {deviation !== undefined ? ` ${deviation.toFixed(1)}σ` : ''}
+            </span>
+          </div>
+        )}
 
         {/* Change % */}
         <div className="w-20 text-right flex-shrink-0">

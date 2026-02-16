@@ -161,6 +161,32 @@ export default function StockDetailPage({
   })();
   const atrPercent = atr14 && quote.price ? (atr14 / quote.price) * 100 : null;
 
+  // Calculate SMA20 and Oversold/Overbought Signal
+  const sma20 = (() => {
+    if (historicalData.length < 20) return null;
+    const recent20 = historicalData.slice(0, 20); // newest-first
+    return recent20.reduce((sum, d) => sum + (d.close ?? 0), 0) / 20;
+  })();
+
+  type SignalLevel = 'deep-value' | 'oversold' | 'normal' | 'overbought';
+  const signalLevel: SignalLevel = (() => {
+    if (!sma20 || !atr14) return 'normal';
+    const price = quote.price;
+    if (price < sma20 - 3 * atr14) return 'deep-value';
+    if (price < sma20 - 2 * atr14) return 'oversold';
+    if (price > sma20 + 2 * atr14) return 'overbought';
+    return 'normal';
+  })();
+
+  const signalConfig: Record<SignalLevel, { emoji: string; label: string; color: string; bg: string }> = {
+    'deep-value': { emoji: '🟢', label: '極度超跌', color: 'text-green-400', bg: 'bg-green-900/40' },
+    'oversold':   { emoji: '🔵', label: '超跌區域', color: 'text-blue-400', bg: 'bg-blue-900/40' },
+    'normal':     { emoji: '⚪', label: '正常波動', color: 'text-gray-400', bg: 'bg-gray-800/40' },
+    'overbought': { emoji: '🔴', label: '過熱', color: 'text-red-400', bg: 'bg-red-900/40' },
+  };
+  const signal = signalConfig[signalLevel];
+  const deviation = sma20 && atr14 ? (quote.price - sma20) / atr14 : null;
+
   // Filter and sort holders based on Smart Money filter
   const filteredAndSortedHolders = (() => {
     let filtered = [...holders];
@@ -236,17 +262,33 @@ export default function StockDetailPage({
                 {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{(quote.changesPercentage ?? quote.changePercentage ?? 0).toFixed(2)}%)
               </p>
               {atr14 !== null && (
-                <div className="mt-3 flex items-center gap-3 justify-end">
-                  <span className="text-xs text-gray-500">ATR(14)</span>
-                  <span className="text-sm font-semibold text-white">${atr14.toFixed(2)}</span>
-                  {atrPercent !== null && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      atrPercent >= 4 ? 'bg-red-900/40 text-red-400' :
-                      atrPercent >= 2 ? 'bg-yellow-900/40 text-yellow-400' :
-                      'bg-green-900/40 text-green-400'
-                    }`}>
-                      {atrPercent.toFixed(1)}% 波動
-                    </span>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-3 justify-end">
+                    <span className="text-xs text-gray-500">ATR(14)</span>
+                    <span className="text-sm font-semibold text-white">${atr14.toFixed(2)}</span>
+                    {atrPercent !== null && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        atrPercent >= 4 ? 'bg-red-900/40 text-red-400' :
+                        atrPercent >= 2 ? 'bg-yellow-900/40 text-yellow-400' :
+                        'bg-green-900/40 text-green-400'
+                      }`}>
+                        {atrPercent.toFixed(1)}% 波動
+                      </span>
+                    )}
+                  </div>
+                  {sma20 !== null && (
+                    <div className="flex items-center gap-3 justify-end">
+                      <span className="text-xs text-gray-500">SMA(20)</span>
+                      <span className="text-sm text-gray-300">${sma20.toFixed(2)}</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${signal.bg} ${signal.color}`}>
+                        {signal.emoji} {signal.label}
+                      </span>
+                      {deviation !== null && (
+                        <span className="text-xs text-gray-500">
+                          乖離 {deviation >= 0 ? '+' : ''}{deviation.toFixed(1)}σ
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               )}

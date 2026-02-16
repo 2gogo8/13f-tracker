@@ -40,6 +40,8 @@ export default function Home() {
   const [sectorQuarter, setSectorQuarter] = useState('');
   const [sectorPerformance, setSectorPerformance] = useState<SectorPerformance[]>([]);
   const [trendingNews, setTrendingNews] = useState<TrendingNewsItem[]>([]);
+  const [oversoldSymbols, setOversoldSymbols] = useState<Set<string>>(new Set());
+  const [oversoldData, setOversoldData] = useState<Map<string, { signal: string; deviation: number }>>(new Map());
 
   // Fetch industry summary
   useEffect(() => {
@@ -97,6 +99,29 @@ export default function Home() {
     fetchTrendingNews();
   }, []);
 
+  // Fetch oversold scanner data when scanner is activated
+  useEffect(() => {
+    if (activeScanner !== 'oversold') return;
+    if (oversoldSymbols.size > 0) return; // already fetched
+    async function fetchOversold() {
+      try {
+        const res = await fetch('/api/oversold-scanner');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setOversoldSymbols(new Set(data.map((d: { symbol: string }) => d.symbol)));
+          const map = new Map<string, { signal: string; deviation: number }>();
+          data.forEach((d: { symbol: string; signal: string; deviation: number }) => {
+            map.set(d.symbol, { signal: d.signal, deviation: d.deviation });
+          });
+          setOversoldData(map);
+        }
+      } catch (e) {
+        console.error('Error fetching oversold data:', e);
+      }
+    }
+    fetchOversold();
+  }, [activeScanner, oversoldSymbols.size]);
+
   // Fetch dashboard data (all stocks with quotes)
   useEffect(() => {
     async function fetchDashboardData() {
@@ -138,8 +163,16 @@ export default function Home() {
         stock.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Apply scanner filters (only works when we have institutional data)
-    if (activeScanner && topMovers) {
+    // Apply scanner filters
+    if (activeScanner === 'oversold') {
+      filtered = filtered.filter(stock => oversoldSymbols.has(stock.symbol));
+      // Sort by most oversold
+      filtered.sort((a, b) => {
+        const devA = oversoldData.get(a.symbol)?.deviation ?? 0;
+        const devB = oversoldData.get(b.symbol)?.deviation ?? 0;
+        return devA - devB;
+      });
+    } else if (activeScanner && topMovers) {
       const institutionalSymbols = new Set(topMovers.allStocks.map(s => s.symbol));
       filtered = filtered.filter(stock => institutionalSymbols.has(stock.symbol));
 
@@ -200,7 +233,7 @@ export default function Home() {
     });
 
     setFilteredStocks(filtered);
-  }, [searchTerm, sortBy, stocks, activeScanner, topMovers]);
+  }, [searchTerm, sortBy, stocks, activeScanner, topMovers, oversoldSymbols, oversoldData]);
 
   return (
     <div className="min-h-screen py-16 px-4 md:px-8">
@@ -404,6 +437,8 @@ export default function Home() {
                             changesPercentage={stock.changesPercentage}
                             institutionalCount={institutionalData?.investorsHolding}
                             quarterlyChange={quarterlyChangePercent}
+                            oversoldSignal={oversoldData.get(stock.symbol)?.signal}
+                            deviation={oversoldData.get(stock.symbol)?.deviation}
                           />
                         );
                       })}
