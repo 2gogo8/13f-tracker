@@ -36,9 +36,9 @@ export default function TopPicks() {
           const q = r.value;
           if (!q.priceAvg50 || !q.priceAvg200 || !q.price) continue;
 
-          // Estimate volatility from 52-week range
+          // Estimate ATR from 52-week range (÷30 approximates 14-day ATR)
           const range52w = (q.yearHigh ?? 0) - (q.yearLow ?? 0);
-          const estimatedATR = range52w / 52; // rough weekly vol → daily proxy
+          const estimatedATR = range52w / 30;
           if (estimatedATR <= 0) continue;
 
           // Use SMA50 as baseline (available from quote)
