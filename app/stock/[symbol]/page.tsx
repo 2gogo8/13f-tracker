@@ -459,6 +459,11 @@ export default function StockDetailPage({
                     <div className="mt-3 text-center">
                       <p className="text-sm font-semibold text-white">{data.quarter}</p>
                       <p className="text-xs text-gray-500 mt-1">{data.investorsHolding} 機構</p>
+                      {/* Flag last quarter if filing is likely incomplete */}
+                      {index === quarterlyTrend.length - 1 && index > 0 &&
+                        data.investorsHolding < quarterlyTrend[index - 1].investorsHolding * 0.8 && (
+                        <p className="text-[10px] text-yellow-500 mt-1">⏳ 申報中</p>
+                      )}
                     </div>
                   </div>
                 );
