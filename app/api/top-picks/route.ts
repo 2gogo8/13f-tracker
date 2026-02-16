@@ -19,18 +19,11 @@ interface TopPick {
 let cache: { data: TopPick[]; timestamp: number } | null = null;
 const CACHE_DURATION = 2 * 60 * 60 * 1000;
 
-// Curated large-cap stocks to scan (avoids fetching all 500)
+// Top 30 large-cap stocks to scan (keeps API fast)
 const LARGE_CAP_SYMBOLS = [
-  'AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','BRK.B','JPM','V',
+  'AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','JPM','V',
   'UNH','MA','HD','PG','JNJ','XOM','AVGO','LLY','COST','ABBV',
-  'MRK','WMT','PEP','KO','ADBE','CRM','NFLX','AMD','ORCL','INTC',
-  'CSCO','ACN','TXN','QCOM','IBM','AMAT','NOW','ISRG','GE','CAT',
-  'BA','DIS','PYPL','LOW','SBUX','MDT','DE','ADP','MMC','PLD',
-  'BLK','SCHW','GILD','AMGN','SYK','LRCX','ADI','KLAC','CME','ICE',
-  'MU','PANW','SNPS','CDNS','MRVL','REGN','VRTX','BMY','CVS','CI',
-  'ELV','MCK','GM','F','FDX','UPS','RTX','LMT','GD','NOC',
-  'NEE','DUK','SO','SRE','AEP','D','EXC','WEC','ES','XEL',
-  'COP','EOG','SLB','PSX','MPC','VLO','OXY','DVN','HAL','FANG',
+  'MRK','WMT','ADBE','CRM','NFLX','AMD','ORCL','INTC','BA','DIS','PYPL',
 ];
 
 export async function GET() {
@@ -41,9 +34,9 @@ export async function GET() {
   try {
     const picks: TopPick[] = [];
 
-    // Process in batches of 15
-    for (let i = 0; i < LARGE_CAP_SYMBOLS.length && picks.length < 5; i += 15) {
-      const batch = LARGE_CAP_SYMBOLS.slice(i, i + 15);
+    // Process all at once (only 30 stocks)
+    for (let i = 0; i < LARGE_CAP_SYMBOLS.length; i += 30) {
+      const batch = LARGE_CAP_SYMBOLS.slice(i, i + 30);
       const results = await Promise.allSettled(
         batch.map(async (symbol) => {
           // Fetch historical + quote in parallel
