@@ -15,6 +15,13 @@ export interface PieChartProps {
   size?: number;
 }
 
+function formatValue(n: number): string {
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}兆`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(0)}億`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}百萬`;
+  return n.toLocaleString();
+}
+
 export default function PieChart({ data, title, subtitle, size = 280 }: PieChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -105,7 +112,7 @@ export default function PieChart({ data, title, subtitle, size = 280 }: PieChart
                 {dataWithPercentages[hoveredIndex].label}
               </p>
               <p className="text-xs text-gray-400 mt-1">
-                {dataWithPercentages[hoveredIndex].value.toLocaleString()} ({dataWithPercentages[hoveredIndex].percentage.toFixed(1)}%)
+                {formatValue(dataWithPercentages[hoveredIndex].value)} ({dataWithPercentages[hoveredIndex].percentage.toFixed(1)}%)
               </p>
             </div>
           )}
@@ -127,7 +134,7 @@ export default function PieChart({ data, title, subtitle, size = 280 }: PieChart
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{slice.label}</p>
                 <p className="text-xs text-gray-500">
-                  {slice.value.toLocaleString()} ({slice.percentage.toFixed(1)}%)
+                  {formatValue(slice.value)} ({slice.percentage.toFixed(1)}%)
                 </p>
               </div>
             </div>

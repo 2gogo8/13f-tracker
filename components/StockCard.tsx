@@ -1,6 +1,20 @@
 import Link from 'next/link';
 import { StockWithQuote } from '@/types';
 
+const sectorMap: Record<string, string> = {
+  'Technology': '科技',
+  'Healthcare': '醫療保健',
+  'Financial Services': '金融服務',
+  'Consumer Cyclical': '非必需消費品',
+  'Communication Services': '通訊服務',
+  'Industrials': '工業',
+  'Consumer Defensive': '必需消費品',
+  'Energy': '能源',
+  'Utilities': '公用事業',
+  'Real Estate': '房地產',
+  'Basic Materials': '基礎材料',
+};
+
 interface StockCardProps {
   stock: StockWithQuote;
 }
@@ -30,7 +44,7 @@ export default function StockCard({ stock }: StockCardProps) {
         </div>
         
         <div className="mt-5 pt-4 border-t border-white/5">
-          <p className="text-xs text-gray-500 mb-1">{stock.sector || 'N/A'}</p>
+          <p className="text-xs text-gray-500 mb-1">{sectorMap[stock.sector] || stock.sector || 'N/A'}</p>
         </div>
         
         {stock.institutionalHolders !== undefined && (
