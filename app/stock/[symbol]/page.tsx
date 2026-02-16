@@ -101,7 +101,7 @@ export default function StockDetailPage({
             <div className="text-right">
               <p className="text-4xl font-bold">${quote.price.toFixed(2)}</p>
               <p className={`text-xl ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{quote.changesPercentage?.toFixed(2) || quote.changePercentage?.toFixed(2)}%)
+                {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{(quote.changesPercentage ?? quote.changePercentage ?? 0).toFixed(2)}%)
               </p>
             </div>
           </div>
