@@ -17,7 +17,21 @@ interface TopPick {
 }
 
 let cache: { data: TopPick[]; timestamp: number } | null = null;
-const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2hr
+const CACHE_DURATION = 2 * 60 * 60 * 1000;
+
+// Curated large-cap stocks to scan (avoids fetching all 500)
+const LARGE_CAP_SYMBOLS = [
+  'AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','BRK.B','JPM','V',
+  'UNH','MA','HD','PG','JNJ','XOM','AVGO','LLY','COST','ABBV',
+  'MRK','WMT','PEP','KO','ADBE','CRM','NFLX','AMD','ORCL','INTC',
+  'CSCO','ACN','TXN','QCOM','IBM','AMAT','NOW','ISRG','GE','CAT',
+  'BA','DIS','PYPL','LOW','SBUX','MDT','DE','ADP','MMC','PLD',
+  'BLK','SCHW','GILD','AMGN','SYK','LRCX','ADI','KLAC','CME','ICE',
+  'MU','PANW','SNPS','CDNS','MRVL','REGN','VRTX','BMY','CVS','CI',
+  'ELV','MCK','GM','F','FDX','UPS','RTX','LMT','GD','NOC',
+  'NEE','DUK','SO','SRE','AEP','D','EXC','WEC','ES','XEL',
+  'COP','EOG','SLB','PSX','MPC','VLO','OXY','DVN','HAL','FANG',
+];
 
 export async function GET() {
   if (cache && Date.now() - cache.timestamp < CACHE_DURATION) {
@@ -25,48 +39,71 @@ export async function GET() {
   }
 
   try {
-    // Step 1: Get oversold stocks from our own API logic
-    const oversoldRes = await fetch(
-      `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:3000'}/api/oversold-scanner`,
-      { signal: AbortSignal.timeout(50000) }
-    );
-    const oversold = await oversoldRes.json();
-    if (!Array.isArray(oversold) || oversold.length === 0) {
-      return NextResponse.json([]);
-    }
+    const picks: TopPick[] = [];
 
-    // Step 2: Take top 20 most oversold, fetch their quotes for market cap + name
-    const top20 = oversold.slice(0, 20);
-    const results: TopPick[] = [];
+    // Process in batches of 15
+    for (let i = 0; i < LARGE_CAP_SYMBOLS.length && picks.length < 5; i += 15) {
+      const batch = LARGE_CAP_SYMBOLS.slice(i, i + 15);
+      const results = await Promise.allSettled(
+        batch.map(async (symbol) => {
+          // Fetch historical + quote in parallel
+          const [histRes, quoteRes] = await Promise.all([
+            fetch(`https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${symbol}&apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(8000) }),
+            fetch(`https://financialmodelingprep.com/stable/quote?symbol=${symbol}&apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(8000) }),
+          ]);
 
-    // Fetch quotes in parallel (small batch)
-    const quoteResults = await Promise.allSettled(
-      top20.map(async (stock: { symbol: string; price: number; sma20: number; atr14: number; deviation: number; signal: string }) => {
-        const res = await fetch(
-          `https://financialmodelingprep.com/stable/quote?symbol=${stock.symbol}&apikey=${FMP_KEY}`,
-          { signal: AbortSignal.timeout(8000) }
-        );
-        const data = await res.json();
-        const q = Array.isArray(data) ? data[0] : null;
-        if (q && q.marketCap >= MIN_MARKET_CAP) {
+          const histRaw = await histRes.json();
+          const quoteRaw = await quoteRes.json();
+          
+          const hist = Array.isArray(histRaw) ? histRaw : histRaw?.historical || [];
+          const quote = Array.isArray(quoteRaw) ? quoteRaw[0] : null;
+
+          if (!quote || quote.marketCap < MIN_MARKET_CAP || hist.length < 21) return null;
+
+          const price = hist[0]?.close ?? 0;
+          if (price === 0) return null;
+
+          const sma20 = hist.slice(0, 20).reduce((s: number, d: { close?: number }) => s + (d.close ?? 0), 0) / 20;
+
+          const sorted = hist.slice(0, 21).reverse();
+          const trValues: number[] = [];
+          for (let j = 1; j < sorted.length && trValues.length < 14; j++) {
+            const tr = Math.max(
+              (sorted[j].high ?? 0) - (sorted[j].low ?? 0),
+              Math.abs((sorted[j].high ?? 0) - (sorted[j - 1].close ?? 0)),
+              Math.abs((sorted[j].low ?? 0) - (sorted[j - 1].close ?? 0))
+            );
+            trValues.push(tr);
+          }
+          if (trValues.length === 0) return null;
+          const atr14 = trValues.reduce((a: number, b: number) => a + b, 0) / trValues.length;
+          if (atr14 === 0) return null;
+
+          const deviation = (price - sma20) / atr14;
+          if (deviation >= -2) return null; // Not oversold
+
           return {
-            ...stock,
-            name: q.name || stock.symbol,
-            marketCap: q.marketCap,
+            symbol,
+            price,
+            sma20,
+            atr14,
+            deviation,
+            signal: deviation < -3 ? 'deep-value' : 'oversold',
+            name: quote.name || symbol,
+            marketCap: quote.marketCap,
           } as TopPick;
-        }
-        return null;
-      })
-    );
+        })
+      );
 
-    for (const r of quoteResults) {
-      if (r.status === 'fulfilled' && r.value) {
-        results.push(r.value);
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          picks.push(r.value);
+        }
       }
     }
 
-    results.sort((a, b) => a.deviation - b.deviation);
-    const top5 = results.slice(0, 5);
+    picks.sort((a, b) => a.deviation - b.deviation);
+    const top5 = picks.slice(0, 5);
 
     cache = { data: top5, timestamp: Date.now() };
     return NextResponse.json(top5);
