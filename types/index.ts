@@ -54,6 +54,7 @@ export interface CompanyProfile {
   industry: string;
   website: string;
   description: string;
+  descriptionZh?: string;
   ceo: string;
   sector: string;
   country: string;

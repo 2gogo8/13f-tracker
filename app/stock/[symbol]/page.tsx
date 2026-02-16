@@ -252,8 +252,13 @@ export default function StockDetailPage({
         {/* 公司簡介 */}
         {profile && (
           <div className="apple-card p-8">
-            <h2 className="text-2xl font-bold mb-6">公司簡介</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+            <h2 className="text-2xl font-bold mb-6">關於 {profile.companyName}</h2>
+            {(profile.descriptionZh || profile.description) && (
+              <p className="text-gray-300 leading-relaxed text-base font-light mb-8">
+                {profile.descriptionZh || profile.description}
+              </p>
+            )}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-8 pt-6 border-t border-white/5">
               <div>
                 <p className="text-xs text-gray-500 font-light mb-2">公司名稱</p>
                 <p className="text-base font-semibold">{profile.companyName}</p>
