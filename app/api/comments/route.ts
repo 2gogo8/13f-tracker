@@ -44,7 +44,7 @@ export async function POST(request: Request) {
                 { name: '股票', value: `[${symbol}](https://13f-tracker-gyb2.vercel.app/stock/${symbol})`, inline: true },
               ],
               timestamp: new Date(timestamp).toISOString(),
-              footer: { text: 'JG 13F 機構報告書' },
+              footer: { text: 'JG的反市場報告書' },
             }],
           }),
         });

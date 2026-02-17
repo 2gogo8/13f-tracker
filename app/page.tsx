@@ -241,8 +241,8 @@ export default function Home() {
       {/* Header */}
       <header className="mb-16 text-center">
         <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">
-          <span className="gradient-text">JG</span>{' '}
-          <span className="text-white glow-white">13F 機構報告書</span>
+          <span className="gradient-text">JG的</span>
+          <span className="text-primary glow-red">反</span><span className="text-white glow-white">市場報告書</span>
         </h1>
         <div className="gradient-line mb-8"></div>
         <p className="text-gray-500 font-light text-lg tracking-[0.2em] uppercase">

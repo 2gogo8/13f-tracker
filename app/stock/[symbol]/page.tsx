@@ -244,8 +244,14 @@ export default function StockDetailPage({
   })() : [];
 
   return (
-    <div className="min-h-screen py-12 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen py-12 px-4 md:px-8 relative overflow-hidden">
+      {/* Watermark */}
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center z-0 select-none" aria-hidden="true">
+        <div className="text-white/[0.03] text-[120px] md:text-[200px] font-serif font-bold tracking-widest rotate-[-25deg] whitespace-nowrap">
+          JG的反市場報告書
+        </div>
+      </div>
+      <div className="max-w-6xl mx-auto relative z-10">
         <Link href="/" className="text-accent hover:text-accent/80 mb-8 inline-block text-sm font-light tracking-wide">
           ← 返回 S&P 500
         </Link>
