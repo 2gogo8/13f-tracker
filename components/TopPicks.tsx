@@ -47,6 +47,8 @@ function MiniSparkline({ data, color }: { data: number[]; color: string }) {
 export default function TopPicks() {
   const [picks, setPicks] = useState<PickStock[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
+  const INITIAL_COUNT = 10;
 
   useEffect(() => {
     async function fetchPicks() {
@@ -80,7 +82,7 @@ export default function TopPicks() {
       </div>
 
       <div className="divide-y divide-accent/[0.15]">
-        {picks.map((stock) => {
+        {(showAll ? picks : picks.slice(0, INITIAL_COUNT)).map((stock) => {
           const isUp = stock.changesPercentage >= 0;
           const dotColor = stock.signal === 'deep-value' ? '#4ade80' : '#60a5fa';
           const sparkline = [
@@ -140,6 +142,23 @@ export default function TopPicks() {
           );
         })}
       </div>
+
+      {!showAll && picks.length > INITIAL_COUNT && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-accent text-sm font-medium hover:bg-accent/5 active:bg-accent/10 transition-colors"
+        >
+          查看更多（共 {picks.length} 檔）
+        </button>
+      )}
+      {showAll && picks.length > INITIAL_COUNT && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-500 text-sm font-medium hover:bg-white/[0.02] active:bg-white/5 transition-colors"
+        >
+          收合
+        </button>
+      )}
 
       <p className="text-[9px] text-gray-700 mt-3 text-center">
         僅供參考，非投資建議
