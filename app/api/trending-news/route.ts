@@ -24,15 +24,6 @@ async function translateToZh(text: string): Promise<string> {
   }
 }
 
-// Extract ticker from article title like "(NASDAQ: NVDA)" or "(NYSE:LLY)"
-function extractTicker(title: string): string {
-  const match = title.match(/\((?:NASDAQ|NYSE|OTC)[:\s]+([A-Z.]+)\)/i);
-  if (match) return match[1];
-  const match2 = title.match(/\$([A-Z]{1,5})\b/);
-  if (match2) return match2[1];
-  return '';
-}
-
 export async function GET() {
   try {
     const now = Date.now();
@@ -40,10 +31,22 @@ export async function GET() {
       return NextResponse.json(cachedData);
     }
 
-    // Strategy: Get 3 diverse articles from fmp-articles
-    // Pick articles about different stocks
+    // Fetch top picks (oversold stocks) to get their symbols
+    // We'll use the same logic: fetch from /api/top-picks internally won't work on Vercel,
+    // so fetch the oversold scanner data directly
+    const scannerRes = await fetch(
+      `https://financialmodelingprep.com/stable/technical-indicator/stock-screener?indicator=under_valued&apikey=${API_KEY}`
+    ).catch(() => null);
+
+    // Fallback: use curated oversold-watch symbols
+    const OVERSOLD_SYMBOLS = [
+      'CTSH', 'TTWO', 'BKNG', 'IQV', 'SPGI', 'JKHY', 'FOXA', 'FOX', 'NFLX', 'MSFT',
+      'AAPL', 'NVDA', 'GOOGL', 'AMZN', 'META', 'TSLA', 'JPM', 'V', 'UNH', 'MA'
+    ];
+
+    // Get general news, then filter/prioritize those mentioning our oversold stocks
     const articlesRes = await fetch(
-      `https://financialmodelingprep.com/stable/fmp-articles?limit=30&apikey=${API_KEY}`
+      `https://financialmodelingprep.com/stable/fmp-articles?limit=50&apikey=${API_KEY}`
     );
     const articles = await articlesRes.json();
 
@@ -51,71 +54,87 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    // Pick 3 articles with different tickers
-    const picked: any[] = [];
-    const usedTickers = new Set<string>();
-
-    for (const article of articles) {
-      if (picked.length >= 3) break;
-      const ticker = extractTicker(article.title || '');
-      if (ticker && usedTickers.has(ticker)) continue;
-      if (ticker) usedTickers.add(ticker);
-      picked.push({ ...article, ticker: ticker || '市場' });
+    // Extract ticker from article
+    function extractTicker(title: string, content: string): string {
+      const text = title + ' ' + content;
+      const match = text.match(/\((?:NASDAQ|NYSE|OTC)[:\s]+([A-Z.]+)\)/i);
+      if (match) return match[1];
+      const match2 = title.match(/\$([A-Z]{1,5})\b/);
+      if (match2) return match2[1];
+      // Check if any oversold symbol is mentioned in title
+      for (const sym of OVERSOLD_SYMBOLS) {
+        if (title.includes(sym) || title.includes(`$${sym}`)) return sym;
+      }
+      return '';
     }
 
-    // Get quotes for picked tickers and translate
+    // Score articles: prioritize oversold stocks
+    const scored = articles.map((a: any) => {
+      const ticker = extractTicker(a.title || '', a.content || '');
+      const isOversold = OVERSOLD_SYMBOLS.includes(ticker);
+      return { ...a, ticker: ticker || '', score: isOversold ? 10 : 0 };
+    });
+
+    scored.sort((a: any, b: any) => b.score - a.score);
+
+    // Pick up to 6 unique-ticker articles, prioritizing oversold stocks
+    const picked: any[] = [];
+    const usedTickers = new Set<string>();
+    for (const article of scored) {
+      if (picked.length >= 6) break;
+      const t = article.ticker;
+      if (t && usedTickers.has(t)) continue;
+      if (t) usedTickers.add(t);
+      picked.push(article);
+    }
+
+    // Fetch quote + profile (for logo) in parallel
     const newsPromises = picked.map(async (article) => {
       const ticker = article.ticker;
-      let price = 0;
-      let changePct = 0;
+      let price = 0, changePct = 0, logo = '';
 
-      if (ticker && ticker !== '市場') {
+      if (ticker) {
         try {
-          const quoteRes = await fetch(
-            `https://financialmodelingprep.com/stable/quote?symbol=${ticker}&apikey=${API_KEY}`
-          );
+          const [quoteRes, profileRes] = await Promise.all([
+            fetch(`https://financialmodelingprep.com/stable/quote?symbol=${ticker}&apikey=${API_KEY}`),
+            fetch(`https://financialmodelingprep.com/stable/profile?symbol=${ticker}&apikey=${API_KEY}`),
+          ]);
           const quoteData = await quoteRes.json();
+          const profileData = await profileRes.json();
           const quote = Array.isArray(quoteData) ? quoteData[0] : null;
+          const profile = Array.isArray(profileData) ? profileData[0] : null;
           price = quote?.price ?? 0;
           changePct = quote?.changesPercentage ?? 0;
+          logo = profile?.image || '';
         } catch { /* skip */ }
       }
 
       const rawTitle = (article.title || '').replace(/<[^>]*>/g, '');
-      const fullText = (article.content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-      const sentences = fullText.split(/(?<=[.!?。！？])\s+/).filter((s: string) => s.length > 15);
-      const rawText = sentences.slice(0, 2).join(' ').slice(0, 150);
-
-      const [titleZh, textZh] = await Promise.all([
-        translateToZh(rawTitle),
-        translateToZh(rawText),
-      ]);
+      const titleZh = await translateToZh(rawTitle);
 
       let sentiment: 'positive' | 'negative' | 'neutral' = 'neutral';
       if (changePct > 1) sentiment = 'positive';
       else if (changePct < -1) sentiment = 'negative';
 
       return {
-        symbol: ticker,
+        symbol: ticker || '市場',
         price,
         changesPercentage: changePct,
         newsTitle: titleZh,
         newsUrl: article.link || '#',
-        newsImage: article.image || null,
+        newsImage: logo, // company logo instead of article image
         newsSite: article.site || 'FMP',
-        newsText: textZh,
+        newsText: '',
         publishedDate: article.date || '',
         sentiment,
       };
     });
 
     const results = await Promise.all(newsPromises);
-    const trendingNews = results.filter((item) => item !== null);
-
-    cachedData = trendingNews;
+    cachedData = results;
     cacheTimestamp = now;
 
-    return NextResponse.json(trendingNews);
+    return NextResponse.json(results);
   } catch (error) {
     console.error('Error fetching trending news:', error);
     return NextResponse.json([]);

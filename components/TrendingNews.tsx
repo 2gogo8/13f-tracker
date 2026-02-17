@@ -76,29 +76,31 @@ export default function TrendingNews({ news }: TrendingNewsProps) {
                 rel="noopener noreferrer"
                 className="block p-4 hover:bg-white/[0.02] transition-colors"
               >
-                {/* News Image */}
-                {item.newsImage && (
-                  <div className="mb-3 rounded overflow-hidden">
-                    <img
-                      src={item.newsImage}
-                      alt={item.newsTitle}
-                      className="w-full h-32 object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
+                <div className="flex items-start gap-3">
+                  {/* Company Logo */}
+                  {item.newsImage && (
+                    <div className="w-10 h-10 flex-shrink-0 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={item.newsImage}
+                        alt={item.symbol}
+                        className="w-8 h-8 object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    {/* News Headline */}
+                    <h3 className="text-sm font-medium text-white mb-2 line-clamp-2 leading-relaxed">
+                      {item.newsTitle}
+                    </h3>
+                    {/* News Meta */}
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>{item.newsSite}</span>
+                      <span>{new Date(item.publishedDate).toLocaleDateString('zh-TW')}</span>
+                    </div>
                   </div>
-                )}
-
-                {/* News Headline */}
-                <h3 className="text-sm font-medium text-white mb-2 line-clamp-2 leading-relaxed">
-                  {item.newsTitle}
-                </h3>
-
-                {/* News Meta */}
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{item.newsSite}</span>
-                  <span>{new Date(item.publishedDate).toLocaleDateString('zh-TW')}</span>
                 </div>
               </a>
             </div>
