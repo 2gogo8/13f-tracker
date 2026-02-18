@@ -5,26 +5,33 @@ export const maxDuration = 60;
 const API_KEY = process.env.FMP_API_KEY || '';
 const BASE = 'https://financialmodelingprep.com';
 
-// Candidates to scan for Rule40 (high-growth AI/tech universe)
+// Broad candidate list: high-growth tech/SaaS/AI stocks in S&P500 + NASDAQ-100
 const CANDIDATES = [
   'NVDA', 'AVGO', 'PLTR', 'SMCI', 'ARM', 'MRVL', 'CRWD', 'ANET',
   'APP', 'SNOW', 'DDOG', 'NET', 'PANW', 'ZS', 'MNDY', 'UBER',
-  'COIN', 'SHOP', 'SQ', 'ABNB', 'DASH', 'RBLX', 'U', 'IONQ',
-  'RGTI', 'QUBT', 'SOUN', 'AI', 'BBAI', 'PATH',
+  'COIN', 'SHOP', 'SQ', 'ABNB', 'DASH', 'RBLX', 'META', 'GOOGL',
+  'MSFT', 'AAPL', 'AMZN', 'TSLA', 'CRM', 'NOW', 'ADBE', 'INTU',
+  'NFLX', 'AMD', 'QCOM', 'MU', 'LRCX', 'KLAC', 'CDNS', 'SNPS',
+  'FTNT', 'WDAY', 'TEAM', 'HUBS', 'VEEV', 'BILL', 'TTD', 'DKNG',
+  'MELI', 'SE', 'GRAB', 'SPOT', 'ROKU', 'PINS', 'TWLO', 'OKTA',
+  'ZM', 'DOCU', 'PATH', 'AI', 'SOUN', 'IONQ', 'CEG', 'VST',
 ];
 
 let cachedData: any = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours (estimates don't change often)
+const CACHE_DURATION = 12 * 60 * 60 * 1000; // 12 hours
 
 interface Rule40Stock {
   symbol: string;
   name: string;
   price: number;
   marketCap: number;
-  revCY2026: number;
-  revCY2027: number;
-  yoyGrowth: number;
+  revenueGrowth: number;  // YoY revenue growth %
+  profitMargin: number;   // net income / revenue %
+  rule40Score: number;    // growth + margin
+  revPrior: number;       // prior year revenue ($B)
+  revCurrent: number;     // current year revenue ($B)
+  netIncome: number;      // current year net income ($B)
   numAnalysts: number;
 }
 
@@ -37,14 +44,14 @@ export async function GET() {
 
     const results: Rule40Stock[] = [];
 
-    // Process in batches of 5 to avoid overwhelming
+    // Process in batches of 5
     for (let i = 0; i < CANDIDATES.length; i += 5) {
       const batch = CANDIDATES.slice(i, i + 5);
       const batchResults = await Promise.all(
         batch.map(async (symbol) => {
           try {
             const [estRes, quoteRes] = await Promise.all([
-              fetch(`${BASE}/stable/analyst-estimates?symbol=${symbol}&period=annual&limit=5&apikey=${API_KEY}`, {
+              fetch(`${BASE}/stable/analyst-estimates?symbol=${symbol}&period=annual&limit=6&apikey=${API_KEY}`, {
                 signal: AbortSignal.timeout(8000),
               }),
               fetch(`${BASE}/stable/quote?symbol=${symbol}&apikey=${API_KEY}`, {
@@ -59,10 +66,10 @@ export async function GET() {
 
             const quote = Array.isArray(quotes) ? quotes[0] : null;
 
-            // Find CY2026 and CY2027 estimates
-            // We need to match by calendar year, accounting for different fiscal year ends
+            // Find CY2025 (prior year) and CY2026 (current year) estimates
+            let revCY2025 = 0;
             let revCY2026 = 0;
-            let revCY2027 = 0;
+            let netIncomeCY2026 = 0;
             let numAnalysts = 0;
 
             for (const est of estimates) {
@@ -70,34 +77,38 @@ export async function GET() {
               const estYear = estDate.getFullYear();
               const estMonth = estDate.getMonth(); // 0-indexed
 
-              // Map fiscal year end to calendar year:
-              // If fiscal year ends Jan-Jun, it mostly covers the prior calendar year
-              // If fiscal year ends Jul-Dec, it mostly covers the same calendar year
+              // Map fiscal year end to calendar year
               const calYear = estMonth <= 5 ? estYear - 1 : estYear;
 
+              if (calYear === 2025 && !revCY2025) {
+                revCY2025 = est.revenueAvg;
+              }
               if (calYear === 2026 && !revCY2026) {
                 revCY2026 = est.revenueAvg;
+                netIncomeCY2026 = est.netIncomeAvg;
                 numAnalysts = est.numAnalystsRevenue || 0;
-              }
-              if (calYear === 2027 && !revCY2027) {
-                revCY2027 = est.revenueAvg;
               }
             }
 
-            if (!revCY2026 || !revCY2027) return null;
+            if (!revCY2025 || !revCY2026) return null;
 
-            const yoyGrowth = ((revCY2027 - revCY2026) / revCY2026) * 100;
+            const revenueGrowth = ((revCY2026 - revCY2025) / revCY2025) * 100;
+            const profitMargin = revCY2026 > 0 ? (netIncomeCY2026 / revCY2026) * 100 : 0;
+            const rule40Score = revenueGrowth + profitMargin;
 
-            if (yoyGrowth < 40) return null;
+            if (rule40Score < 40) return null;
 
             return {
               symbol,
               name: quote?.name || symbol,
               price: quote?.price || 0,
               marketCap: quote?.marketCap || 0,
-              revCY2026: Math.round(revCY2026 / 1e9 * 10) / 10,
-              revCY2027: Math.round(revCY2027 / 1e9 * 10) / 10,
-              yoyGrowth: Math.round(yoyGrowth * 10) / 10,
+              revenueGrowth: Math.round(revenueGrowth * 10) / 10,
+              profitMargin: Math.round(profitMargin * 10) / 10,
+              rule40Score: Math.round(rule40Score * 10) / 10,
+              revPrior: Math.round(revCY2025 / 1e9 * 10) / 10,
+              revCurrent: Math.round(revCY2026 / 1e9 * 10) / 10,
+              netIncome: Math.round(netIncomeCY2026 / 1e9 * 10) / 10,
               numAnalysts,
             } as Rule40Stock;
           } catch {
@@ -109,8 +120,8 @@ export async function GET() {
       results.push(...batchResults.filter((r): r is Rule40Stock => r !== null));
     }
 
-    // Sort by YoY growth descending
-    results.sort((a, b) => b.yoyGrowth - a.yoyGrowth);
+    // Sort by Rule40 score descending
+    results.sort((a, b) => b.rule40Score - a.rule40Score);
 
     cachedData = results;
     cacheTimestamp = now;
