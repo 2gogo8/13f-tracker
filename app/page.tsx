@@ -11,6 +11,7 @@ import ScannerButtons, { ScannerType } from '@/components/ScannerButtons';
 import SectorPerformanceBar from '@/components/SectorPerformanceBar';
 import SentimentGauge from '@/components/SentimentGauge';
 import AntiMarketPicks from '@/components/AntiMarketPicks';
+import TwAntiMarketPicks from '@/components/TwAntiMarketPicks';
 import TrendingNews from '@/components/TrendingNews';
 import { DashboardStock, TopMoverStock, SortOption, SectorPerformance, TrendingNewsItem } from '@/types';
 
@@ -287,6 +288,9 @@ export default function Home() {
 
         {/* Top Picks - Oversold + Large Cap */}
         <AntiMarketPicks />
+        
+        {/* Taiwan Anti-Market Picks */}
+        <TwAntiMarketPicks />
 
         {loading ? (
           <div className="text-center py-32">

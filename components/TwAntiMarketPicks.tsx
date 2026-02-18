@@ -1,42 +1,39 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import Link from 'next/link';
 
-interface AntiMarketPick {
+interface TwAntiMarketPick {
   symbol: string;
   name: string;
+  sector: string;
   price: number;
-  marketCap: number;
+  change: number;
+  changePercent: number;
+  sma20: number;
+  atr14: number;
   deviation: number;
-  revenueGrowth: number;
-  profitMargin: number;
-  rule40Score: number;
+  signal: string;
 }
 
-type SortField = 'deviation' | 'revenueGrowth' | 'profitMargin' | 'rule40Score';
+type SortField = 'deviation' | 'price' | 'sma20' | 'atr14';
 
-function formatMktCap(n: number): string {
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(0)}B`;
-  return `$${(n / 1e6).toFixed(0)}M`;
-}
-
-export default function AntiMarketPicks() {
-  const [picks, setPicks] = useState<AntiMarketPick[]>([]);
+export default function TwAntiMarketPicks() {
+  const [picks, setPicks] = useState<TwAntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('rule40Score');
-  const [sortAsc, setSortAsc] = useState(false); // default descending
+  const [sortField, setSortField] = useState<SortField>('deviation');
+  const [sortAsc, setSortAsc] = useState(true); // ascending for deviation (most oversold first)
   const [showAll, setShowAll] = useState(false);
   const INITIAL_COUNT = 10;
 
   useEffect(() => {
     async function fetchPicks() {
       try {
-        const res = await fetch('/api/anti-market-picks');
+        const res = await fetch('/api/tw/oversold');
         const data = await res.json();
         if (Array.isArray(data)) setPicks(data);
-      } catch {}
+      } catch (e) {
+        console.error('Failed to fetch TW oversold picks:', e);
+      }
       setLoading(false);
     }
     fetchPicks();
@@ -47,7 +44,6 @@ export default function AntiMarketPicks() {
     arr.sort((a, b) => {
       const va = a[sortField];
       const vb = b[sortField];
-      // For deviation, "more negative" = more oversold, so ascending means most oversold first
       return sortAsc ? va - vb : vb - va;
     });
     return arr;
@@ -58,7 +54,6 @@ export default function AntiMarketPicks() {
       setSortAsc(!sortAsc);
     } else {
       setSortField(field);
-      // Default sort direction per field
       setSortAsc(field === 'deviation' ? true : false);
     }
   };
@@ -68,8 +63,8 @@ export default function AntiMarketPicks() {
   if (loading) {
     return (
       <div className="apple-card p-5 md:p-6 mb-8">
-        <h2 className="font-serif text-lg font-bold text-primary glow-red">美股反市場精選</h2>
-        <p className="text-[10px] text-gray-600 mt-1">交叉比對中...</p>
+        <h2 className="font-serif text-lg font-bold text-primary glow-red">台股反市場精選</h2>
+        <p className="text-[10px] text-gray-600 mt-1">掃描台股中...</p>
       </div>
     );
   }
@@ -95,7 +90,7 @@ export default function AntiMarketPicks() {
     <div className="apple-card p-5 md:p-6 mb-8">
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-serif text-lg font-bold">
-          <span className="text-primary glow-red">美股反</span>
+          <span className="text-primary glow-red">台股反</span>
           <span className="text-gray-900">市場精選</span>
         </h2>
         <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary/20 text-primary font-medium tracking-wider uppercase">
@@ -103,14 +98,14 @@ export default function AntiMarketPicks() {
         </span>
       </div>
       <p className="text-[10px] text-gray-600 mb-4">
-        負乖離超賣 + Rule of 40 達標（營收成長率 + 利潤率 ≥ 40）・共 {picks.length} 檔交叉命中
+        負乖離超賣・台股50+中型100・共 {picks.length} 檔負偏離超過 -2σ
       </p>
 
       {picks.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-400 text-sm">目前無交叉命中的標的</p>
+          <p className="text-gray-400 text-sm">目前無負乖離超賣標的</p>
           <p className="text-[10px] text-gray-600 mt-1">
-            當好公司被市場錯殺時，這裡會出現機會
+            當台股優質個股被市場錯殺時，這裡會出現機會
           </p>
         </div>
       ) : (
@@ -119,17 +114,15 @@ export default function AntiMarketPicks() {
           <div className="flex items-center px-2 pb-2">
             <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
             <SortHeader field="deviation" label="偏離" />
-            <SortHeader field="revenueGrowth" label="成長" />
-            <SortHeader field="profitMargin" label="利潤" />
-            <SortHeader field="rule40Score" label="R40" />
+            <SortHeader field="sma20" label="SMA20" />
+            <SortHeader field="atr14" label="ATR14" />
           </div>
 
           <div className="divide-y divide-accent/[0.15]">
             {displayed.map((stock) => (
-              <Link
+              <div
                 key={stock.symbol}
-                href={`/stock/${stock.symbol}`}
-                className="flex items-center py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
+                className="flex items-center py-3 px-2 rounded transition-all hover:bg-gray-50 group"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -137,22 +130,19 @@ export default function AntiMarketPicks() {
                     <span className="text-[9px] text-gray-500 truncate">{stock.name}</span>
                   </div>
                   <div className="text-[9px] text-gray-600 mt-0.5">
-                    ${stock.price.toFixed(2)}・{formatMktCap(stock.marketCap)}
+                    ${stock.price.toFixed(2)}・{stock.sector}
                   </div>
                 </div>
                 <span className="w-14 text-right text-xs font-mono text-primary font-semibold">
-                  {stock.deviation.toFixed(1)}%
+                  {stock.deviation.toFixed(2)}
                 </span>
-                <span className="w-14 text-right text-xs font-mono text-blue-400">
-                  +{stock.revenueGrowth.toFixed(0)}%
+                <span className="w-14 text-right text-xs font-mono text-gray-600">
+                  {stock.sma20.toFixed(1)}
                 </span>
-                <span className="w-14 text-right text-xs font-mono text-yellow-400">
-                  {stock.profitMargin.toFixed(0)}%
+                <span className="w-14 text-right text-xs font-mono text-gray-600">
+                  {stock.atr14.toFixed(1)}
                 </span>
-                <span className="w-14 text-right text-sm font-mono font-bold text-green-400">
-                  {stock.rule40Score.toFixed(0)}
-                </span>
-              </Link>
+              </div>
             ))}
           </div>
 
@@ -176,7 +166,7 @@ export default function AntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        點擊欄位標題排序 | 偏離 = 現價 vs 50MA | R40 = 成長率 + 淨利率 | 僅供參考
+        點擊欄位標題排序 | 偏離 = (現價 - SMA20) / ATR14 | 僅供參考，非投資建議
       </p>
     </div>
   );
