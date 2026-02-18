@@ -64,11 +64,11 @@ async function fetchFreshData(): Promise<{ sector: string; changesPercentage: nu
     console.error('Sector performance primary fetch failed:', e);
   }
 
-  // Fallback: representative stocks
+  // Fallback: representative stocks via batch-quote
   try {
     const symbols = Object.values(sectorRepresentatives).join(',');
     const res = await fetch(
-      `https://financialmodelingprep.com/stable/quote?symbol=${symbols}&apikey=${API_KEY}`
+      `https://financialmodelingprep.com/stable/batch-quote?symbols=${symbols}&apikey=${API_KEY}`
     );
     const quotes = await res.json();
     if (Array.isArray(quotes) && quotes.length > 0) {
@@ -76,9 +76,9 @@ async function fetchFreshData(): Promise<{ sector: string; changesPercentage: nu
         (acc, [sector, symbol]) => { acc[symbol] = sector; return acc; },
         {} as Record<string, string>
       );
-      return quotes.map((q: { symbol: string; changesPercentage: number }) => ({
+      return quotes.map((q: { symbol: string; changePercentage?: number; changesPercentage?: number }) => ({
         sector: symbolToSector[q.symbol] || '其他',
-        changesPercentage: q.changesPercentage || 0,
+        changesPercentage: q.changePercentage ?? q.changesPercentage ?? 0,
       }));
     }
   } catch (e) {
