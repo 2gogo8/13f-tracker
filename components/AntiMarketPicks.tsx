@@ -12,9 +12,20 @@ interface AntiMarketPick {
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
+  patternScore: number;
+  patternGrade: string;
 }
 
-type SortField = 'deviation' | 'revenueGrowth' | 'profitMargin' | 'rule40Score';
+type SortField = 'deviation' | 'revenueGrowth' | 'profitMargin' | 'rule40Score' | 'patternScore';
+
+function gradeColor(grade: string): string {
+  switch (grade) {
+    case 'A': return 'text-green-500';
+    case 'B': return 'text-blue-400';
+    case 'C': return 'text-yellow-500';
+    default: return 'text-gray-400';
+  }
+}
 
 function formatMktCap(n: number): string {
   if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
@@ -118,6 +129,7 @@ export default function AntiMarketPicks() {
           {/* Sortable Header */}
           <div className="flex items-center px-2 pb-2">
             <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
+            <SortHeader field="patternScore" label="型態" />
             <SortHeader field="deviation" label="偏離" />
             <SortHeader field="revenueGrowth" label="成長" />
             <SortHeader field="profitMargin" label="利潤" />
@@ -140,16 +152,19 @@ export default function AntiMarketPicks() {
                     ${stock.price.toFixed(2)}・{formatMktCap(stock.marketCap)}
                   </div>
                 </div>
+                <span className={`w-14 text-right text-xs font-mono font-bold ${gradeColor(stock.patternGrade)}`}>
+                  {stock.patternGrade}<span className="text-[9px] font-normal text-gray-500 ml-0.5">{stock.patternScore?.toFixed(0) || '-'}</span>
+                </span>
                 <span className="w-14 text-right text-xs font-mono text-primary font-semibold">
                   {stock.deviation.toFixed(1)}σ
                 </span>
                 <span className="w-14 text-right text-xs font-mono text-blue-400">
                   +{stock.revenueGrowth.toFixed(0)}%
                 </span>
-                <span className="w-14 text-right text-xs font-mono text-yellow-400">
+                <span className="w-14 text-right text-xs font-mono text-yellow-500">
                   {stock.profitMargin.toFixed(0)}%
                 </span>
-                <span className="w-14 text-right text-sm font-mono font-bold text-green-400">
+                <span className="w-14 text-right text-sm font-mono font-bold text-green-500">
                   {stock.rule40Score.toFixed(0)}
                 </span>
               </Link>
@@ -176,7 +191,7 @@ export default function AntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        點擊欄位標題排序 | 偏離 = (現價-SMA20)/ATR14 | R40 = 成長率 + 淨利率 | 僅供參考
+        型態 = 股價圖形DNA評分(A最佳) | 偏離 = (現價-SMA20)/ATR14 | R40 = 成長率 + 淨利率 | 僅供參考
       </p>
     </div>
   );

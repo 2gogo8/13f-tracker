@@ -22,6 +22,8 @@ interface AntiMarketPick {
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
+  patternScore: number; // 0-100, PLTR-like chart DNA score
+  patternGrade: string; // A/B/C/D
 }
 
 // Calculate SMA20 and ATR14 from historical data (oldest-first array)
@@ -50,6 +52,109 @@ function calcIndicators(prices: { close: number; high: number; low: number }[]) 
   const deviation = (currentPrice - sma20) / atr14;
 
   return { sma20, atr14, deviation, currentPrice };
+}
+
+// Pattern Score: quantify "PLTR-like" chart DNA from historical prices
+// Dimensions: trend consistency, pullback recovery, volatility stability, mean reversion, uptrend
+function calcPatternScore(prices: { date: string; close: number; high: number; low: number }[]): { score: number; grade: string } {
+  // Need at least 200 days of data
+  // Use last ~500 trading days (roughly 2 years)
+  const data = prices.slice(-520);
+  if (data.length < 200) return { score: 0, grade: 'D' };
+
+  // 1. TREND CONSISTENCY (max 25): % of 63-day quarters that are positive
+  let posQ = 0, totalQ = 0;
+  for (let i = 0; i + 62 < data.length; i += 63) {
+    const ret = data[i + 62].close / data[i].close - 1;
+    if (ret > 0) posQ++;
+    totalQ++;
+  }
+  const trendScore = totalQ > 0 ? (posQ / totalQ) * 25 : 0;
+
+  // 2. PULLBACK RECOVERY (max 25): speed of recovery from >15% drops
+  let localHigh = data[0].close;
+  let inPB = false, pbLow = Infinity, pbLowIdx = 0, pbHighIdx = 0;
+  const pullbacks: { vRatio: number; recovDays: number }[] = [];
+  for (let i = 1; i < data.length; i++) {
+    if (data[i].close > localHigh) {
+      if (inPB && pbLow < localHigh) {
+        const recovDays = i - pbLowIdx;
+        const dropDays = pbLowIdx - pbHighIdx;
+        const vRatio = dropDays > 0 ? recovDays / dropDays : 5;
+        pullbacks.push({ vRatio, recovDays });
+      }
+      localHigh = data[i].close;
+      pbHighIdx = i;
+      inPB = false;
+      pbLow = Infinity;
+    }
+    if ((data[i].close - localHigh) / localHigh <= -0.15) {
+      inPB = true;
+      if (data[i].close < pbLow) { pbLow = data[i].close; pbLowIdx = i; }
+    }
+  }
+  let recoveryScore = 25;
+  if (pullbacks.length > 0) {
+    const avgV = pullbacks.reduce((s, p) => s + p.vRatio, 0) / pullbacks.length;
+    const avgR = pullbacks.reduce((s, p) => s + p.recovDays, 0) / pullbacks.length;
+    recoveryScore = Math.max(0, 25 - avgV * 5 - Math.max(0, avgR - 15) * 0.3);
+  }
+
+  // 3. VOLATILITY STABILITY (max 20): low ratio of max/min 20-day rolling vol
+  const rets: number[] = [];
+  for (let i = 1; i < data.length; i++) {
+    rets.push((data[i].close - data[i - 1].close) / data[i - 1].close);
+  }
+  const vols: number[] = [];
+  for (let i = 19; i < rets.length; i++) {
+    const w = rets.slice(i - 19, i + 1);
+    const mean = w.reduce((a, b) => a + b, 0) / 20;
+    const v = w.reduce((a, b) => a + (b - mean) ** 2, 0) / 20;
+    vols.push(Math.sqrt(v));
+  }
+  const maxV = Math.max(...vols), minV = Math.min(...vols);
+  const volRatio = minV > 0 ? maxV / minV : 10;
+  const volScore = Math.max(0, 20 - Math.max(0, volRatio - 3) * 3);
+
+  // 4. MEAN REVERSION (max 20): SMA20 + ATR14 sigma recovery rate
+  const indicators: { sigma: number }[] = [];
+  for (let i = 20; i < data.length; i++) {
+    let sum = 0;
+    for (let j = i - 19; j <= i; j++) sum += data[j].close;
+    const sma20 = sum / 20;
+    if (i < 14) continue;
+    let atrSum = 0;
+    for (let j = i - 13; j <= i; j++) {
+      const tr = Math.max(
+        data[j].high - data[j].low,
+        Math.abs(data[j].high - data[j - 1].close),
+        Math.abs(data[j].low - data[j - 1].close)
+      );
+      atrSum += tr;
+    }
+    const atr14 = atrSum / 14;
+    indicators.push({ sigma: atr14 > 0 ? (data[i].close - sma20) / atr14 : 0 });
+  }
+  let attempts = 0, success = 0, revDays: number[] = [];
+  for (let i = 1; i < indicators.length; i++) {
+    if (indicators[i].sigma <= -1.5 && indicators[i - 1].sigma > -1.5) {
+      attempts++;
+      for (let j = i + 1; j < Math.min(i + 40, indicators.length); j++) {
+        if (indicators[j].sigma >= 0) { success++; revDays.push(j - i); break; }
+      }
+    }
+  }
+  const revRate = attempts > 0 ? success / attempts : 0.5;
+  const avgRevD = revDays.length > 0 ? revDays.reduce((a, b) => a + b, 0) / revDays.length : 20;
+  const revScore = revRate * 15 + Math.max(0, 5 - avgRevD * 0.2);
+
+  // 5. UPTREND (max 10)
+  const totalRet = data[data.length - 1].close / data[0].close - 1;
+  const uptrendScore = Math.min(10, Math.max(0, totalRet * 10));
+
+  const total = Math.round((trendScore + recoveryScore + volScore + revScore + uptrendScore) * 10) / 10;
+  const grade = total >= 75 ? 'A' : total >= 60 ? 'B' : total >= 45 ? 'C' : 'D';
+  return { score: total, grade };
 }
 
 export async function GET() {
@@ -111,7 +216,7 @@ export async function GET() {
     }
 
     // Step 3: Fetch historical data for rough candidates → calculate real SMA20/ATR14 σ
-    const oversoldStocks: Map<string, { deviation: number; sma20: number; atr14: number }> = new Map();
+    const oversoldStocks: Map<string, { deviation: number; sma20: number; atr14: number; patternScore: number; patternGrade: string }> = new Map();
 
     for (let i = 0; i < roughCandidates.length; i += 10) {
       const batch = roughCandidates.slice(i, i + 10);
@@ -130,10 +235,14 @@ export async function GET() {
             items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
             const result = calcIndicators(items);
             if (result && result.deviation < -1) {
+              // Calculate pattern score from full history
+              const pattern = calcPatternScore(items);
               oversoldStocks.set(symbol, {
                 deviation: Math.round(result.deviation * 10) / 10,
                 sma20: Math.round(result.sma20 * 100) / 100,
                 atr14: Math.round(result.atr14 * 100) / 100,
+                patternScore: pattern.score,
+                patternGrade: pattern.grade,
               });
             }
           } catch { /* skip */ }
@@ -196,6 +305,8 @@ export async function GET() {
               revenueGrowth: Math.round(revenueGrowth * 10) / 10,
               profitMargin: Math.round(profitMargin * 10) / 10,
               rule40Score: Math.round(rule40Score * 10) / 10,
+              patternScore: oversold.patternScore,
+              patternGrade: oversold.patternGrade,
             } as AntiMarketPick;
           } catch { return null; }
         })
