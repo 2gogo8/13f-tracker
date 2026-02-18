@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 
 interface AntiMarketPick {
@@ -14,6 +14,8 @@ interface AntiMarketPick {
   rule40Score: number;
 }
 
+type SortField = 'deviation' | 'revenueGrowth' | 'profitMargin' | 'rule40Score';
+
 function formatMktCap(n: number): string {
   if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
   if (n >= 1e9) return `$${(n / 1e9).toFixed(0)}B`;
@@ -23,6 +25,10 @@ function formatMktCap(n: number): string {
 export default function AntiMarketPicks() {
   const [picks, setPicks] = useState<AntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<SortField>('rule40Score');
+  const [sortAsc, setSortAsc] = useState(false); // default descending
+  const [showAll, setShowAll] = useState(false);
+  const INITIAL_COUNT = 10;
 
   useEffect(() => {
     async function fetchPicks() {
@@ -36,6 +42,29 @@ export default function AntiMarketPicks() {
     fetchPicks();
   }, []);
 
+  const sorted = useMemo(() => {
+    const arr = [...picks];
+    arr.sort((a, b) => {
+      const va = a[sortField];
+      const vb = b[sortField];
+      // For deviation, "more negative" = more oversold, so ascending means most oversold first
+      return sortAsc ? va - vb : vb - va;
+    });
+    return arr;
+  }, [picks, sortField, sortAsc]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      // Default sort direction per field
+      setSortAsc(field === 'deviation' ? true : false);
+    }
+  };
+
+  const displayed = showAll ? sorted : sorted.slice(0, INITIAL_COUNT);
+
   if (loading) {
     return (
       <div className="apple-card p-5 md:p-6 mb-8">
@@ -44,6 +73,23 @@ export default function AntiMarketPicks() {
       </div>
     );
   }
+
+  const SortHeader = ({ field, label }: { field: SortField; label: string }) => {
+    const isActive = sortField === field;
+    return (
+      <button
+        onClick={() => handleSort(field)}
+        className={`w-14 text-right text-[9px] uppercase tracking-wider transition-colors ${
+          isActive ? 'text-accent font-bold' : 'text-gray-600 hover:text-gray-400'
+        }`}
+      >
+        {label}
+        {isActive && (
+          <span className="ml-0.5">{sortAsc ? '↑' : '↓'}</span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <div className="apple-card p-5 md:p-6 mb-8">
@@ -69,17 +115,17 @@ export default function AntiMarketPicks() {
         </div>
       ) : (
         <>
-          {/* Header */}
-          <div className="flex items-center px-2 pb-2 text-[9px] text-gray-600 uppercase tracking-wider">
-            <span className="flex-1">股票</span>
-            <span className="w-14 text-right">偏離</span>
-            <span className="w-14 text-right">成長</span>
-            <span className="w-14 text-right">利潤</span>
-            <span className="w-14 text-right">R40</span>
+          {/* Sortable Header */}
+          <div className="flex items-center px-2 pb-2">
+            <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
+            <SortHeader field="deviation" label="偏離" />
+            <SortHeader field="revenueGrowth" label="成長" />
+            <SortHeader field="profitMargin" label="利潤" />
+            <SortHeader field="rule40Score" label="R40" />
           </div>
 
           <div className="divide-y divide-accent/[0.15]">
-            {picks.map((stock) => (
+            {displayed.map((stock) => (
               <Link
                 key={stock.symbol}
                 href={`/stock/${stock.symbol}`}
@@ -109,11 +155,28 @@ export default function AntiMarketPicks() {
               </Link>
             ))}
           </div>
+
+          {!showAll && picks.length > INITIAL_COUNT && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-accent text-sm font-medium hover:bg-accent/5 active:bg-accent/10 transition-colors"
+            >
+              查看更多（共 {picks.length} 檔）
+            </button>
+          )}
+          {showAll && picks.length > INITIAL_COUNT && (
+            <button
+              onClick={() => setShowAll(false)}
+              className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-500 text-sm font-medium hover:bg-white/[0.02] transition-colors"
+            >
+              收合
+            </button>
+          )}
         </>
       )}
 
       <p className="text-[9px] text-gray-700 mt-3 text-center">
-        偏離 = 現價 vs 50MA | R40 = 營收成長率 + 淨利率 | 僅供參考，非投資建議
+        點擊欄位標題排序 | 偏離 = 現價 vs 50MA | R40 = 成長率 + 淨利率 | 僅供參考
       </p>
     </div>
   );
