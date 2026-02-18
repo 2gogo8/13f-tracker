@@ -152,8 +152,8 @@ export async function GET() {
             // Calculate deviation
             const deviation = (price - sma20) / atr14;
 
-            // Only return if oversold (deviation < -2)
-            if (deviation < -2) {
+            // Return if oversold (deviation < -1)
+            if (deviation < -1) {
               // Get price change info (compare to previous day)
               const prevPrice = data[1]?.close || price;
               const change = price - prevPrice;

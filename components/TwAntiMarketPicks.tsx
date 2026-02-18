@@ -98,7 +98,7 @@ export default function TwAntiMarketPicks() {
         </span>
       </div>
       <p className="text-[10px] text-gray-600 mb-4">
-        負乖離超賣・台股50+中型100・共 {picks.length} 檔負偏離超過 -2σ
+        負乖離超賣・台股50+中型100・共 {picks.length} 檔負偏離超過 -1σ
       </p>
 
       {picks.length === 0 ? (
