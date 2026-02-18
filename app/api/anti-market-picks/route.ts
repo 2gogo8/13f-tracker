@@ -119,7 +119,7 @@ export async function GET() {
         batch.map(async (symbol) => {
           try {
             const res = await fetch(
-              `${BASE}/stable/historical-price-eod/light?symbol=${symbol}&from=${getDateStr(-60)}&to=${getDateStr(0)}&apikey=${API_KEY}`,
+              `${BASE}/stable/historical-price-eod/full?symbol=${symbol}&apikey=${API_KEY}`,
               { signal: AbortSignal.timeout(8000) }
             );
             const raw = await res.json();
