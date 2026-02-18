@@ -8,8 +8,9 @@ const BASE = 'https://financialmodelingprep.com';
 
 let cachedData: unknown = null;
 let cacheTimestamp = 0;
+let cachedVersion = 0;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min (shorter to avoid stale empty results)
-const CACHE_VERSION = 2; // bump to invalidate old cache
+const CACHE_VERSION = 3; // bump to invalidate old cache
 
 interface AntiMarketPick {
   symbol: string;
@@ -162,7 +163,7 @@ export async function GET() {
 
   try {
     const now = Date.now();
-    if (cachedData && now - cacheTimestamp < CACHE_DURATION) {
+    if (cachedData && now - cacheTimestamp < CACHE_DURATION && cachedVersion === CACHE_VERSION) {
       const response = NextResponse.json(cachedData);
       response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
       response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
@@ -317,6 +318,7 @@ export async function GET() {
     results.sort((a, b) => b.rule40Score - a.rule40Score);
     cachedData = results;
     cacheTimestamp = now;
+    cachedVersion = CACHE_VERSION;
 
     const response = NextResponse.json(results);
     response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
