@@ -4,7 +4,6 @@ export const maxDuration = 30;
 
 const API_KEY = process.env.FMP_API_KEY || '3c03eZvjdPpKONYydbgoAT9chCaQDnsp';
 
-// Sector mapping to Chinese names
 const sectorMapping: Record<string, string> = {
   'Technology': '科技',
   'Healthcare': '醫療保健',
@@ -19,7 +18,6 @@ const sectorMapping: Record<string, string> = {
   'Basic Materials': '基礎材料',
 };
 
-// Fallback: one representative stock per sector
 const sectorRepresentatives: Record<string, string> = {
   '科技': 'AAPL',
   '金融': 'JPM',
@@ -34,53 +32,98 @@ const sectorRepresentatives: Record<string, string> = {
   '通訊服務': 'GOOG',
 };
 
-export async function GET() {
+// In-memory cache: always keep last known good data
+let cachedData: { sectors: { sector: string; changesPercentage: number }[]; timestamp: number; isLive: boolean } | null = null;
+const CACHE_LIVE_MS = 5 * 60 * 1000; // 5 min during market hours
+
+function isUSMarketOpen(): boolean {
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = et.getDay();
+  if (day === 0 || day === 6) return false;
+  const hour = et.getHours();
+  const min = et.getMinutes();
+  const timeMin = hour * 60 + min;
+  return timeMin >= 9 * 60 + 30 && timeMin <= 16 * 60;
+}
+
+async function fetchFreshData(): Promise<{ sector: string; changesPercentage: number }[] | null> {
   try {
-    // Try the official sector-performance endpoint first
-    const sectorResponse = await fetch(
+    const res = await fetch(
       `https://financialmodelingprep.com/stable/sector-performance?apikey=${API_KEY}`
     );
-    const sectorData = await sectorResponse.json();
-
-    // If we have data from the official endpoint, use it
-    if (Array.isArray(sectorData) && sectorData.length > 0) {
-      const formattedData = sectorData.map((item: { sector: string; changesPercentage: string }) => ({
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      return data.map((item: { sector: string; changesPercentage: string }) => ({
         sector: sectorMapping[item.sector] || item.sector,
         changesPercentage: parseFloat(item.changesPercentage),
       }));
-
-      return NextResponse.json(formattedData);
     }
+  } catch (e) {
+    console.error('Sector performance primary fetch failed:', e);
+  }
 
-    // Fallback: fetch representative stocks for each sector
+  // Fallback: representative stocks
+  try {
     const symbols = Object.values(sectorRepresentatives).join(',');
-    const quotesResponse = await fetch(
+    const res = await fetch(
       `https://financialmodelingprep.com/stable/quote?symbol=${symbols}&apikey=${API_KEY}`
     );
-    const quotesData = await quotesResponse.json();
-
-    if (!Array.isArray(quotesData) || quotesData.length === 0) {
-      // If quotes also fail, return empty array
-      return NextResponse.json([]);
+    const quotes = await res.json();
+    if (Array.isArray(quotes) && quotes.length > 0) {
+      const symbolToSector = Object.entries(sectorRepresentatives).reduce(
+        (acc, [sector, symbol]) => { acc[symbol] = sector; return acc; },
+        {} as Record<string, string>
+      );
+      return quotes.map((q: { symbol: string; changesPercentage: number }) => ({
+        sector: symbolToSector[q.symbol] || '其他',
+        changesPercentage: q.changesPercentage || 0,
+      }));
     }
-
-    // Map quotes back to sectors
-    const symbolToSector = Object.entries(sectorRepresentatives).reduce(
-      (acc, [sector, symbol]) => {
-        acc[symbol] = sector;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
-
-    const sectorPerformance = quotesData.map((quote: { symbol: string; changesPercentage: number }) => ({
-      sector: symbolToSector[quote.symbol] || '其他',
-      changesPercentage: quote.changesPercentage || 0,
-    }));
-
-    return NextResponse.json(sectorPerformance);
-  } catch (error) {
-    console.error('Error fetching sector performance:', error);
-    return NextResponse.json([]);
+  } catch (e) {
+    console.error('Sector performance fallback fetch failed:', e);
   }
+
+  return null;
+}
+
+export async function GET() {
+  const marketOpen = isUSMarketOpen();
+  const now = Date.now();
+
+  // If cache is fresh enough, return it
+  if (cachedData && (now - cachedData.timestamp < CACHE_LIVE_MS)) {
+    return NextResponse.json({
+      sectors: cachedData.sectors,
+      isLive: cachedData.isLive,
+      cachedAt: cachedData.timestamp,
+    });
+  }
+
+  // Try to fetch fresh data
+  const freshData = await fetchFreshData();
+
+  if (freshData && freshData.length > 0) {
+    // Check if data is all zeros (market closed returns 0s)
+    const allZero = freshData.every(s => Math.abs(s.changesPercentage) < 0.001);
+
+    if (allZero && cachedData && cachedData.sectors.length > 0) {
+      // Market returned zeros — use last known good data
+      cachedData = { ...cachedData, timestamp: now, isLive: false };
+    } else {
+      cachedData = { sectors: freshData, timestamp: now, isLive: !allZero };
+    }
+  } else if (!cachedData) {
+    // No fresh data and no cache — return empty
+    return NextResponse.json({ sectors: [], isLive: false, cachedAt: now });
+  } else {
+    // Fetch failed but we have cache — keep serving it
+    cachedData = { ...cachedData, timestamp: now, isLive: false };
+  }
+
+  return NextResponse.json({
+    sectors: cachedData.sectors,
+    isLive: cachedData.isLive,
+    cachedAt: cachedData.timestamp,
+  });
 }

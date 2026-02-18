@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #000000;
-  --color-foreground: #ffffff;
+  --color-background: #F5F3EF;
+  --color-foreground: #1A1A1A;
   --color-primary: #C41E3A;
-  --color-secondary: #0A0A0A;
+  --color-secondary: #F0EDE8;
   --color-accent: #D4AF37;
-  --color-border: #1A1A1A;
+  --color-border: #E0DCD5;
   --font-family-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
   --font-family-serif: var(--font-playfair), 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
-/* ===== 1. BACKGROUND: Deep Canvas with Noise Texture ===== */
+/* ===== 1. BACKGROUND: Layered White with Depth ===== */
 body {
-  background-color: #000000;
+  background-color: #F5F3EF;
   background-image:
-    radial-gradient(ellipse 70% 50% at 50% 35%, #222222 0%, #0a0a0a 35%, #000000 70%);
+    radial-gradient(ellipse 80% 60% at 50% 30%, #FFFFFF 0%, #F5F3EF 40%, #EBE8E2 80%);
   color: var(--color-foreground);
   font-family: var(--font-family-sans);
   font-size: 16px;
@@ -26,14 +26,14 @@ body {
   position: relative;
 }
 
-/* Noise texture overlay */
+/* Noise texture overlay — subtle on white */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.09;
+  opacity: 0.04;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
@@ -70,86 +70,81 @@ body > * {
   50% { background-position: 100% 50%; }
 }
 
-/* ===== 2. CARDS: Floating Frosted Glass ===== */
+/* ===== 2. CARDS: Elevated White Glass ===== */
 .apple-card {
-  background: rgba(30, 30, 30, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid;
   border-image: linear-gradient(
     160deg,
-    rgba(212, 175, 55, 0.25) 0%,
-    rgba(212, 175, 55, 0.08) 30%,
-    transparent 60%,
-    rgba(196, 30, 58, 0.08) 100%
+    rgba(212, 175, 55, 0.2) 0%,
+    rgba(212, 175, 55, 0.06) 30%,
+    rgba(224, 220, 213, 0.4) 60%,
+    rgba(196, 30, 58, 0.06) 100%
   ) 1;
   box-shadow:
-    0 4px 40px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(255, 255, 255, 0.03) inset;
+    0 2px 20px rgba(0, 0, 0, 0.06),
+    0 8px 40px rgba(0, 0, 0, 0.04),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
   border-radius: 1.25rem;
   transition: box-shadow 0.4s ease, transform 0.3s ease;
 }
 
 .apple-card:hover {
   box-shadow:
-    0 8px 60px rgba(0, 0, 0, 0.6),
-    0 0 40px rgba(196, 30, 58, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+    0 4px 30px rgba(0, 0, 0, 0.08),
+    0 12px 60px rgba(0, 0, 0, 0.06),
+    0 0 40px rgba(212, 175, 55, 0.04),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
   transform: translateY(-2px);
 }
 
-/* ===== 3. DATA GLOW EFFECTS ===== */
+/* ===== 3. DATA GLOW EFFECTS (subtle on white) ===== */
 
-/* Gold glow for accent data */
 .glow-gold {
-  text-shadow: 0 0 20px rgba(212, 175, 55, 0.4), 0 0 40px rgba(212, 175, 55, 0.15);
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.25), 0 0 24px rgba(212, 175, 55, 0.08);
 }
 
-/* Red glow for primary/negative data */
 .glow-red {
-  text-shadow: 0 0 20px rgba(196, 30, 58, 0.4), 0 0 40px rgba(196, 30, 58, 0.15);
+  text-shadow: 0 0 12px rgba(196, 30, 58, 0.25), 0 0 24px rgba(196, 30, 58, 0.08);
 }
 
-/* White glow for neutral key data */
 .glow-white {
-  text-shadow: 0 0 15px rgba(255, 255, 255, 0.15), 0 0 30px rgba(255, 255, 255, 0.05);
+  text-shadow: none;
 }
 
 /* ===== CHART JEWELRY EFFECTS ===== */
 
-/* Metallic brushed texture for chart elements */
 .chart-metallic {
   background-image: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.07) 0%,
+    rgba(255, 255, 255, 0.5) 0%,
     transparent 50%,
-    rgba(255, 255, 255, 0.03) 100%
+    rgba(255, 255, 255, 0.2) 100%
   );
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.06), inset 0 -1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), inset 0 -1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Inset jewel effect */
 .chart-jewel {
   box-shadow:
-    inset 0 2px 4px rgba(0, 0, 0, 0.4),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
-    0 1px 3px rgba(0, 0, 0, 0.3);
+    inset 0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.5),
+    0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 /* ===== 4. TYPOGRAPHY SPACING ===== */
 
-/* Section spacing */
 .section-gap {
   margin-bottom: 3.5rem;
 }
 
-/* Remove default input styling */
 input:focus,
 select:focus {
   outline: none;
 }
 
-/* Subtle gradient line — wider, more elegant */
+/* Subtle gradient line */
 .gradient-line {
   width: 80px;
   height: 1.5px;
@@ -174,6 +169,6 @@ select:focus {
 
 /* ===== SELECTION ===== */
 ::selection {
-  background: rgba(196, 30, 58, 0.3);
-  color: #fff;
+  background: rgba(196, 30, 58, 0.15);
+  color: #1A1A1A;
 }

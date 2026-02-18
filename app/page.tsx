@@ -40,6 +40,7 @@ export default function Home() {
   const [sectorPieData, setSectorPieData] = useState<PieSlice[]>([]);
   const [sectorQuarter, setSectorQuarter] = useState('');
   const [sectorPerformance, setSectorPerformance] = useState<SectorPerformance[]>([]);
+  const [sectorIsLive, setSectorIsLive] = useState(true);
   const [trendingNews, setTrendingNews] = useState<TrendingNewsItem[]>([]);
   const [oversoldSymbols, setOversoldSymbols] = useState<Set<string>>(new Set());
   const [oversoldData, setOversoldData] = useState<Map<string, { signal: string; deviation: number }>>(new Map());
@@ -78,7 +79,12 @@ export default function Home() {
       try {
         const res = await fetch('/api/sector-performance');
         const data = await res.json();
-        if (Array.isArray(data)) setSectorPerformance(data);
+        if (data && Array.isArray(data.sectors)) {
+          setSectorPerformance(data.sectors);
+          setSectorIsLive(data.isLive ?? true);
+        } else if (Array.isArray(data)) {
+          setSectorPerformance(data);
+        }
       } catch (e) {
         console.error('Error fetching sector performance:', e);
       }
@@ -241,10 +247,10 @@ export default function Home() {
       {/* Header */}
       <header className="mb-16 text-center">
         <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-tight">
-          <span className="gradient-text">JG</span><span className="text-white glow-white">的</span><span className="text-primary glow-red">反</span><span className="text-white glow-white">市場報告書</span>
+          <span className="gradient-text">JG</span><span className="text-gray-900 glow-white">的</span><span className="text-primary glow-red">反</span><span className="text-gray-900 glow-white">市場報告書</span>
         </h1>
         <div className="gradient-line mb-8"></div>
-        <p className="text-gray-500 font-light text-lg tracking-[0.2em] uppercase">
+        <p className="text-gray-400 font-light text-lg tracking-[0.2em] uppercase">
           美股機構持倉戰情儀表板
         </p>
       </header>
@@ -262,7 +268,7 @@ export default function Home() {
             className={`px-8 py-3 rounded-xl text-sm font-medium transition-all ${
               viewMode === 'dashboard'
                 ? 'bg-primary text-white shadow-[0_4px_20px_rgba(196,30,58,0.3)]'
-                : 'bg-[#111] text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
             }`}
           >
             儀表板
@@ -272,7 +278,7 @@ export default function Home() {
             className={`px-8 py-3 rounded-xl text-sm font-medium transition-all ${
               viewMode === 'list'
                 ? 'bg-primary text-white shadow-[0_4px_20px_rgba(196,30,58,0.3)]'
-                : 'bg-[#111] text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
             }`}
           >
             完整列表
@@ -285,7 +291,7 @@ export default function Home() {
         {loading ? (
           <div className="text-center py-32">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-            <p className="mt-6 text-gray-500 font-light">載入美股數據中...</p>
+            <p className="mt-6 text-gray-400 font-light">載入美股數據中...</p>
           </div>
         ) : (
           <>
@@ -296,7 +302,7 @@ export default function Home() {
                 <SentimentGauge />
 
                 {/* Sector Performance Bar Chart */}
-                <SectorPerformanceBar data={sectorPerformance} />
+                <SectorPerformanceBar data={sectorPerformance} isLive={sectorIsLive} />
 
                 {/* Top Accumulation Leaderboard */}
                 {topMovers && topMovers.topAccumulation.length > 0 && (
@@ -311,11 +317,11 @@ export default function Home() {
                           key={stock.symbol}
                           href={`/stock/${stock.symbol}`}
                           className={`flex items-center gap-2 sm:gap-4 px-2 sm:px-4 py-3 rounded-lg transition-colors overflow-hidden ${
-                            index === 0 ? 'bg-accent/10 border border-accent/20' : 'hover:bg-white/[0.02]'
+                            index === 0 ? 'bg-accent/10 border border-accent/20' : 'hover:bg-gray-50'
                           }`}
                         >
                           <div className="w-6 sm:w-8 text-center flex-shrink-0">
-                            <span className={`text-base sm:text-lg font-bold ${index === 0 ? 'text-accent' : 'text-gray-500'}`}>
+                            <span className={`text-base sm:text-lg font-bold ${index === 0 ? 'text-accent' : 'text-gray-400'}`}>
                               {index + 1}
                             </span>
                           </div>
@@ -323,10 +329,10 @@ export default function Home() {
                             <span className="text-xs sm:text-sm font-bold text-primary">{stock.symbol}</span>
                           </div>
                           <div className="flex-1 min-w-0 hidden sm:block">
-                            <p className="text-sm text-gray-300 truncate">{stock.name}</p>
+                            <p className="text-sm text-gray-600 truncate">{stock.name}</p>
                           </div>
                           <div className="w-16 sm:w-24 text-right flex-shrink-0">
-                            <span className="text-xs sm:text-sm text-white font-medium">${(stock.price ?? 0).toFixed(2)}</span>
+                            <span className="text-xs sm:text-sm text-gray-900 font-medium">${(stock.price ?? 0).toFixed(2)}</span>
                           </div>
                           <div className="w-16 sm:w-20 text-right flex-shrink-0">
                             <span className={`text-xs sm:text-sm font-semibold ${(stock.changesPercentage ?? 0) >= 0 ? 'text-accent' : 'text-primary'}`}>
@@ -371,7 +377,7 @@ export default function Home() {
                 {topMovers && topMovers.allStocks.length > 0 && (
                   <div className="apple-card p-8">
                     <h2 className="font-serif text-2xl font-bold mb-6">機構持倉熱力圖</h2>
-                    <p className="text-sm text-gray-400 mb-6">
+                    <p className="text-sm text-gray-500 mb-6">
                       綠色 = 機構加碼 | 紅色 = 機構減倉 | 灰色 = 持平
                     </p>
                     <HeatmapGrid
@@ -389,7 +395,7 @@ export default function Home() {
             {viewMode === 'list' && (
               <div>
                 <div className="flex justify-between items-center mb-6 px-1">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     {filteredStocks.length} 檔股票
                   </p>
                   <SortSelect value={sortBy} onChange={setSortBy} options={sortOptions} />
@@ -397,7 +403,7 @@ export default function Home() {
 
                 {/* Compact List Header */}
                 <div className="apple-card overflow-hidden">
-                  <div className="flex items-center gap-4 px-4 py-3 bg-[#111] border-b border-white/5 text-xs font-semibold text-gray-500">
+                  <div className="flex items-center gap-4 px-4 py-3 bg-gray-100 border-b border-gray-200 text-xs font-semibold text-gray-400">
                     <div className="w-20 flex-shrink-0">代號</div>
                     <div className="flex-1 min-w-0">公司名稱</div>
                     <div className="w-24 text-right flex-shrink-0">股價</div>
@@ -452,7 +458,7 @@ export default function Home() {
 
                   {filteredStocks.length === 0 && (
                     <div className="text-center py-16">
-                      <p className="text-gray-500 text-sm">
+                      <p className="text-gray-400 text-sm">
                         找不到符合的股票 &quot;{searchTerm}&quot;
                       </p>
                     </div>

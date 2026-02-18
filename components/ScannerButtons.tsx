@@ -51,7 +51,7 @@ export default function ScannerButtons({
           className={`px-6 py-3 rounded-full text-sm font-medium transition-all ${
             activeScanner === scanner.type
               ? 'bg-accent text-black shadow-[0_4px_20px_rgba(212,175,55,0.3)]'
-              : 'bg-[#111] text-gray-300 hover:bg-[#1A1A1A] hover:text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
           }`}
           title={scanner.description}
         >

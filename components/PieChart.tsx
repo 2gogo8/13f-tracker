@@ -39,11 +39,11 @@ export default function PieChart({ data, title, subtitle }: PieChartProps) {
     <div className="apple-card p-6 md:p-8">
       <div className="mb-8">
         <h2 className="font-serif text-2xl font-bold mb-1">{title}</h2>
-        {subtitle && <p className="text-sm text-gray-500 font-light">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-gray-400 font-light">{subtitle}</p>}
       </div>
 
       {/* Stacked overview bar */}
-      <div className="h-3 rounded-full overflow-hidden flex mb-8" style={{ background: 'rgba(255,255,255,0.03)' }}>
+      <div className="h-3 rounded-full overflow-hidden flex mb-8" style={{ background: 'rgba(200,200,200,0.2)' }}>
         {sorted.map((s, i) => (
           <div
             key={i}
@@ -82,21 +82,21 @@ export default function PieChart({ data, title, subtitle }: PieChartProps) {
                     }}
                   />
                   <span className={`text-sm font-medium truncate transition-colors ${
-                    isHovered ? 'text-white' : 'text-gray-300'
+                    isHovered ? 'text-gray-900' : 'text-gray-600'
                   }`}>
                     {s.label}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                  <span className="text-xs text-gray-500 tabular-nums">{formatValue(s.value)}</span>
+                  <span className="text-xs text-gray-400 tabular-nums">{formatValue(s.value)}</span>
                   <span className={`text-sm font-bold tabular-nums w-14 text-right transition-colors ${
-                    isHovered ? 'text-white glow-white' : 'text-accent'
+                    isHovered ? 'text-gray-900 glow-white' : 'text-accent'
                   }`}>
                     {s.pct.toFixed(1)}%
                   </span>
                 </div>
               </div>
-              <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(200,200,200,0.2)' }}>
                 <div
                   className="h-full rounded-full chart-metallic transition-all duration-300"
                   style={{
@@ -113,9 +113,9 @@ export default function PieChart({ data, title, subtitle }: PieChartProps) {
       </div>
 
       {/* Total */}
-      <div className="mt-6 pt-4 border-t border-white/5 flex justify-between items-center">
-        <span className="text-xs text-gray-600">總計</span>
-        <span className="text-sm font-semibold text-gray-400">{formatValue(total)}</span>
+      <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between items-center">
+        <span className="text-xs text-gray-500">總計</span>
+        <span className="text-sm font-semibold text-gray-500">{formatValue(total)}</span>
       </div>
     </div>
   );

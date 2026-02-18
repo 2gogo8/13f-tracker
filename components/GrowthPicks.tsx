@@ -63,7 +63,7 @@ export default function GrowthPicks() {
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between px-2 pb-2 text-[9px] text-gray-600 uppercase tracking-wider">
+      <div className="flex items-center justify-between px-2 pb-2 text-[9px] text-gray-500 uppercase tracking-wider">
         <span className="w-20">股票</span>
         <span className="w-16 text-right">成長率</span>
         <span className="w-16 text-right">利潤率</span>
@@ -78,12 +78,12 @@ export default function GrowthPicks() {
             <Link
               key={stock.symbol}
               href={`/stock/${stock.symbol}`}
-              className="block py-2.5 px-2 rounded transition-all active:bg-primary/10 hover:bg-white/[0.02] group"
+              className="block py-2.5 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
             >
               <div className="flex items-center justify-between">
                 <div className="w-20">
                   <span className="font-serif text-sm font-bold text-accent">{stock.symbol}</span>
-                  <p className="text-[9px] text-gray-600 truncate">{stock.name}</p>
+                  <p className="text-[9px] text-gray-500 truncate">{stock.name}</p>
                 </div>
                 <span className="w-16 text-right text-xs font-mono text-blue-400">
                   +{stock.revenueGrowth.toFixed(1)}%
@@ -95,7 +95,7 @@ export default function GrowthPicks() {
                   {stock.rule40Score.toFixed(1)}
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[9px] text-gray-600 mt-0.5">
+              <div className="flex items-center justify-between text-[9px] text-gray-500 mt-0.5">
                 <span>
                   營收 ${stock.revPrior}B → ${stock.revCurrent}B
                 </span>
@@ -119,13 +119,13 @@ export default function GrowthPicks() {
       {showAll && picks.length > INITIAL_COUNT && (
         <button
           onClick={() => setShowAll(false)}
-          className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-500 text-sm font-medium hover:bg-white/[0.02] transition-colors"
+          className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-400 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
           收合
         </button>
       )}
 
-      <p className="text-[9px] text-gray-700 mt-3 text-center">
+      <p className="text-[9px] text-gray-500 mt-3 text-center">
         Rule of 40 = 營收成長率(%) + 淨利率(%)・基於分析師共識預估，僅供參考
       </p>
     </div>

@@ -45,7 +45,7 @@ export default function CompactStockRow({
 
   return (
     <Link href={`/stock/${symbol}`}>
-      <div className="flex items-center gap-4 px-4 py-2 hover:bg-white/[0.02] border-b border-white/[0.03] cursor-pointer transition-colors">
+      <div className="flex items-center gap-4 px-4 py-2 hover:bg-gray-50 border-b border-gray-200 cursor-pointer transition-colors">
         {/* Symbol */}
         <div className="w-20 flex-shrink-0">
           <span className="text-sm font-bold text-primary">{symbol}</span>
@@ -53,12 +53,12 @@ export default function CompactStockRow({
 
         {/* Company Name */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-300 truncate">{name}</p>
+          <p className="text-sm text-gray-600 truncate">{name}</p>
         </div>
 
         {/* Price */}
         <div className="w-24 text-right flex-shrink-0">
-          <span className="text-sm text-white font-medium">
+          <span className="text-sm text-gray-900 font-medium">
             ${price.toFixed(2)}
           </span>
         </div>
@@ -91,7 +91,7 @@ export default function CompactStockRow({
 
         {/* Sector */}
         <div className="w-32 flex-shrink-0 hidden lg:block">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-400">
             {sectorMap[sector] || sector || 'N/A'}
           </span>
         </div>
@@ -111,7 +111,7 @@ export default function CompactStockRow({
             <span
               className={`text-xs font-semibold ${
                 !hasQuarterlyChange
-                  ? 'text-gray-500'
+                  ? 'text-gray-400'
                   : isQuarterlyPositive
                   ? 'text-accent'
                   : 'text-primary'

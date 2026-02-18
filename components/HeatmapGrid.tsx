@@ -33,7 +33,7 @@ function getColorForChange(change: number): string {
     return `rgb(${r}, ${g}, ${b})`;
   } else {
     // Neutral gray
-    return '#1A1A1A';
+    return '#E8E4DD';
   }
 }
 
@@ -41,7 +41,7 @@ export default function HeatmapGrid({ stocks }: HeatmapGridProps) {
   if (stocks.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500 text-sm">載入熱力圖資料中...</p>
+        <p className="text-gray-400 text-sm">載入熱力圖資料中...</p>
       </div>
     );
   }
@@ -52,7 +52,7 @@ export default function HeatmapGrid({ stocks }: HeatmapGridProps) {
         <Link
           key={stock.symbol}
           href={`/stock/${stock.symbol}`}
-          className="aspect-square rounded flex items-center justify-center text-xs font-bold text-white cursor-pointer hover:scale-105 transition-transform shadow-lg"
+          className="aspect-square rounded flex items-center justify-center text-xs font-bold text-gray-900 cursor-pointer hover:scale-105 transition-transform shadow-lg"
           style={{ backgroundColor: getColorForChange(stock.changeValue) }}
           title={`${stock.symbol}: ${stock.changeValue > 0 ? '+' : ''}${stock.changeValue.toFixed(1)}%`}
         >

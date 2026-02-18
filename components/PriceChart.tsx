@@ -59,7 +59,7 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
       <div className={inline ? '' : 'apple-card p-8'}>
         {!inline && <h2 className="text-2xl font-bold mb-6">兩年股價走勢</h2>}
         <div className="text-center py-12">
-          <p className="text-gray-500 text-sm">暫無歷史價格資料</p>
+          <p className="text-gray-400 text-sm">暫無歷史價格資料</p>
         </div>
       </div>
     );
@@ -241,16 +241,16 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
             {/* Grid */}
             {yLabels.map((label, i) => (
               <g key={`y-${i}`}>
-                <line x1={0} y1={label.y} x2={chartWidth} y2={label.y} stroke="rgba(255,255,255,0.05)" />
-                <text x={-10} y={label.y} textAnchor="end" dominantBaseline="middle" fill="#666" fontSize="12" fontFamily="system-ui">
+                <line x1={0} y1={label.y} x2={chartWidth} y2={label.y} stroke="#E0DCD5" />
+                <text x={-10} y={label.y} textAnchor="end" dominantBaseline="middle" fill="#999" fontSize="12" fontFamily="system-ui">
                   {label.label}
                 </text>
               </g>
             ))}
             {xLabels.map((label, i) => (
               <g key={`x-${i}`}>
-                <line x1={label.x} y1={0} x2={label.x} y2={chartHeight} stroke="rgba(255,255,255,0.05)" />
-                <text x={label.x} y={chartHeight + 20} textAnchor="middle" fill="#666" fontSize="12" fontFamily="system-ui">
+                <line x1={label.x} y1={0} x2={label.x} y2={chartHeight} stroke="#E0DCD5" />
+                <text x={label.x} y={chartHeight + 20} textAnchor="middle" fill="#999" fontSize="12" fontFamily="system-ui">
                   {label.label}
                 </text>
               </g>
@@ -304,21 +304,21 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
                 <line
                   x1={crosshair.x} y1={0}
                   x2={crosshair.x} y2={chartHeight}
-                  stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" strokeDasharray="4,3"
+                  stroke="rgba(0,0,0,0.2)" strokeWidth="0.5" strokeDasharray="4,3"
                 />
                 {/* Horizontal line */}
                 <line
                   x1={0} y1={crosshair.y}
                   x2={chartWidth} y2={crosshair.y}
-                  stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" strokeDasharray="4,3"
+                  stroke="rgba(0,0,0,0.2)" strokeWidth="0.5" strokeDasharray="4,3"
                 />
                 {/* Center dot */}
-                <circle cx={crosshair.x} cy={crosshair.y} r="5" fill={lineColor} stroke="#fff" strokeWidth="2" />
+                <circle cx={crosshair.x} cy={crosshair.y} r="5" fill={lineColor} stroke="#333" strokeWidth="2" />
                 {/* Price label on Y axis */}
                 <rect
                   x={-padding.left} y={crosshair.y - 10}
                   width={padding.left - 4} height={20}
-                  fill="rgba(0,0,0,0.85)" rx="3"
+                  fill="rgba(255,255,255,0.95)" rx="3"
                 />
                 <text
                   x={-8} y={crosshair.y + 4}
@@ -336,7 +336,7 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
       {/* Active event popup */}
       {activeEvent && (
         <div
-          className="mt-2 p-3 rounded-lg border border-white/10 bg-black/80 backdrop-blur-sm text-sm cursor-pointer"
+          className="mt-2 p-3 rounded-lg border border-gray-200 bg-white/95 backdrop-blur-sm text-sm cursor-pointer"
           onClick={() => setActiveEvent(null)}
         >
           <div className="flex items-center gap-2 mb-1">
@@ -349,15 +349,15 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
             >
               {EVENT_ICONS[activeEvent.type]?.label || 'N'}
             </span>
-            <span className="text-gray-400 text-[10px]">
+            <span className="text-gray-500 text-[10px]">
               {new Date(activeEvent.date).toLocaleDateString('zh-TW')}
             </span>
           </div>
-          <p className="text-white text-xs leading-relaxed">{activeEvent.title}</p>
+          <p className="text-gray-900 text-xs leading-relaxed">{activeEvent.title}</p>
         </div>
       )}
 
-      <p className="text-[10px] text-gray-600 text-center mt-3">
+      <p className="text-[10px] text-gray-500 text-center mt-3">
         {isPressed ? '滑動查看價格' : '長按圖表啟動十字線'}・點擊標記查看事件
       </p>
     </div>

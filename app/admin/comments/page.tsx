@@ -56,7 +56,7 @@ export default function AdminCommentsPage() {
         <h1 className="text-4xl font-bold mb-2">
           <span className="text-primary">💬</span> 留言管理後台
         </h1>
-        <p className="text-gray-500 mb-8">
+        <p className="text-gray-400 mb-8">
           共 {comments.length} 則留言，來自 {new Set(comments.map(c => c.symbol)).size} 檔股票
         </p>
 
@@ -66,15 +66,15 @@ export default function AdminCommentsPage() {
           value={filter}
           onChange={e => setFilter(e.target.value)}
           placeholder="搜尋股票代號..."
-          className="w-full bg-[#111] border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-accent/50 mb-8"
+          className="w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-accent/50 mb-8"
         />
 
         {loading ? (
-          <p className="text-gray-500 text-center py-16">載入中...</p>
+          <p className="text-gray-400 text-center py-16">載入中...</p>
         ) : comments.length === 0 ? (
           <div className="text-center py-16 apple-card p-8">
-            <p className="text-gray-500 text-lg mb-2">尚無留言</p>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-400 text-lg mb-2">尚無留言</p>
+            <p className="text-gray-500 text-sm">
               留言會從各股票詳情頁的「提問與討論」區塊收集
             </p>
           </div>
@@ -85,23 +85,23 @@ export default function AdminCommentsPage() {
                 <div className="flex items-center justify-between mb-4">
                   <Link href={`/stock/${sym}`} className="flex items-center gap-3 hover:opacity-80">
                     <span className="text-lg font-bold text-primary">{sym}</span>
-                    <span className="text-xs text-gray-500">{grouped[sym].length} 則</span>
+                    <span className="text-xs text-gray-400">{grouped[sym].length} 則</span>
                   </Link>
                 </div>
                 <div className="space-y-3">
                   {grouped[sym].map(c => (
-                    <div key={c.id} className="flex gap-3 p-3 bg-[#0A0A0A] rounded-lg">
+                    <div key={c.id} className="flex gap-3 p-3 bg-gray-100 rounded-lg">
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                         <span className="text-xs font-bold text-primary">{c.name[0]?.toUpperCase()}</span>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-white">{c.name}</span>
-                          <span className="text-[10px] text-gray-600">
+                          <span className="text-sm font-semibold text-gray-900">{c.name}</span>
+                          <span className="text-[10px] text-gray-500">
                             {new Date(c.timestamp).toLocaleString('zh-TW')}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-300 mt-1">{c.text}</p>
+                        <p className="text-sm text-gray-600 mt-1">{c.text}</p>
                       </div>
                     </div>
                   ))}

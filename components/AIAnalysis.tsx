@@ -39,7 +39,7 @@ export default function AIAnalysis({ symbol }: AIAnalysisProps) {
         <div className="flex items-center gap-3 py-8">
           <div className="animate-pulse h-3 bg-white/5 rounded w-full" />
         </div>
-        <p className="text-[10px] text-gray-600 text-center">AI 分析生成中...</p>
+        <p className="text-[10px] text-gray-500 text-center">AI 分析生成中...</p>
       </div>
     );
   }
@@ -57,28 +57,28 @@ export default function AIAnalysis({ symbol }: AIAnalysisProps) {
 
       {/* Analyst Consensus */}
       {data.consensus && (
-        <div className="flex items-center gap-4 mb-5 p-3 bg-black/30 rounded-lg">
+        <div className="flex items-center gap-4 mb-5 p-3 bg-white/80 rounded-lg">
           <div className="text-center flex-1">
-            <p className="text-[10px] text-gray-500 mb-0.5">目標低</p>
+            <p className="text-[10px] text-gray-400 mb-0.5">目標低</p>
             <p className="text-sm font-mono text-primary">${data.consensus.targetLow}</p>
           </div>
-          <div className="text-center flex-1 border-x border-white/5 px-4">
-            <p className="text-[10px] text-gray-500 mb-0.5">共識目標</p>
+          <div className="text-center flex-1 border-x border-gray-200 px-4">
+            <p className="text-[10px] text-gray-400 mb-0.5">共識目標</p>
             <p className="text-lg font-mono font-bold text-accent glow-gold">${data.consensus.targetConsensus}</p>
           </div>
           <div className="text-center flex-1">
-            <p className="text-[10px] text-gray-500 mb-0.5">目標高</p>
+            <p className="text-[10px] text-gray-400 mb-0.5">目標高</p>
             <p className="text-sm font-mono text-accent">${data.consensus.targetHigh}</p>
           </div>
         </div>
       )}
 
       {/* AI Analysis */}
-      <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">
+      <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">
         {data.analysis}
       </div>
 
-      <p className="text-[9px] text-gray-700 mt-4">
+      <p className="text-[9px] text-gray-500 mt-4">
         由 Gemini AI 生成，基於公開市場數據。僅供參考，非投資建議。
       </p>
     </div>

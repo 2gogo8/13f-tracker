@@ -11,8 +11,9 @@ interface Signal {
 interface SentimentData {
   overall: number;
   label: string;
-  emoji: string;
+  emoji?: string;
   signals: Signal[];
+  isLive?: boolean;
 }
 
 export default function SentimentGauge() {
@@ -27,7 +28,7 @@ export default function SentimentGauge() {
 
   if (!data) return null;
 
-  const { overall, label, emoji, signals } = data;
+  const { overall, label, signals, isLive } = data;
 
   // Don't show gauge if no signals (market closed / API failure)
   if (signals.length === 0) return null;
@@ -46,10 +47,17 @@ export default function SentimentGauge() {
 
   return (
     <div className="apple-card p-6">
-      <h2 className="font-serif text-xl font-bold mb-4 flex items-center gap-2">
-        市場情緒指標
-        <span className="text-sm font-sans font-normal text-gray-500 ml-2">Fear & Greed</span>
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-serif text-xl font-bold flex items-center gap-2">
+          市場情緒指標
+          <span className="text-sm font-sans font-normal text-gray-500 ml-2">Fear & Greed</span>
+        </h2>
+        {isLive === false && (
+          <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            上個交易日數據
+          </span>
+        )}
+      </div>
 
       <div className="flex flex-col md:flex-row items-center gap-6">
         {/* Gauge */}
@@ -59,7 +67,7 @@ export default function SentimentGauge() {
             <path
               d="M 20 100 A 80 80 0 0 1 180 100"
               fill="none"
-              stroke="#1a1a1a"
+              stroke="#E8E4DD"
               strokeWidth="16"
               strokeLinecap="round"
             />
@@ -71,8 +79,8 @@ export default function SentimentGauge() {
             <path d="M 165 62 A 80 80 0 0 1 180 100" fill="none" stroke="#D4AF37" strokeWidth="16" strokeLinecap="round" />
             {/* Needle */}
             <g transform={`rotate(${rotation}, 100, 100)`}>
-              <line x1="100" y1="100" x2="100" y2="30" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="100" cy="100" r="5" fill="white" />
+              <line x1="100" y1="100" x2="100" y2="30" stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="100" cy="100" r="5" fill="#333" />
             </g>
           </svg>
           {/* Score text */}
@@ -89,13 +97,13 @@ export default function SentimentGauge() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             {signals.map((s) => (
-              <div key={s.name} className="bg-[#111] rounded-lg px-3 py-2">
+              <div key={s.name} className="bg-gray-100 rounded-lg px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-gray-400">{s.name}</span>
+                  <span className="text-xs text-gray-500">{s.name}</span>
                   <span className="text-xs font-bold" style={{ color: getColor(s.score) }}>{s.score}</span>
                 </div>
                 {/* Mini bar */}
-                <div className="h-1.5 bg-[#222] rounded-full mt-1.5 overflow-hidden">
+                <div className="h-1.5 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{ width: `${s.score}%`, backgroundColor: getColor(s.score) }}

@@ -80,7 +80,7 @@ export default function AntiMarketPicks() {
       <button
         onClick={() => handleSort(field)}
         className={`w-14 text-right text-[9px] uppercase tracking-wider transition-colors ${
-          isActive ? 'text-accent font-bold' : 'text-gray-600 hover:text-gray-400'
+          isActive ? 'text-accent font-bold' : 'text-gray-600 hover:text-gray-500'
         }`}
       >
         {label}
@@ -96,7 +96,7 @@ export default function AntiMarketPicks() {
       <div className="flex items-center justify-between mb-1">
         <h2 className="font-serif text-lg font-bold">
           <span className="text-primary glow-red">反</span>
-          <span className="text-white">市場特選</span>
+          <span className="text-gray-900">市場特選</span>
         </h2>
         <span className="text-[10px] px-2.5 py-1 rounded-full bg-primary/20 text-primary font-medium tracking-wider uppercase">
           Contrarian
@@ -108,7 +108,7 @@ export default function AntiMarketPicks() {
 
       {picks.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-500 text-sm">目前無交叉命中的標的</p>
+          <p className="text-gray-400 text-sm">目前無交叉命中的標的</p>
           <p className="text-[10px] text-gray-600 mt-1">
             當好公司被市場錯殺時，這裡會出現機會
           </p>
@@ -129,7 +129,7 @@ export default function AntiMarketPicks() {
               <Link
                 key={stock.symbol}
                 href={`/stock/${stock.symbol}`}
-                className="flex items-center py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-white/[0.02] group"
+                className="flex items-center py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -167,7 +167,7 @@ export default function AntiMarketPicks() {
           {showAll && picks.length > INITIAL_COUNT && (
             <button
               onClick={() => setShowAll(false)}
-              className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-500 text-sm font-medium hover:bg-white/[0.02] transition-colors"
+              className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-400 text-sm font-medium hover:bg-gray-50 transition-colors"
             >
               收合
             </button>
@@ -175,7 +175,7 @@ export default function AntiMarketPicks() {
         </>
       )}
 
-      <p className="text-[9px] text-gray-700 mt-3 text-center">
+      <p className="text-[9px] text-gray-500 mt-3 text-center">
         點擊欄位標題排序 | 偏離 = 現價 vs 50MA | R40 = 成長率 + 淨利率 | 僅供參考
       </p>
     </div>

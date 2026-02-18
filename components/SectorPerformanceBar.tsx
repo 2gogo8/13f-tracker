@@ -4,18 +4,18 @@ import { SectorPerformance } from '@/types';
 
 interface SectorPerformanceBarProps {
   data: SectorPerformance[];
+  isLive?: boolean;
 }
 
-export default function SectorPerformanceBar({ data }: SectorPerformanceBarProps) {
+export default function SectorPerformanceBar({ data, isLive = true }: SectorPerformanceBarProps) {
   if (data.length === 0) {
     return (
       <div className="apple-card p-8">
         <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-          
           板塊資金流向
         </h2>
         <div className="text-center py-8">
-          <p className="text-gray-500 text-sm">休市中，無資料顯示</p>
+          <p className="text-gray-400 text-sm">載入中...</p>
         </div>
       </div>
     );
@@ -30,10 +30,14 @@ export default function SectorPerformanceBar({ data }: SectorPerformanceBarProps
 
   return (
     <div className="apple-card p-8">
-      <h2 className="font-serif text-2xl font-bold mb-8 flex items-center gap-3">
-        
-        板塊資金流向
-      </h2>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="font-serif text-2xl font-bold">板塊資金流向</h2>
+        {!isLive && (
+          <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+            上個交易日數據
+          </span>
+        )}
+      </div>
       <div className="space-y-3">
         {sortedData.map((sector) => {
           const isPositive = sector.changesPercentage >= 0;
@@ -43,13 +47,13 @@ export default function SectorPerformanceBar({ data }: SectorPerformanceBarProps
             <div key={sector.sector} className="flex items-center gap-4">
               {/* Sector Name */}
               <div className="w-28 text-right flex-shrink-0">
-                <span className="text-sm text-gray-300 font-medium">{sector.sector}</span>
+                <span className="text-sm text-gray-600 font-medium">{sector.sector}</span>
               </div>
 
               {/* Bar Container */}
               <div className="flex-1 relative h-8 flex items-center">
                 {/* Zero Line (center) */}
-                <div className="absolute left-1/2 w-px h-full bg-gray-700 z-0"></div>
+                <div className="absolute left-1/2 w-px h-full bg-gray-300 z-0"></div>
 
                 {/* Bar */}
                 <div

@@ -72,7 +72,7 @@ export default function CommentSection({ symbol }: CommentSectionProps) {
   return (
     <div className="apple-card p-6 md:p-8 mb-8">
       <h2 className="font-serif text-2xl font-bold mb-2">提問與討論</h2>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-gray-400 mb-6">
         對 {symbol} 有疑問？留下你的問題，JG 會定期回覆
       </p>
 
@@ -84,7 +84,7 @@ export default function CommentSection({ symbol }: CommentSectionProps) {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder="你的暱稱"
-            className="flex-shrink-0 w-28 sm:w-36 bg-[#111] border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-accent/50"
+            className="flex-shrink-0 w-28 sm:w-36 bg-gray-100 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-accent/50"
             maxLength={20}
             required
           />
@@ -93,7 +93,7 @@ export default function CommentSection({ symbol }: CommentSectionProps) {
             value={text}
             onChange={e => setText(e.target.value)}
             placeholder={`關於 ${symbol} 的問題...`}
-            className="flex-1 bg-[#111] border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-accent/50"
+            className="flex-1 bg-gray-100 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-accent/50"
             maxLength={500}
             required
           />
@@ -111,21 +111,21 @@ export default function CommentSection({ symbol }: CommentSectionProps) {
 
       {/* Comments list */}
       {comments.length > 0 && (
-        <div className="space-y-3 border-t border-white/5 pt-4">
-          <p className="text-xs text-gray-500">{comments.length} 則留言</p>
+        <div className="space-y-3 border-t border-gray-200 pt-4">
+          <p className="text-xs text-gray-400">{comments.length} 則留言</p>
           {comments.slice(0, 20).map(c => (
-            <div key={c.id} className="flex gap-3 p-3 bg-[#0A0A0A] rounded-lg">
+            <div key={c.id} className="flex gap-3 p-3 bg-gray-100 rounded-lg">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                 <span className="text-xs font-bold text-primary">{c.name[0]?.toUpperCase()}</span>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-semibold text-white">{c.name}</span>
-                  <span className="text-[10px] text-gray-600">
+                  <span className="text-sm font-semibold text-gray-900">{c.name}</span>
+                  <span className="text-[10px] text-gray-500">
                     {new Date(c.timestamp).toLocaleString('zh-TW')}
                   </span>
                 </div>
-                <p className="text-sm text-gray-300 mt-1 leading-relaxed">{c.text}</p>
+                <p className="text-sm text-gray-600 mt-1 leading-relaxed">{c.text}</p>
               </div>
             </div>
           ))}

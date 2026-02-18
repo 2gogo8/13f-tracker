@@ -97,12 +97,12 @@ export default function TopPicks() {
             <Link
               key={stock.symbol}
               href={`/stock/${stock.symbol}`}
-              className="flex items-center gap-3 py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-white/[0.02] group"
+              className="flex items-center gap-3 py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
             >
               {/* Left: Symbol + Name */}
               <div className="w-16 sm:w-20 flex-shrink-0">
                 <p className="font-serif text-sm sm:text-base font-bold text-accent leading-tight">{stock.symbol}</p>
-                <p className="text-[9px] text-gray-600 truncate leading-tight mt-0.5">{stock.name}</p>
+                <p className="text-[9px] text-gray-500 truncate leading-tight mt-0.5">{stock.name}</p>
               </div>
 
               {/* Sparkline */}
@@ -112,7 +112,7 @@ export default function TopPicks() {
 
               {/* Center: Price + Change */}
               <div className="flex-1 flex items-baseline justify-end gap-2">
-                <span className="text-sm sm:text-base font-mono font-bold text-white tabular-nums tracking-tight">
+                <span className="text-sm sm:text-base font-mono font-bold text-gray-900 tabular-nums tracking-tight">
                   ${stock.price.toFixed(2)}
                 </span>
                 <span className={`text-xs font-mono font-semibold tabular-nums ${
@@ -134,7 +134,7 @@ export default function TopPicks() {
                     style={{ backgroundColor: dotColor, boxShadow: `0 0 6px ${dotColor}60` }}
                   />
                 </span>
-                <span className="text-[10px] text-gray-500 font-mono w-10 text-right">
+                <span className="text-[10px] text-gray-400 font-mono w-10 text-right">
                   {stock.deviation.toFixed(1)}σ
                 </span>
               </div>
@@ -154,13 +154,13 @@ export default function TopPicks() {
       {showAll && picks.length > INITIAL_COUNT && (
         <button
           onClick={() => setShowAll(false)}
-          className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-500 text-sm font-medium hover:bg-white/[0.02] active:bg-white/5 transition-colors"
+          className="w-full mt-4 py-2.5 rounded-lg border border-accent/20 text-gray-400 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors"
         >
           收合
         </button>
       )}
 
-      <p className="text-[9px] text-gray-700 mt-3 text-center">
+      <p className="text-[9px] text-gray-500 mt-3 text-center">
         僅供參考，非投資建議
       </p>
     </div>

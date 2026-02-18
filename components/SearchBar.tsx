@@ -39,7 +39,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        className="w-full px-6 py-4 bg-[#111] rounded-xl focus:ring-1 focus:ring-accent/30 text-foreground placeholder-gray-500 text-base shadow-[0_2px_15px_rgba(0,0,0,0.3)]"
+        className="w-full px-6 py-4 bg-gray-100 rounded-xl focus:ring-1 focus:ring-accent/30 text-gray-900 placeholder-gray-400 text-base shadow-[0_2px_15px_rgba(0,0,0,0.1)]"
       />
       {hint && (
         <p className="text-[10px] text-accent/60 mt-1.5 text-center">{hint}</p>

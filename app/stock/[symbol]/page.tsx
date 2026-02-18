@@ -128,7 +128,7 @@ export default function StockDetailPage({
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-          <p className="mt-6 text-gray-500 font-light">載入中 {symbol}...</p>
+          <p className="mt-6 text-gray-400 font-light">載入中 {symbol}...</p>
         </div>
       </div>
     );
@@ -185,7 +185,7 @@ export default function StockDetailPage({
   const signalConfig: Record<SignalLevel, { emoji: string; label: string; color: string; bg: string }> = {
     'deep-value': { emoji: '🟢', label: '極度超跌', color: 'text-green-400', bg: 'bg-green-900/40' },
     'oversold':   { emoji: '🔵', label: '超跌區域', color: 'text-blue-400', bg: 'bg-blue-900/40' },
-    'normal':     { emoji: '⚪', label: '正常波動', color: 'text-gray-400', bg: 'bg-gray-800/40' },
+    'normal':     { emoji: '⚪', label: '正常波動', color: 'text-gray-500', bg: 'bg-gray-100/80' },
     'overbought': { emoji: '🔴', label: '過熱', color: 'text-red-400', bg: 'bg-red-900/40' },
   };
   const signal = signalConfig[signalLevel];
@@ -247,7 +247,7 @@ export default function StockDetailPage({
     <div className="min-h-screen py-12 px-4 md:px-8 relative overflow-hidden">
       {/* Watermark */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center z-0 select-none" aria-hidden="true">
-        <div className="text-white/[0.03] text-[120px] md:text-[200px] font-serif font-bold tracking-widest rotate-[-25deg] whitespace-nowrap">
+        <div className="text-gray-900/[0.03] text-[120px] md:text-[200px] font-serif font-bold tracking-widest rotate-[-25deg] whitespace-nowrap">
           JG的反市場報告書
         </div>
       </div>
@@ -261,21 +261,21 @@ export default function StockDetailPage({
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-10">
             <div>
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary glow-red mb-3">{symbol}</h1>
-              <p className="text-2xl text-white font-light mb-2">{profile?.companyName || quote.name}</p>
-              <p className="text-sm text-gray-600 font-light tracking-wide">
+              <p className="text-2xl text-gray-900 font-light mb-2">{profile?.companyName || quote.name}</p>
+              <p className="text-sm text-gray-400 font-light tracking-wide">
                 {profile?.sector} • {profile?.industry}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-5xl font-bold text-white glow-white mb-2">${quote.price.toFixed(2)}</p>
+              <p className="text-5xl font-bold text-gray-900 glow-white mb-2">${quote.price.toFixed(2)}</p>
               <p className={`text-2xl font-light ${isPositive ? 'text-accent glow-gold' : 'text-primary glow-red'}`}>
                 {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{(quote.changesPercentage ?? quote.changePercentage ?? 0).toFixed(2)}%)
               </p>
               {atr14 !== null && (
                 <div className="mt-3 space-y-2">
                   <div className="flex items-center gap-3 justify-end">
-                    <span className="text-xs text-gray-500">ATR(14)</span>
-                    <span className="text-sm font-semibold text-white">${atr14.toFixed(2)}</span>
+                    <span className="text-xs text-gray-400">ATR(14)</span>
+                    <span className="text-sm font-semibold text-gray-900">${atr14.toFixed(2)}</span>
                     {atrPercent !== null && (
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         atrPercent >= 4 ? 'bg-red-900/40 text-red-400' :
@@ -288,13 +288,13 @@ export default function StockDetailPage({
                   </div>
                   {sma20 !== null && (
                     <div className="flex items-center gap-3 justify-end">
-                      <span className="text-xs text-gray-500">SMA(20)</span>
-                      <span className="text-sm text-gray-300">${sma20.toFixed(2)}</span>
+                      <span className="text-xs text-gray-400">SMA(20)</span>
+                      <span className="text-sm text-gray-600">${sma20.toFixed(2)}</span>
                       <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${signal.bg} ${signal.color}`}>
                         {signal.emoji} {signal.label}
                       </span>
                       {deviation !== null && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           乖離 {deviation >= 0 ? '+' : ''}{deviation.toFixed(1)}σ
                         </span>
                       )}
@@ -312,7 +312,7 @@ export default function StockDetailPage({
             </div>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 pt-8 border-t border-white/5">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 pt-8 border-t border-gray-200">
             <div>
               <p className="text-xs text-gray-500 font-light mb-2">市值</p>
               <p className="text-lg font-semibold">{formatNumber(quote.marketCap)}</p>
@@ -344,10 +344,10 @@ export default function StockDetailPage({
               {stockNews.map((news, i) => (
                 <div
                   key={i}
-                  className="p-4 bg-black/40 rounded-xl border-l-2 border-accent/50"
+                  className="p-4 bg-white/60 rounded-xl border-l-2 border-accent/50"
                 >
-                  <h3 className="text-base font-semibold text-white mb-3 leading-relaxed">{news.title}</h3>
-                  <p className="text-sm text-gray-300 leading-relaxed mb-3 whitespace-pre-line">{news.text}</p>
+                  <h3 className="text-base font-semibold text-gray-900 mb-3 leading-relaxed">{news.title}</h3>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-3 whitespace-pre-line">{news.text}</p>
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{news.site}</span>
                     <div className="flex items-center gap-3">
@@ -391,25 +391,25 @@ export default function StockDetailPage({
             <p className="text-xs text-gray-500 font-light mb-10">統計期間：{summary.date}</p>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="text-center p-5 bg-black/40 rounded-2xl">
+              <div className="text-center p-5 bg-white/60 rounded-2xl">
                 <p className="text-3xl font-bold text-primary mb-1">{summary.investorsHolding?.toLocaleString()}</p>
                 <p className="text-xs text-gray-500 font-light mb-2">持倉機構數</p>
                 <p className={`text-xs ${summary.investorsHoldingChange >= 0 ? 'text-accent' : 'text-primary'}`}>
                   {summary.investorsHoldingChange >= 0 ? '+' : ''}{summary.investorsHoldingChange} 較上季
                 </p>
               </div>
-              <div className="text-center p-5 bg-black/40 rounded-2xl">
+              <div className="text-center p-5 bg-white/60 rounded-2xl">
                 <p className="text-3xl font-bold mb-1">{formatNumber(summary.totalInvested)}</p>
                 <p className="text-xs text-gray-500 font-light mb-2">總投資金額</p>
                 <p className={`text-xs ${summary.totalInvestedChange >= 0 ? 'text-accent' : 'text-primary'}`}>
                   {summary.totalInvestedChange >= 0 ? '+' : ''}{formatNumber(summary.totalInvestedChange)}
                 </p>
               </div>
-              <div className="text-center p-5 bg-black/40 rounded-2xl">
+              <div className="text-center p-5 bg-white/60 rounded-2xl">
                 <p className="text-3xl font-bold mb-1">{summary.ownershipPercent?.toFixed(1)}%</p>
                 <p className="text-xs text-gray-500 font-light mb-2">機構持股比例</p>
               </div>
-              <div className="text-center p-5 bg-black/40 rounded-2xl">
+              <div className="text-center p-5 bg-white/60 rounded-2xl">
                 <p className="text-3xl font-bold mb-1">{summary.putCallRatio?.toFixed(2)}</p>
                 <p className="text-xs text-gray-500 font-light mb-2">看跌/看漲比</p>
                 <p className={`text-xs ${(summary.putCallRatio || 0) <= 1 ? 'text-accent' : 'text-primary'}`}>
@@ -419,20 +419,20 @@ export default function StockDetailPage({
             </div>
 
             <div className="grid grid-cols-4 gap-3">
-              <div className="text-center p-4 bg-black/40 rounded-xl">
+              <div className="text-center p-4 bg-white/60 rounded-xl">
                 <p className="text-2xl font-bold text-accent mb-1">{summary.increasedPositions}</p>
                 <p className="text-xs text-gray-500 font-light">增持</p>
               </div>
-              <div className="text-center p-4 bg-black/40 rounded-xl">
+              <div className="text-center p-4 bg-white/60 rounded-xl">
                 <p className="text-2xl font-bold text-primary mb-1">{summary.reducedPositions}</p>
                 <p className="text-xs text-gray-500 font-light">減持</p>
               </div>
-              <div className="text-center p-4 bg-black/40 rounded-xl">
+              <div className="text-center p-4 bg-white/60 rounded-xl">
                 <p className="text-2xl font-bold text-accent mb-1">{summary.newPositions}</p>
                 <p className="text-xs text-gray-500 font-light">新進</p>
               </div>
-              <div className="text-center p-4 bg-black/40 rounded-xl">
-                <p className="text-2xl font-bold text-gray-400 mb-1">{summary.closedPositions}</p>
+              <div className="text-center p-4 bg-white/60 rounded-xl">
+                <p className="text-2xl font-bold text-gray-500 mb-1">{summary.closedPositions}</p>
                 <p className="text-xs text-gray-500 font-light">清倉</p>
               </div>
             </div>
@@ -454,7 +454,7 @@ export default function StockDetailPage({
                 return (
                   <div key={data.quarter} className="flex-1 flex flex-col items-center">
                     <div className="w-full flex flex-col items-center justify-end" style={{ height: '200px' }}>
-                      <div className="text-xs text-gray-400 mb-2 font-medium">
+                      <div className="text-xs text-gray-500 mb-2 font-medium">
                         {formatNumber(data.totalInvested)}
                       </div>
                       <div 
@@ -467,7 +467,7 @@ export default function StockDetailPage({
                       />
                     </div>
                     <div className="mt-3 text-center">
-                      <p className="text-sm font-semibold text-white">{data.quarter}</p>
+                      <p className="text-sm font-semibold text-gray-900">{data.quarter}</p>
                       <p className="text-xs text-gray-500 mt-1">{data.investorsHolding} 機構</p>
                       {/* Flag last quarter if filing is likely incomplete */}
                       {index === quarterlyTrend.length - 1 && index > 0 &&
@@ -505,7 +505,7 @@ export default function StockDetailPage({
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   filterType === 'all'
                     ? 'bg-primary text-white'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    : 'bg-white/60 text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 全部
@@ -515,7 +515,7 @@ export default function StockDetailPage({
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   filterType === 'active'
                     ? 'bg-primary text-white'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    : 'bg-white/60 text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 🎯 主動型優先
@@ -525,7 +525,7 @@ export default function StockDetailPage({
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   filterType === 'passive'
                     ? 'bg-primary text-white'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                    : 'bg-white/60 text-gray-500 hover:bg-gray-100'
                 }`}
               >
                 🏦 被動型
@@ -539,7 +539,7 @@ export default function StockDetailPage({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-gray-500 border-b border-white/5">
+                  <tr className="text-gray-500 border-b border-gray-200">
                     <th className="text-left py-4 px-3 font-light">#</th>
                     <th className="text-left py-4 px-3 font-light">類型</th>
                     <th className="text-left py-4 px-3 font-light">機構名稱</th>
@@ -561,14 +561,14 @@ export default function StockDetailPage({
                     const convictionWeight = getConvictionWeight(h);
                     
                     return (
-                      <tr key={`${h.cik}-${i}`} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="py-4 px-3 text-gray-500 border-b border-white/5">{i + 1}</td>
-                        <td className="py-4 px-3 border-b border-white/5">
+                      <tr key={`${h.cik}-${i}`} className="hover:bg-gray-50 transition-colors">
+                        <td className="py-4 px-3 text-gray-500 border-b border-gray-200">{i + 1}</td>
+                        <td className="py-4 px-3 border-b border-gray-200">
                           <span className="text-xs">
                             {investorType === 'passive' ? '🏦' : '🎯'}
                           </span>
                         </td>
-                        <td className="py-4 px-3 border-b border-white/5">
+                        <td className="py-4 px-3 border-b border-gray-200">
                           <div className="flex items-center gap-2">
                             <div>
                               <p className="font-medium text-sm">{h.investorName}</p>
@@ -576,10 +576,10 @@ export default function StockDetailPage({
                             </div>
                           </div>
                         </td>
-                        <td className="text-right py-4 px-3 font-semibold border-b border-white/5">{formatShares(h.sharesNumber)}</td>
-                        <td className="text-right py-4 px-3 font-semibold border-b border-white/5">{formatNumber(h.marketValue)}</td>
-                        <td className="text-right py-4 px-3 font-semibold border-b border-white/5">{h.ownership?.toFixed(2)}%</td>
-                        <td className="text-right py-4 px-3 font-semibold border-b border-white/5">
+                        <td className="text-right py-4 px-3 font-semibold border-b border-gray-200">{formatShares(h.sharesNumber)}</td>
+                        <td className="text-right py-4 px-3 font-semibold border-b border-gray-200">{formatNumber(h.marketValue)}</td>
+                        <td className="text-right py-4 px-3 font-semibold border-b border-gray-200">{h.ownership?.toFixed(2)}%</td>
+                        <td className="text-right py-4 px-3 font-semibold border-b border-gray-200">
                           {convictionWeight !== null ? (
                             <span className={`${
                               convictionWeight > 10 
@@ -595,13 +595,13 @@ export default function StockDetailPage({
                             <span className="text-gray-500">N/A</span>
                           )}
                         </td>
-                        <td className={`text-right py-4 px-3 border-b border-white/5 ${isUp ? 'text-accent' : isDown ? 'text-primary' : 'text-gray-500'}`}>
+                        <td className={`text-right py-4 px-3 border-b border-gray-200 ${isUp ? 'text-accent' : isDown ? 'text-primary' : 'text-gray-500'}`}>
                           {isUp ? '+' : ''}{formatShares(h.changeInSharesNumber)}
                         </td>
-                        <td className={`text-right py-4 px-3 border-b border-white/5 ${isUp ? 'text-accent' : isDown ? 'text-primary' : 'text-gray-500'}`}>
+                        <td className={`text-right py-4 px-3 border-b border-gray-200 ${isUp ? 'text-accent' : isDown ? 'text-primary' : 'text-gray-500'}`}>
                           {isUp ? '+' : ''}{chgPct?.toFixed(1)}%
                         </td>
-                        <td className="text-center py-4 px-3 border-b border-white/5">
+                        <td className="text-center py-4 px-3 border-b border-gray-200">
                           {h.isNew ? (
                             <span className="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-lg">新進</span>
                           ) : h.isSoldOut ? (
@@ -628,11 +628,11 @@ export default function StockDetailPage({
           <div className="apple-card p-8">
             <h2 className="text-2xl font-bold mb-6">關於 {profile.companyName}</h2>
             {(profile.descriptionZh || profile.description) && (
-              <p className="text-gray-300 leading-relaxed text-base font-light mb-10">
+              <p className="text-gray-600 leading-relaxed text-base font-light mb-10">
                 {profile.descriptionZh || profile.description}
               </p>
             )}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8 pt-6 border-t border-white/5">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-8 pt-6 border-t border-gray-200">
               <div>
                 <p className="text-xs text-gray-500 font-light mb-2">公司名稱</p>
                 <p className="text-base font-semibold">{profile.companyName}</p>

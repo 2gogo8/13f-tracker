@@ -60,7 +60,7 @@ export default function SupplyChain({ symbol, suppliers }: SupplyChainProps) {
       <h2 className="font-serif text-2xl font-bold mb-2 flex items-center gap-2">
         供應鏈圖譜
       </h2>
-      <p className="text-sm text-gray-500 mb-6">
+      <p className="text-sm text-gray-400 mb-6">
         {symbol} 的關鍵供應商與合作夥伴（共 {suppliers.length} 家，台灣 {twCount} 家）
       </p>
 
@@ -78,7 +78,7 @@ export default function SupplyChain({ symbol, suppliers }: SupplyChainProps) {
             className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
               filter === f.key
                 ? 'bg-accent text-black'
-                : 'bg-[#111] text-gray-400 hover:bg-[#1A1A1A] hover:text-white'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900'
             }`}
           >
             {f.label}
@@ -110,7 +110,7 @@ export default function SupplyChain({ symbol, suppliers }: SupplyChainProps) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold text-white">{s.name}</span>
+                            <span className="text-sm font-bold text-gray-900">{s.name}</span>
                             <span className="text-[10px]">{mkt.flag}</span>
                           </div>
                           {s.ticker && (
@@ -118,7 +118,7 @@ export default function SupplyChain({ symbol, suppliers }: SupplyChainProps) {
                           )}
                         </div>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">{s.role}</p>
+                      <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{s.role}</p>
                     </div>
                   );
                 })}
