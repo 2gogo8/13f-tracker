@@ -253,7 +253,7 @@ export default function StockDetailPage({
       </div>
       <div className="max-w-6xl mx-auto relative z-10">
         <Link href="/" className="text-accent hover:text-accent/80 mb-8 inline-block text-sm font-light tracking-wide">
-          ← 返回 S&P 500
+          ← 返回總覽
         </Link>
 
         {/* Hero Section */}

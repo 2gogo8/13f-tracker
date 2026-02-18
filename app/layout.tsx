@@ -6,8 +6,8 @@ const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: '--font-playfair' });
 
 export const metadata: Metadata = {
-  title: "JG的反市場報告書 - S&P 500 機構持倉總覽",
-  description: "追蹤 S&P 500 股票的機構持股與 13F 申報資料",
+  title: "JG的反市場報告書 - 美股機構持倉總覽",
+  description: "追蹤 S&P 500 + NASDAQ-100 股票的機構持股與 13F 申報資料",
 };
 
 export default function RootLayout({

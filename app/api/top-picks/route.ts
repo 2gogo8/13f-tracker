@@ -28,15 +28,18 @@ export async function GET() {
   }
 
   try {
-    // Step 1: Get S&P 500 symbols
-    const sp500Res = await fetch(
-      `https://financialmodelingprep.com/stable/sp500-constituent?apikey=${FMP_KEY}`,
-      { signal: AbortSignal.timeout(5000) }
-    );
-    const sp500 = await sp500Res.json();
+    // Step 1: Get S&P 500 + NASDAQ-100 symbols (merged, deduplicated)
+    const [sp500Res, nasdaqRes] = await Promise.all([
+      fetch(`https://financialmodelingprep.com/stable/sp500-constituent?apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(5000) }),
+      fetch(`https://financialmodelingprep.com/stable/nasdaq-constituent?apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(5000) }),
+    ]);
+    const [sp500, nasdaq] = await Promise.all([sp500Res.json(), nasdaqRes.json()]);
     if (!Array.isArray(sp500)) return NextResponse.json([]);
 
-    const allSymbols = sp500.map((s: { symbol: string }) => s.symbol);
+    const symbolSet = new Set<string>();
+    for (const s of sp500) symbolSet.add(s.symbol);
+    if (Array.isArray(nasdaq)) for (const s of nasdaq) symbolSet.add(s.symbol);
+    const allSymbols = Array.from(symbolSet);
 
     // Step 2: Batch fetch quotes (40 per call, ~13 calls for 500 stocks)
     const batchSize = 40;

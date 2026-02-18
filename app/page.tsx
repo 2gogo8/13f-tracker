@@ -11,6 +11,7 @@ import ScannerButtons, { ScannerType } from '@/components/ScannerButtons';
 import SectorPerformanceBar from '@/components/SectorPerformanceBar';
 import SentimentGauge from '@/components/SentimentGauge';
 import TopPicks from '@/components/TopPicks';
+import GrowthPicks from '@/components/GrowthPicks';
 import TrendingNews from '@/components/TrendingNews';
 import { DashboardStock, TopMoverStock, SortOption, SectorPerformance, TrendingNewsItem } from '@/types';
 
@@ -245,7 +246,7 @@ export default function Home() {
         </h1>
         <div className="gradient-line mb-8"></div>
         <p className="text-gray-500 font-light text-lg tracking-[0.2em] uppercase">
-          S&P 500 機構持倉戰情儀表板
+          美股機構持倉戰情儀表板
         </p>
       </header>
 
@@ -280,12 +281,13 @@ export default function Home() {
         </div>
 
         {/* Top Picks - Oversold + Large Cap */}
+        <GrowthPicks />
         <TopPicks />
 
         {loading ? (
           <div className="text-center py-32">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
-            <p className="mt-6 text-gray-500 font-light">載入 S&P 500 股票中...</p>
+            <p className="mt-6 text-gray-500 font-light">載入美股數據中...</p>
           </div>
         ) : (
           <>

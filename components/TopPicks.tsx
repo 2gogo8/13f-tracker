@@ -73,7 +73,7 @@ export default function TopPicks() {
             負乖離精選
           </h2>
           <p className="text-[10px] text-gray-600 mt-0.5">
-            S&P 500 全掃描・現價 &lt; 50MA − 2×ATR・共 {picks.length} 檔亮燈
+            美股全掃描・現價 &lt; 50MA − 2×ATR・共 {picks.length} 檔亮燈
           </p>
         </div>
         <span className="text-[10px] px-2.5 py-1 rounded-full bg-blue-900/30 text-blue-400 font-medium tracking-wider uppercase">
