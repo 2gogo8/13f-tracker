@@ -120,9 +120,12 @@ export default function TwAntiMarketPicks() {
 
           <div className="divide-y divide-accent/[0.15]">
             {displayed.map((stock) => (
-              <div
+              <a
                 key={stock.symbol}
-                className="flex items-center py-3 px-2 rounded transition-all hover:bg-gray-50 group"
+                href={`https://tw.stock.yahoo.com/quote/${stock.symbol}.TW`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center py-3 px-2 rounded transition-all hover:bg-gray-50 active:bg-primary/10 group cursor-pointer"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -142,7 +145,7 @@ export default function TwAntiMarketPicks() {
                 <span className="w-14 text-right text-xs font-mono text-gray-600">
                   {stock.atr14.toFixed(1)}
                 </span>
-              </div>
+              </a>
             ))}
           </div>
 
