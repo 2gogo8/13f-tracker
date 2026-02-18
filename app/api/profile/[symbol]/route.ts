@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall, trackSymbolView } from '@/lib/api-stats';
 
 const FMP_API_KEY = process.env.FMP_API_KEY;
 const FMP_BASE_URL = 'https://financialmodelingprep.com';
@@ -22,31 +23,41 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const startTime = Date.now();
   const { symbol } = await params;
+  trackSymbolView(symbol);
   
   try {
-    const response = await fetch(
+    const fetchResponse = await fetch(
       `${FMP_BASE_URL}/stable/profile?symbol=${symbol}&apikey=${FMP_API_KEY}`,
       { next: { revalidate: 3600 } }
     );
 
-    if (!response.ok) {
+    if (!fetchResponse.ok) {
       throw new Error('Failed to fetch company profile');
     }
 
-    const data = await response.json();
+    const data = await fetchResponse.json();
     
     // Translate description to Chinese
     if (data[0]?.description) {
       data[0].descriptionZh = await translateToZh(data[0].description);
     }
 
-    return NextResponse.json(data);
+    const res = NextResponse.json(data);
+    res.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    res.headers.set('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    trackApiCall(`/api/profile/${symbol}`, Date.now() - startTime, false);
+    return res;
   } catch (error) {
     console.error(`Error fetching profile for ${symbol}:`, error);
-    return NextResponse.json(
+    trackApiCall(`/api/profile/${symbol}`, Date.now() - startTime, true);
+    const res = NextResponse.json(
       { error: 'Failed to fetch company profile' },
       { status: 500 }
     );
+    res.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    res.headers.set('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    return res;
   }
 }

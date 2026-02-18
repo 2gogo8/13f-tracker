@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 export const maxDuration = 60;
 
@@ -25,10 +26,16 @@ interface AntiMarketPick {
 }
 
 export async function GET() {
+  const startTime = Date.now();
+  
   try {
     const now = Date.now();
     if (cachedData && now - cacheTimestamp < CACHE_DURATION) {
-      return NextResponse.json(cachedData);
+      const response = NextResponse.json(cachedData);
+      response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+      trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
+      return response;
     }
 
     // Step 1: Get oversold stocks from our existing endpoint data

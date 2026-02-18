@@ -150,13 +150,14 @@ export default function StockDetailPage({
   // Calculate ATR (14-day Average True Range)
   const atr14 = (() => {
     if (historicalData.length < 15) return null;
-    // historicalData is newest-first, reverse for chronological
-    const sorted = [...historicalData].reverse();
+    // historicalData is oldest-first (ascending by date)
+    // Take the last 15 entries to calculate ATR from most recent 14 days
+    const recent = historicalData.slice(-15);
     const trValues: number[] = [];
-    for (let i = 1; i < sorted.length && trValues.length < 14; i++) {
-      const high = sorted[i].high ?? 0;
-      const low = sorted[i].low ?? 0;
-      const prevClose = sorted[i - 1].close ?? 0;
+    for (let i = 1; i < recent.length; i++) {
+      const high = recent[i].high ?? 0;
+      const low = recent[i].low ?? 0;
+      const prevClose = recent[i - 1].close ?? 0;
       const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
       trValues.push(tr);
     }
@@ -168,7 +169,7 @@ export default function StockDetailPage({
   // Calculate SMA20 and Oversold/Overbought Signal
   const sma20 = (() => {
     if (historicalData.length < 20) return null;
-    const recent20 = historicalData.slice(0, 20); // newest-first
+    const recent20 = historicalData.slice(-20); // data is oldest-first, take last 20
     return recent20.reduce((sum, d) => sum + (d.close ?? 0), 0) / 20;
   })();
 

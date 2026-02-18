@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 const FMP_API_KEY = process.env.FMP_API_KEY;
 const FMP_BASE_URL = 'https://financialmodelingprep.com';
 
 export async function GET() {
+  const startTime = Date.now();
+  
   try {
     // Fetch both S&P 500 and NASDAQ-100 in parallel
     const [sp500Res, nasdaqRes] = await Promise.all([
@@ -42,12 +45,20 @@ export async function GET() {
     }
 
     const merged = Array.from(symbolMap.values());
-    return NextResponse.json(merged);
+    const response = NextResponse.json(merged);
+    response.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    trackApiCall('/api/sp500', Date.now() - startTime, false);
+    return response;
   } catch (error) {
     console.error('Error fetching stock universe:', error);
-    return NextResponse.json(
+    trackApiCall('/api/sp500', Date.now() - startTime, true);
+    const response = NextResponse.json(
       { error: 'Failed to fetch stock data' },
       { status: 500 }
     );
+    response.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+    return response;
   }
 }

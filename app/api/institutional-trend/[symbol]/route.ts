@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall, trackSymbolView } from '@/lib/api-stats';
 import { QuarterlyTrendData } from '@/types';
 
 const FMP_API_KEY = process.env.FMP_API_KEY;
@@ -8,7 +9,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const startTime = Date.now();
+
   const { symbol } = await params;
+    trackSymbolView(symbol);
 
   try {
     // Fetch last 4 quarters: Q4 2025, Q3 2025, Q2 2025, Q1 2025
@@ -47,12 +51,28 @@ export async function GET(
     }
 
     // Reverse to show oldest to newest (Q1 -> Q4)
-    return NextResponse.json(data.reverse());
+    const response = NextResponse.json(data.reverse());
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/institutional-trend${symbol}', Date.now() - startTime, false);
+
+    return response;
   } catch (error) {
     console.error(`Error fetching quarterly trend for ${symbol}:`, error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to fetch quarterly trend' },
       { status: 500 }
     );
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/institutional-trend${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 }

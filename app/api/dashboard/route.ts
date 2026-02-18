@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 const FMP_API_KEY = process.env.FMP_API_KEY;
 const FMP_BASE_URL = 'https://financialmodelingprep.com';
 
 export async function GET() {
+  const startTime = Date.now();
+  
   try {
     // Only fetch S&P 500 list — quotes are fetched client-side
     const sp500Response = await fetch(
@@ -27,9 +30,17 @@ export async function GET() {
       changesPercentage: 0,
     }));
 
-    return NextResponse.json(stocks);
+    const response = NextResponse.json(stocks);
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    trackApiCall('/api/dashboard', Date.now() - startTime, false);
+    return response;
   } catch (error) {
     console.error('Error in dashboard API:', error);
-    return NextResponse.json([]);
+    trackApiCall('/api/dashboard', Date.now() - startTime, true);
+    const response = NextResponse.json([]);
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    return response;
   }
 }

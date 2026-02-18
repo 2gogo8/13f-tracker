@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 export const maxDuration = 30;
 
@@ -88,42 +89,61 @@ async function fetchFreshData(): Promise<{ sector: string; changesPercentage: nu
 }
 
 export async function GET() {
-  const marketOpen = isUSMarketOpen();
-  const now = Date.now();
+  const startTime = Date.now();
+  
+  try {
+    const marketOpen = isUSMarketOpen();
+    const now = Date.now();
 
-  // If cache is fresh enough, return it
-  if (cachedData && (now - cachedData.timestamp < CACHE_LIVE_MS)) {
-    return NextResponse.json({
+    // If cache is fresh enough, return it
+    if (cachedData && (now - cachedData.timestamp < CACHE_LIVE_MS)) {
+      const response = NextResponse.json({
+        sectors: cachedData.sectors,
+        isLive: cachedData.isLive,
+        cachedAt: cachedData.timestamp,
+      });
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      trackApiCall('/api/sector-performance', Date.now() - startTime, false);
+      return response;
+    }
+
+    // Try to fetch fresh data
+    const freshData = await fetchFreshData();
+
+    if (freshData && freshData.length > 0) {
+      // Check if data is all zeros (market closed returns 0s)
+      const allZero = freshData.every(s => Math.abs(s.changesPercentage) < 0.001);
+
+      if (allZero && cachedData && cachedData.sectors.length > 0) {
+        // Market returned zeros — use last known good data
+        cachedData = { ...cachedData, timestamp: now, isLive: false };
+      } else {
+        cachedData = { sectors: freshData, timestamp: now, isLive: !allZero };
+      }
+    } else if (!cachedData) {
+      // No fresh data and no cache — return empty
+      const response = NextResponse.json({ sectors: [], isLive: false, cachedAt: now });
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      trackApiCall('/api/sector-performance', Date.now() - startTime, false);
+      return response;
+    } else {
+      // Fetch failed but we have cache — keep serving it
+      cachedData = { ...cachedData, timestamp: now, isLive: false };
+    }
+
+    const response = NextResponse.json({
       sectors: cachedData.sectors,
       isLive: cachedData.isLive,
       cachedAt: cachedData.timestamp,
     });
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    trackApiCall('/api/sector-performance', Date.now() - startTime, false);
+    return response;
+  } catch (error) {
+    trackApiCall('/api/sector-performance', Date.now() - startTime, true);
+    throw error;
   }
-
-  // Try to fetch fresh data
-  const freshData = await fetchFreshData();
-
-  if (freshData && freshData.length > 0) {
-    // Check if data is all zeros (market closed returns 0s)
-    const allZero = freshData.every(s => Math.abs(s.changesPercentage) < 0.001);
-
-    if (allZero && cachedData && cachedData.sectors.length > 0) {
-      // Market returned zeros — use last known good data
-      cachedData = { ...cachedData, timestamp: now, isLive: false };
-    } else {
-      cachedData = { sectors: freshData, timestamp: now, isLive: !allZero };
-    }
-  } else if (!cachedData) {
-    // No fresh data and no cache — return empty
-    return NextResponse.json({ sectors: [], isLive: false, cachedAt: now });
-  } else {
-    // Fetch failed but we have cache — keep serving it
-    cachedData = { ...cachedData, timestamp: now, isLive: false };
-  }
-
-  return NextResponse.json({
-    sectors: cachedData.sectors,
-    isLive: cachedData.isLive,
-    cachedAt: cachedData.timestamp,
-  });
 }

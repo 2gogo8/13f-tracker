@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall, trackSymbolView } from '@/lib/api-stats';
 
 const FMP_API_KEY = process.env.FMP_API_KEY;
 const FMP_BASE_URL = 'https://financialmodelingprep.com';
@@ -7,7 +8,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const startTime = Date.now();
+
   const { symbol } = await params;
+    trackSymbolView(symbol);
 
   try {
     // Fetch both holder details and summary in parallel
@@ -56,12 +60,32 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ holders, summary });
+    const response = NextResponse.json({ holders, summary });
+
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+
+    trackApiCall('/api/institutional${symbol}', Date.now() - startTime, false);
+
+
+    return response;
   } catch (error) {
     console.error(`Error fetching institutional holders for ${symbol}:`, error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Failed to fetch institutional holders' },
       { status: 500 }
     );
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/institutional${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 }

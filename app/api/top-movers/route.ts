@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 export const maxDuration = 60;
 
@@ -29,6 +30,8 @@ export interface TopMoverStock {
 }
 
 export async function GET() {
+  const startTime = Date.now();
+  
   try {
     const stocks: TopMoverStock[] = [];
 
@@ -94,16 +97,24 @@ export async function GET() {
       .sort((a, b) => a.totalInvestedChange - b.totalInvestedChange)
       .slice(0, 10);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       topAccumulation,
       topReduction,
       allStocks: stocks,
     });
+    response.headers.set('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=600');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=600, stale-while-revalidate=600');
+    trackApiCall('/api/top-movers', Date.now() - startTime, false);
+    return response;
   } catch (error) {
     console.error('Error in top-movers API:', error);
-    return NextResponse.json(
+    trackApiCall('/api/top-movers', Date.now() - startTime, true);
+    const response = NextResponse.json(
       { error: 'Failed to fetch top movers data' },
       { status: 500 }
     );
+    response.headers.set('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=600');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=600, stale-while-revalidate=600');
+    return response;
   }
 }

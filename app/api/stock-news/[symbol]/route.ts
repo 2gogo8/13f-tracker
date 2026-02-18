@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall, trackSymbolView } from '@/lib/api-stats';
 
 export const maxDuration = 60;
 
@@ -106,7 +107,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const startTime = Date.now();
+
   const { symbol } = await params;
+    trackSymbolView(symbol);
   const upperSymbol = symbol.toUpperCase();
 
   try {
@@ -180,9 +184,29 @@ export async function GET(
 
     const news = await Promise.all(newsPromises);
 
-    return NextResponse.json(news);
+    const response = NextResponse.json(news);
+
+
+    response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+
+
+    trackApiCall('/api/stock-news${symbol}', Date.now() - startTime, false);
+
+
+    return response;
   } catch (error) {
     console.error(`Error fetching news for ${symbol}:`, error);
-    return NextResponse.json([]);
+    const response = NextResponse.json([]);
+
+    response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+
+    trackApiCall('/api/stock-news${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { trackApiCall, trackSymbolView } from '@/lib/api-stats';
 
 const FMP_KEY = process.env.FMP_API_KEY || '3c03eZvjdPpKONYydbgoAT9chCaQDnsp';
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
@@ -13,17 +14,36 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const startTime = Date.now();
+
   const { symbol } = await params;
+    trackSymbolView(symbol);
   const sym = symbol.toUpperCase();
 
   // Check cache
   const cached = cache.get(sym);
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return NextResponse.json({ analysis: cached.data });
+    const response = NextResponse.json({ analysis: cached.data });
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/ai-analysis${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 
   if (!GEMINI_KEY) {
-    return NextResponse.json({ analysis: null, error: 'Gemini API key not configured' });
+    const response = NextResponse.json({ analysis: null, error: 'Gemini API key not configured' });
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/ai-analysis${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 
   try {
@@ -39,7 +59,15 @@ export async function GET(
     const consensus = consensusRes.status === 'fulfilled' && Array.isArray(consensusRes.value) ? consensusRes.value[0] : null;
 
     if (!quote) {
-      return NextResponse.json({ analysis: null, error: 'No quote data' });
+      const response = NextResponse.json({ analysis: null, error: 'No quote data' });
+
+      response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+      trackApiCall('/api/ai-analysis${symbol}', Date.now() - startTime, false);
+
+      return response;
     }
 
     // Build context for Gemini
@@ -95,12 +123,32 @@ ${context}`
       cache.set(sym, { data: analysis, timestamp: Date.now() });
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       analysis,
       consensus: consensus || null,
     });
+
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+
+    trackApiCall('/api/ai-analysis${symbol}', Date.now() - startTime, false);
+
+
+    return response;
   } catch (error) {
     console.error('AI analysis error:', error);
-    return NextResponse.json({ analysis: null, error: 'Failed to generate analysis' });
+    const response = NextResponse.json({ analysis: null, error: 'Failed to generate analysis' });
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/ai-analysis${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 }

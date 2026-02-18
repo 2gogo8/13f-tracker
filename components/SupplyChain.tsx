@@ -14,13 +14,13 @@ const marketLabels: Record<string, { label: string; flag: string }> = {
 };
 
 const categoryLabels: Record<string, { label: string; emoji: string; color: string }> = {
-  chip: { label: '晶片', emoji: '🔲', color: 'border-blue-500/30 bg-blue-950/20' },
-  assembly: { label: '組裝代工', emoji: '🏭', color: 'border-amber-500/30 bg-amber-950/20' },
-  component: { label: '零組件', emoji: '⚙️', color: 'border-green-500/30 bg-green-950/20' },
-  equipment: { label: '設備', emoji: '🔧', color: 'border-purple-500/30 bg-purple-950/20' },
-  material: { label: '材料', emoji: '🧱', color: 'border-orange-500/30 bg-orange-950/20' },
-  software: { label: '軟體', emoji: '💻', color: 'border-cyan-500/30 bg-cyan-950/20' },
-  service: { label: '客戶關係', emoji: '🤝', color: 'border-pink-500/30 bg-pink-950/20' },
+  chip: { label: '晶片', emoji: '🔲', color: 'border-blue-300 bg-blue-50/80' },
+  assembly: { label: '組裝代工', emoji: '🏭', color: 'border-amber-300 bg-amber-50/80' },
+  component: { label: '零組件', emoji: '⚙️', color: 'border-green-300 bg-green-50/80' },
+  equipment: { label: '設備', emoji: '🔧', color: 'border-purple-300 bg-purple-50/80' },
+  material: { label: '材料', emoji: '🧱', color: 'border-orange-300 bg-orange-50/80' },
+  software: { label: '軟體', emoji: '💻', color: 'border-cyan-300 bg-cyan-50/80' },
+  service: { label: '客戶關係', emoji: '🤝', color: 'border-pink-300 bg-pink-50/80' },
 };
 
 type FilterMarket = 'all' | 'TW' | 'US' | 'other';
@@ -91,7 +91,7 @@ export default function SupplyChain({ symbol, suppliers }: SupplyChainProps) {
         {categoryOrder.map(cat => {
           const items = grouped[cat];
           if (!items || items.length === 0) return null;
-          const catInfo = categoryLabels[cat] || { label: cat, emoji: '📦', color: 'border-gray-500/30 bg-gray-950/20' };
+          const catInfo = categoryLabels[cat] || { label: cat, emoji: '📦', color: 'border-gray-300 bg-gray-100/80' };
 
           return (
             <div key={cat}>

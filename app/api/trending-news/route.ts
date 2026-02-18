@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 export const maxDuration = 60;
 
@@ -25,10 +26,16 @@ async function translateToZh(text: string): Promise<string> {
 }
 
 export async function GET() {
+  const startTime = Date.now();
+  
   try {
     const now = Date.now();
     if (cachedData && now - cacheTimestamp < CACHE_DURATION) {
-      return NextResponse.json(cachedData);
+      const response = NextResponse.json(cachedData);
+      response.headers.set('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=900');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=900, stale-while-revalidate=900');
+      trackApiCall('/api/trending-news', Date.now() - startTime, false);
+      return response;
     }
 
     // Fetch top picks (oversold stocks) to get their symbols
@@ -134,9 +141,17 @@ export async function GET() {
     cachedData = results;
     cacheTimestamp = now;
 
-    return NextResponse.json(results);
+    const response = NextResponse.json(results);
+    response.headers.set('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=900');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=900, stale-while-revalidate=900');
+    trackApiCall('/api/trending-news', Date.now() - startTime, false);
+    return response;
   } catch (error) {
     console.error('Error fetching trending news:', error);
-    return NextResponse.json([]);
+    trackApiCall('/api/trending-news', Date.now() - startTime, true);
+    const response = NextResponse.json([]);
+    response.headers.set('Cache-Control', 'public, s-maxage=900, stale-while-revalidate=900');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=900, stale-while-revalidate=900');
+    return response;
   }
 }

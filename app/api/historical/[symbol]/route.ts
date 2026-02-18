@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { trackApiCall, trackSymbolView } from '@/lib/api-stats';
 
 const FMP_API_KEY = process.env.FMP_API_KEY;
 const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours
@@ -21,9 +22,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const startTime = Date.now();
   const { symbol } = await params;
+  trackSymbolView(symbol);
 
   if (!FMP_API_KEY) {
+    trackApiCall(`/api/historical/${symbol}`, Date.now() - startTime, true);
     return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
   }
 
@@ -31,7 +35,11 @@ export async function GET(
   const cached = cache.get(cacheKey);
   
   if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return NextResponse.json(cached.data);
+    const res = NextResponse.json(cached.data);
+    res.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    res.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    trackApiCall(`/api/historical/${symbol}`, Date.now() - startTime, false);
+    return res;
   }
 
   try {
@@ -64,7 +72,11 @@ export async function GET(
       Array.isArray(raw) ? raw : (raw.historical ?? []);
 
     if (!items.length) {
-      return NextResponse.json({ symbol, historical: [] });
+      const res = NextResponse.json({ symbol, historical: [] });
+      res.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+      res.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+      trackApiCall(`/api/historical/${symbol}`, Date.now() - startTime, false);
+      return res;
     }
 
     // Filter to last 730 days (2 years) and sort by date ascending
@@ -82,12 +94,20 @@ export async function GET(
 
     cache.set(cacheKey, { data: result, timestamp: Date.now() });
 
-    return NextResponse.json(result);
+    const res = NextResponse.json(result);
+    res.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    res.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    trackApiCall(`/api/historical/${symbol}`, Date.now() - startTime, false);
+    return res;
   } catch (error) {
     console.error('Error fetching historical data:', error);
-    return NextResponse.json(
+    trackApiCall(`/api/historical/${symbol}`, Date.now() - startTime, true);
+    const res = NextResponse.json(
       { error: 'Failed to fetch historical data' },
       { status: 500 }
     );
+    res.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    res.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    return res;
   }
 }

@@ -37,7 +37,7 @@ export default function AIAnalysis({ symbol }: AIAnalysisProps) {
       <div className="apple-card p-6 md:p-8 mb-10">
         <h2 className="font-serif text-2xl font-bold mb-4">分析師觀點</h2>
         <div className="flex items-center gap-3 py-8">
-          <div className="animate-pulse h-3 bg-white/5 rounded w-full" />
+          <div className="animate-pulse h-3 bg-white/60 rounded w-full" />
         </div>
         <p className="text-[10px] text-gray-500 text-center">AI 分析生成中...</p>
       </div>

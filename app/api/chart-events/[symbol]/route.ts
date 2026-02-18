@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall, trackSymbolView } from '@/lib/api-stats';
 
 export const maxDuration = 30;
 
@@ -18,12 +19,23 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ symbol: string }> }
 ) {
+  const startTime = Date.now();
+
   const { symbol } = await params;
+    trackSymbolView(symbol);
   const upper = symbol.toUpperCase();
 
   const cached = cache.get(upper);
   if (cached && Date.now() - cached.ts < CACHE_DURATION) {
-    return NextResponse.json(cached.data);
+    const response = NextResponse.json(cached.data);
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/chart-events${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 
   try {
@@ -116,9 +128,29 @@ export async function GET(
 
     cache.set(upper, { data: limited, ts: Date.now() });
 
-    return NextResponse.json(limited);
+    const response = NextResponse.json(limited);
+
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+
+    trackApiCall('/api/chart-events${symbol}', Date.now() - startTime, false);
+
+
+    return response;
   } catch (error) {
     console.error('Error fetching chart events:', error);
-    return NextResponse.json([]);
+    const response = NextResponse.json([]);
+
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+
+    trackApiCall('/api/chart-events${symbol}', Date.now() - startTime, false);
+
+    return response;
   }
 }

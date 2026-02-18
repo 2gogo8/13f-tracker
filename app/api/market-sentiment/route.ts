@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 const FMP_KEY = process.env.FMP_API_KEY || '3c03eZvjdPpKONYydbgoAT9chCaQDnsp';
 
@@ -9,12 +10,17 @@ let cachedResult: { data: Record<string, unknown>; timestamp: number } | null = 
 const CACHE_MS = 5 * 60 * 1000; // 5 min
 
 export async function GET() {
-  const now = Date.now();
-  if (cachedResult && (now - cachedResult.timestamp < CACHE_MS)) {
-    return NextResponse.json(cachedResult.data);
-  }
-
+  const startTime = Date.now();
+  
   try {
+    const now = Date.now();
+    if (cachedResult && (now - cachedResult.timestamp < CACHE_MS)) {
+      const response = NextResponse.json(cachedResult.data);
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      trackApiCall('/api/market-sentiment', Date.now() - startTime, false);
+      return response;
+    }
     const signals: { name: string; score: number; label: string }[] = [];
 
     // Signal 1: Market breadth from sector performance
@@ -96,15 +102,30 @@ export async function GET() {
     } else {
       // Return cached data but update timestamp so we don't hammer API
       cachedResult = { ...cachedResult, timestamp: now };
-      return NextResponse.json({ ...cachedResult.data, isLive: false });
+      const response = NextResponse.json({ ...cachedResult.data, isLive: false });
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      trackApiCall('/api/market-sentiment', Date.now() - startTime, false);
+      return response;
     }
 
-    return NextResponse.json(result);
+    const response = NextResponse.json(result);
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    trackApiCall('/api/market-sentiment', Date.now() - startTime, false);
+    return response;
   } catch (error) {
     console.error('Market sentiment error:', error);
+    trackApiCall('/api/market-sentiment', Date.now() - startTime, true);
     if (cachedResult) {
-      return NextResponse.json({ ...cachedResult.data, isLive: false });
+      const response = NextResponse.json({ ...cachedResult.data, isLive: false });
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      return response;
     }
-    return NextResponse.json({ overall: 50, label: '中性', signals: [], isLive: false, updatedAt: new Date().toISOString() });
+    const response = NextResponse.json({ overall: 50, label: '中性', signals: [], isLive: false, updatedAt: new Date().toISOString() });
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+    return response;
   }
 }

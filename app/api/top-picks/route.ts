@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 const FMP_KEY = process.env.FMP_API_KEY || '3c03eZvjdPpKONYydbgoAT9chCaQDnsp';
 
@@ -23,8 +24,14 @@ let cache: { data: TopPick[]; timestamp: number } | null = null;
 const CACHE_DURATION = 2 * 60 * 60 * 1000;
 
 export async function GET() {
+  const startTime = Date.now();
+  
   if (cache && Date.now() - cache.timestamp < CACHE_DURATION) {
-    return NextResponse.json(cache.data);
+    const response = NextResponse.json(cache.data);
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    trackApiCall('/api/top-picks', Date.now() - startTime, false);
+    return response;
   }
 
   try {
@@ -99,9 +106,17 @@ export async function GET() {
     picks.sort((a, b) => a.deviation - b.deviation);
 
     cache = { data: picks, timestamp: Date.now() };
-    return NextResponse.json(picks);
+    const response = NextResponse.json(picks);
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    trackApiCall('/api/top-picks', Date.now() - startTime, false);
+    return response;
   } catch (error) {
     console.error('Top picks error:', error);
-    return NextResponse.json([]);
+    trackApiCall('/api/top-picks', Date.now() - startTime, true);
+    const response = NextResponse.json([]);
+    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    return response;
   }
 }

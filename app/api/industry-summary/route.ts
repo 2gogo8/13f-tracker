@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { trackApiCall } from '@/lib/api-stats';
 
 const FMP_API_KEY = process.env.FMP_API_KEY;
 const FMP_BASE_URL = 'https://financialmodelingprep.com';
@@ -34,6 +35,8 @@ function categorize(title: string): string {
 }
 
 export async function GET() {
+  const startTime = Date.now();
+
   try {
     const res = await fetch(
       `${FMP_BASE_URL}/stable/institutional-ownership/industry-summary?year=2025&quarter=4&apikey=${FMP_API_KEY}`,
@@ -58,7 +61,7 @@ export async function GET() {
 
     const total = result.reduce((sum, r) => sum + r.value, 0);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       quarter: 'Q4 2025',
       date: '2025-12-31',
       total,
@@ -67,8 +70,28 @@ export async function GET() {
         percentage: Number(((r.value / total) * 100).toFixed(1)),
       })),
     });
+
+
+    response.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+
+
+    trackApiCall('/api/industry-summary', Date.now() - startTime, false);
+
+
+    return response;
   } catch (error) {
     console.error('Error fetching industry summary:', error);
-    return NextResponse.json({ error: 'Failed to fetch industry summary' }, { status: 500 });
+    const response = NextResponse.json({ error: 'Failed to fetch industry summary' }, { status: 500 });
+
+    response.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+
+    trackApiCall('/api/industry-summary', Date.now() - startTime, false);
+
+    return response;
   }
 }
