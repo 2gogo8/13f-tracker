@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 
 interface TwAntiMarketPick {
   symbol: string;
@@ -120,11 +121,9 @@ export default function TwAntiMarketPicks() {
 
           <div className="divide-y divide-accent/[0.15]">
             {displayed.map((stock) => (
-              <a
+              <Link
                 key={stock.symbol}
-                href={`https://tw.stock.yahoo.com/quote/${stock.symbol}.TW`}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={`/tw/${stock.symbol}`}
                 className="flex items-center py-3 px-2 rounded transition-all hover:bg-gray-50 active:bg-primary/10 group cursor-pointer"
               >
                 <div className="flex-1 min-w-0">
@@ -145,7 +144,7 @@ export default function TwAntiMarketPicks() {
                 <span className="w-14 text-right text-xs font-mono text-gray-600">
                   {stock.atr14.toFixed(1)}
                 </span>
-              </a>
+              </Link>
             ))}
           </div>
 
