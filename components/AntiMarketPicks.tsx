@@ -141,7 +141,7 @@ export default function AntiMarketPicks() {
                   </div>
                 </div>
                 <span className="w-14 text-right text-xs font-mono text-primary font-semibold">
-                  {stock.deviation.toFixed(1)}%
+                  {stock.deviation.toFixed(1)}σ
                 </span>
                 <span className="w-14 text-right text-xs font-mono text-blue-400">
                   +{stock.revenueGrowth.toFixed(0)}%
@@ -176,7 +176,7 @@ export default function AntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        點擊欄位標題排序 | 偏離 = 現價 vs 50MA | R40 = 成長率 + 淨利率 | 僅供參考
+        點擊欄位標題排序 | 偏離 = (現價-SMA20)/ATR14 | R40 = 成長率 + 淨利率 | 僅供參考
       </p>
     </div>
   );
