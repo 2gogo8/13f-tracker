@@ -168,7 +168,7 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
     pressTimer.current = setTimeout(() => {
       setIsPressed(true);
       updateCrosshair(touch.clientX, touch.clientY);
-    }, 300); // 300ms long press
+    }, 200); // 200ms long press
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
