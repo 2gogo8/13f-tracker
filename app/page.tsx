@@ -11,7 +11,7 @@ import ScannerButtons, { ScannerType } from '@/components/ScannerButtons';
 import SectorPerformanceBar from '@/components/SectorPerformanceBar';
 import SentimentGauge from '@/components/SentimentGauge';
 import TopPicks from '@/components/TopPicks';
-import GrowthPicks from '@/components/GrowthPicks';
+import AntiMarketPicks from '@/components/AntiMarketPicks';
 import TrendingNews from '@/components/TrendingNews';
 import { DashboardStock, TopMoverStock, SortOption, SectorPerformance, TrendingNewsItem } from '@/types';
 
@@ -281,7 +281,7 @@ export default function Home() {
         </div>
 
         {/* Top Picks - Oversold + Large Cap */}
-        <GrowthPicks />
+        <AntiMarketPicks />
         <TopPicks />
 
         {loading ? (
