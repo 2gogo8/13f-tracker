@@ -7,6 +7,7 @@ import SortSelect from '@/components/SortSelect';
 import PieChart, { PieSlice } from '@/components/PieChart';
 import CompactStockRow from '@/components/CompactStockRow';
 import HeatmapGrid from '@/components/HeatmapGrid';
+import SectorHeatmap from '@/components/SectorHeatmap';
 import ScannerButtons, { ScannerType } from '@/components/ScannerButtons';
 import SectorPerformanceBar from '@/components/SectorPerformanceBar';
 import SentimentGauge from '@/components/SentimentGauge';
@@ -377,21 +378,8 @@ export default function Home() {
                   />
                 )}
 
-                {/* Heatmap */}
-                {topMovers && topMovers.allStocks.length > 0 && (
-                  <div className="apple-card p-8">
-                    <h2 className="font-serif text-2xl font-bold mb-6">機構持倉熱力圖</h2>
-                    <p className="text-sm text-gray-500 mb-6">
-                      綠色 = 機構加碼 | 紅色 = 機構減倉 | 灰色 = 持平
-                    </p>
-                    <HeatmapGrid
-                      stocks={topMovers.allStocks.map(s => ({
-                        symbol: s.symbol,
-                        changeValue: s.totalInvested > 0 ? (s.totalInvestedChange / s.totalInvested) * 100 : 0,
-                      }))}
-                    />
-                  </div>
-                )}
+                {/* Sector Heatmap */}
+                <SectorHeatmap />
               </div>
             )}
 
