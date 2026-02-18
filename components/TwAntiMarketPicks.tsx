@@ -134,7 +134,7 @@ export default function TwAntiMarketPicks() {
                   </div>
                 </div>
                 <span className="w-14 text-right text-xs font-mono text-primary font-semibold">
-                  {stock.deviation.toFixed(2)}
+                  {stock.deviation.toFixed(1)}σ
                 </span>
                 <span className="w-14 text-right text-xs font-mono text-gray-600">
                   {stock.sma20.toFixed(1)}
