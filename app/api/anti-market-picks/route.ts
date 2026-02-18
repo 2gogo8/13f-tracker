@@ -8,7 +8,8 @@ const BASE = 'https://financialmodelingprep.com';
 
 let cachedData: unknown = null;
 let cacheTimestamp = 0;
-const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours
+const CACHE_DURATION = 30 * 60 * 1000; // 30 min (shorter to avoid stale empty results)
+const CACHE_VERSION = 2; // bump to invalidate old cache
 
 interface AntiMarketPick {
   symbol: string;
@@ -58,8 +59,8 @@ export async function GET() {
     const now = Date.now();
     if (cachedData && now - cacheTimestamp < CACHE_DURATION) {
       const response = NextResponse.json(cachedData);
-      response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-      response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+      response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
       trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
       return response;
     }
@@ -101,11 +102,10 @@ export async function GET() {
     }
 
     if (roughCandidates.length === 0) {
-      cachedData = [];
-      cacheTimestamp = now;
+      // Don't cache empty results for long
       const response = NextResponse.json([]);
-      response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-      response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
       trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
       return response;
     }
@@ -142,11 +142,10 @@ export async function GET() {
     }
 
     if (oversoldStocks.size === 0) {
-      cachedData = [];
-      cacheTimestamp = now;
+      // Don't cache empty results for long
       const response = NextResponse.json([]);
-      response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-      response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+      response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+      response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
       trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
       return response;
     }
@@ -209,8 +208,8 @@ export async function GET() {
     cacheTimestamp = now;
 
     const response = NextResponse.json(results);
-    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
+    response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
     trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
     return response;
   } catch (error) {
