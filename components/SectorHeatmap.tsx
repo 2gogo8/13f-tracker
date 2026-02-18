@@ -7,18 +7,14 @@ interface SectorData {
   changesPercentage: number;
 }
 
-const SECTOR_NAMES: Record<string, string> = {
-  'Technology': '科技',
-  'Healthcare': '醫療',
-  'Financial Services': '金融',
-  'Consumer Cyclical': '消費週期',
-  'Communication Services': '通訊',
-  'Industrials': '工業',
-  'Consumer Defensive': '必需消費',
-  'Energy': '能源',
-  'Real Estate': '地產',
-  'Utilities': '公用事業',
-  'Basic Materials': '原物料',
+// Shorten long Chinese sector names for compact display
+const SHORT_NAMES: Record<string, string> = {
+  '醫療保健': '醫療',
+  '非必需消費品': '消費',
+  '必需消費品': '必需',
+  '通訊服務': '通訊',
+  '基礎材料': '原料',
+  '房地產': '地產',
 };
 
 function getColor(pct: number): string {
@@ -93,7 +89,7 @@ export default function SectorHeatmap() {
           const pct = sector.changesPercentage;
           const bg = getColor(pct);
           const textCol = getTextColor(pct);
-          const zhName = SECTOR_NAMES[sector.sector] || sector.sector;
+          const zhName = SHORT_NAMES[sector.sector] || sector.sector;
           // First 4 sectors get 2-col span if they're big movers
           const isLarge = idx < 3 && Math.abs(pct) > 0.5;
 

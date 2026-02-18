@@ -45,8 +45,8 @@ export async function GET() {
     // Signal 2: Market gainers vs losers
     try {
       const [gainersRes, losersRes] = await Promise.all([
-        fetch(`https://financialmodelingprep.com/stable/gainers?apikey=${FMP_KEY}`),
-        fetch(`https://financialmodelingprep.com/stable/losers?apikey=${FMP_KEY}`),
+        fetch(`https://financialmodelingprep.com/stable/biggest-gainers?apikey=${FMP_KEY}`),
+        fetch(`https://financialmodelingprep.com/stable/biggest-losers?apikey=${FMP_KEY}`),
       ]);
       const gainers = await gainersRes.json();
       const losers = await losersRes.json();
@@ -62,7 +62,7 @@ export async function GET() {
     // Signal 3: Most active stocks sentiment
     try {
       const activeRes = await fetch(
-        `https://financialmodelingprep.com/stable/actives?apikey=${FMP_KEY}`
+        `https://financialmodelingprep.com/stable/most-actives?apikey=${FMP_KEY}`
       );
       const actives = await activeRes.json();
       if (Array.isArray(actives) && actives.length > 0) {
