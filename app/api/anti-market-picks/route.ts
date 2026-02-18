@@ -129,7 +129,7 @@ export async function GET() {
             // Sort oldest-first
             items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
             const result = calcIndicators(items);
-            if (result && result.deviation < -2) {
+            if (result && result.deviation < -1) {
               oversoldStocks.set(symbol, {
                 deviation: Math.round(result.deviation * 10) / 10,
                 sma20: Math.round(result.sma20 * 100) / 100,
@@ -151,7 +151,7 @@ export async function GET() {
       return response;
     }
 
-    // Step 4: For oversold candidates (σ < -2), check Rule of 40
+    // Step 4: For oversold candidates (σ < -1), check Rule of 40
     const oversoldSymbols = Array.from(oversoldStocks.keys());
     const results: AntiMarketPick[] = [];
 
