@@ -10,7 +10,7 @@ let cachedData: unknown = null;
 let cacheTimestamp = 0;
 let cachedVersion = 0;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min (shorter to avoid stale empty results)
-const CACHE_VERSION = 6; // bump to invalidate old cache - σ threshold changed to -1
+const CACHE_VERSION = 7; // bump - loosen stage1 prefilter to 0%
 
 interface AntiMarketPick {
   symbol: string;
@@ -212,7 +212,7 @@ export async function GET() {
             if (!q?.symbol || !q?.price) continue;
             allQuotes.set(q.symbol, { symbol: q.symbol, name: q.name, price: q.price, marketCap: q.marketCap });
             // Rough pre-filter: at least 3% below SMA50 → worth checking SMA20
-            if (q.priceAvg50 && ((q.price - q.priceAvg50) / q.priceAvg50) * 100 < -1) {
+            if (q.priceAvg50 && ((q.price - q.priceAvg50) / q.priceAvg50) * 100 < 0) {
               roughCandidates.push(q.symbol);
             }
           }
