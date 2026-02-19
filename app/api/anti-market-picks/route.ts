@@ -9,166 +9,83 @@ const BASE = 'https://financialmodelingprep.com';
 let cachedData: unknown = null;
 let cacheTimestamp = 0;
 let cachedVersion = 0;
-const CACHE_DURATION = 30 * 60 * 1000; // 30 min (shorter to avoid stale empty results)
-const CACHE_VERSION = 10; // σ<-1, R40≥35, SMA130 uptrend
+const CACHE_DURATION = 30 * 60 * 1000; // 30 min
+const CACHE_VERSION = 11; // continuous decline + IXIC slope + R40
+
+const START_DATE = '2026-01-20';
 
 interface AntiMarketPick {
   symbol: string;
   name: string;
   price: number;
   marketCap: number;
-  deviation: number;   // σ value (price - SMA20) / ATR30
-  sma20: number;
-  atr30: number;
-  sma130: number;
-  isUptrend: boolean;   // price > SMA130
+  dropPct: number;        // continuous decline %
+  peakPrice: number;
+  peakDate: string;
+  slopeScore: number;     // 0-100: how similar slope is to IXIC (100=identical)
+  slopeStock: number;     // stock's 7-day slope
+  slopeIxic: number;      // IXIC's 7-day slope
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
-  patternScore: number; // 0-100, PLTR-like chart DNA score
-  patternGrade: string; // A/B/C/D
 }
 
-// Calculate indicators from historical data (oldest-first array)
-// New formula: SMA20 (monthly MA), ATR30 (30-day volatility), SMA130 (6-month trend)
-function calcIndicators(prices: { close: number; high: number; low: number }[]) {
-  if (prices.length < 131) return null; // need 130+ days for SMA130
+// Linear regression slope as % per day (normalized by first price)
+function linearSlope(prices: number[]): number | null {
+  const n = prices.length;
+  if (n < 3) return null;
+  const base = prices[0];
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    const y = (prices[i] / base - 1) * 100;
+    sumX += i; sumY += y; sumXY += i * y; sumX2 += i * i;
+  }
+  return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+}
+
+// Check continuous decline: from peak, drop is 0-35%, bounces < 40% of drop
+function checkContinuousDecline(prices: { date: string; high: number; low: number; close: number }[]): {
+  drop: number; peakPrice: number; peakDate: string; currentPrice: number;
+} | null {
+  if (prices.length < 5) return null;
+
+  // Find peak from START_DATE onwards
+  let peakPrice = 0, peakIdx = 0;
+  for (let j = 0; j < prices.length; j++) {
+    if (prices[j].high > peakPrice) {
+      peakPrice = prices[j].high;
+      peakIdx = j;
+    }
+  }
 
   const currentPrice = prices[prices.length - 1].close;
+  const totalDrop = (peakPrice - currentPrice) / peakPrice * 100;
 
-  // SMA20 (monthly moving average)
-  const recent20 = prices.slice(-20);
-  const sma20 = recent20.reduce((s, d) => s + d.close, 0) / 20;
+  // Must be declining 0-35%
+  if (totalDrop < 0 || totalDrop > 35) return null;
 
-  // SMA130 (6-month trend)
-  const recent130 = prices.slice(-130);
-  const sma130 = recent130.reduce((s, d) => s + d.close, 0) / 130;
-
-  // ATR30 (30-day average true range — more stable volatility measure)
-  const recent31 = prices.slice(-31);
-  const trValues: number[] = [];
-  for (let i = 1; i < recent31.length; i++) {
-    const tr = Math.max(
-      recent31[i].high - recent31[i].low,
-      Math.abs(recent31[i].high - recent31[i - 1].close),
-      Math.abs(recent31[i].low - recent31[i - 1].close)
-    );
-    trValues.push(tr);
-  }
-  if (trValues.length === 0) return null;
-  const atr30 = trValues.reduce((a, b) => a + b, 0) / trValues.length;
-  if (atr30 === 0) return null;
-
-  // σ = (price - SMA20) / ATR30
-  const deviation = (currentPrice - sma20) / atr30;
-
-  // Trend check: price > SMA130 = uptrend
-  const isUptrend = currentPrice > sma130;
-
-  return { sma20, atr30, sma130, deviation, currentPrice, isUptrend };
-}
-
-// Pattern Score: quantify "PLTR-like" chart DNA from historical prices
-// Dimensions: trend consistency, pullback recovery, volatility stability, mean reversion, uptrend
-function calcPatternScore(prices: { date: string; close: number; high: number; low: number }[]): { score: number; grade: string } {
-  // Need at least 200 days of data
-  // Use last ~500 trading days (roughly 2 years)
-  const data = prices.slice(-520);
-  if (data.length < 200) return { score: 0, grade: 'D' };
-
-  // 1. TREND CONSISTENCY (max 25): % of 63-day quarters that are positive
-  let posQ = 0, totalQ = 0;
-  for (let i = 0; i + 62 < data.length; i += 63) {
-    const ret = data[i + 62].close / data[i].close - 1;
-    if (ret > 0) posQ++;
-    totalQ++;
-  }
-  const trendScore = totalQ > 0 ? (posQ / totalQ) * 25 : 0;
-
-  // 2. PULLBACK RECOVERY (max 25): speed of recovery from >15% drops
-  let localHigh = data[0].close;
-  let inPB = false, pbLow = Infinity, pbLowIdx = 0, pbHighIdx = 0;
-  const pullbacks: { vRatio: number; recovDays: number }[] = [];
-  for (let i = 1; i < data.length; i++) {
-    if (data[i].close > localHigh) {
-      if (inPB && pbLow < localHigh) {
-        const recovDays = i - pbLowIdx;
-        const dropDays = pbLowIdx - pbHighIdx;
-        const vRatio = dropDays > 0 ? recovDays / dropDays : 5;
-        pullbacks.push({ vRatio, recovDays });
-      }
-      localHigh = data[i].close;
-      pbHighIdx = i;
-      inPB = false;
-      pbLow = Infinity;
+  // Check continuous: any bounce from trough must be < 40% of drop-so-far
+  let lowestSincePeak = peakPrice;
+  for (let j = peakIdx + 1; j < prices.length; j++) {
+    if (prices[j].low < lowestSincePeak) {
+      lowestSincePeak = prices[j].low;
     }
-    if ((data[i].close - localHigh) / localHigh <= -0.15) {
-      inPB = true;
-      if (data[i].close < pbLow) { pbLow = data[i].close; pbLowIdx = i; }
-    }
-  }
-  let recoveryScore = 25;
-  if (pullbacks.length > 0) {
-    const avgV = pullbacks.reduce((s, p) => s + p.vRatio, 0) / pullbacks.length;
-    const avgR = pullbacks.reduce((s, p) => s + p.recovDays, 0) / pullbacks.length;
-    recoveryScore = Math.max(0, 25 - avgV * 5 - Math.max(0, avgR - 15) * 0.3);
-  }
 
-  // 3. VOLATILITY STABILITY (max 20): low ratio of max/min 20-day rolling vol
-  const rets: number[] = [];
-  for (let i = 1; i < data.length; i++) {
-    rets.push((data[i].close - data[i - 1].close) / data[i - 1].close);
-  }
-  const vols: number[] = [];
-  for (let i = 19; i < rets.length; i++) {
-    const w = rets.slice(i - 19, i + 1);
-    const mean = w.reduce((a, b) => a + b, 0) / 20;
-    const v = w.reduce((a, b) => a + (b - mean) ** 2, 0) / 20;
-    vols.push(Math.sqrt(v));
-  }
-  const maxV = Math.max(...vols), minV = Math.min(...vols);
-  const volRatio = minV > 0 ? maxV / minV : 10;
-  const volScore = Math.max(0, 20 - Math.max(0, volRatio - 3) * 3);
-
-  // 4. MEAN REVERSION (max 20): SMA20 + ATR14 sigma recovery rate
-  const indicators: { sigma: number }[] = [];
-  for (let i = 20; i < data.length; i++) {
-    let sum = 0;
-    for (let j = i - 19; j <= i; j++) sum += data[j].close;
-    const sma20 = sum / 20;
-    if (i < 14) continue;
-    let atrSum = 0;
-    for (let j = i - 13; j <= i; j++) {
-      const tr = Math.max(
-        data[j].high - data[j].low,
-        Math.abs(data[j].high - data[j - 1].close),
-        Math.abs(data[j].low - data[j - 1].close)
-      );
-      atrSum += tr;
-    }
-    const atr14 = atrSum / 14;
-    indicators.push({ sigma: atr14 > 0 ? (data[i].close - sma20) / atr14 : 0 });
-  }
-  let attempts = 0, success = 0, revDays: number[] = [];
-  for (let i = 1; i < indicators.length; i++) {
-    if (indicators[i].sigma <= -1.5 && indicators[i - 1].sigma > -1.5) {
-      attempts++;
-      for (let j = i + 1; j < Math.min(i + 40, indicators.length); j++) {
-        if (indicators[j].sigma >= 0) { success++; revDays.push(j - i); break; }
+    const dropSoFar = peakPrice - lowestSincePeak;
+    if (dropSoFar > 0 && prices[j].low > lowestSincePeak) {
+      const bounce = prices[j].high - lowestSincePeak;
+      if (bounce / dropSoFar > 0.4) {
+        return null; // bounce too big, not continuous
       }
     }
   }
-  const revRate = attempts > 0 ? success / attempts : 0.5;
-  const avgRevD = revDays.length > 0 ? revDays.reduce((a, b) => a + b, 0) / revDays.length : 20;
-  const revScore = revRate * 15 + Math.max(0, 5 - avgRevD * 0.2);
 
-  // 5. UPTREND (max 10)
-  const totalRet = data[data.length - 1].close / data[0].close - 1;
-  const uptrendScore = Math.min(10, Math.max(0, totalRet * 10));
-
-  const total = Math.round((trendScore + recoveryScore + volScore + revScore + uptrendScore) * 10) / 10;
-  const grade = total >= 75 ? 'A' : total >= 60 ? 'B' : total >= 45 ? 'C' : 'D';
-  return { score: total, grade };
+  return {
+    drop: Math.round(totalDrop * 10) / 10,
+    peakPrice: Math.round(peakPrice * 100) / 100,
+    peakDate: prices[peakIdx].date,
+    currentPrice,
+  };
 }
 
 export async function GET() {
@@ -184,22 +101,42 @@ export async function GET() {
       return response;
     }
 
-    // Step 1: Get stock universe
+    // Step 1: Get IXIC 7-day slope
+    let ixicSlope: number | null = null;
+    try {
+      const ixicRes = await fetch(
+        `${BASE}/stable/historical-price-eod/full?symbol=^IXIC&from=${getDateStr(-14)}&apikey=${API_KEY}`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      const ixicData = await ixicRes.json();
+      if (Array.isArray(ixicData) && ixicData.length >= 5) {
+        const sorted = ixicData.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date)).slice(-7);
+        ixicSlope = linearSlope(sorted.map((d: { close: number }) => d.close));
+      }
+    } catch {}
+
+    if (ixicSlope === null) {
+      const response = NextResponse.json([]);
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
+      trackApiCall('/api/anti-market-picks', Date.now() - startTime, true);
+      return response;
+    }
+
+    // Step 2: Get stock universe
     const [sp500Res, nasdaqRes] = await Promise.all([
       fetch(`${BASE}/stable/sp500-constituent?apikey=${API_KEY}`).then(r => r.json()),
       fetch(`${BASE}/stable/nasdaq-constituent?apikey=${API_KEY}`).then(r => r.json()),
     ]);
 
     const symbolSet = new Set<string>();
-    if (Array.isArray(sp500Res)) for (const s of sp500Res) symbolSet.add(s.symbol);
-    if (Array.isArray(nasdaqRes)) for (const s of nasdaqRes) symbolSet.add(s.symbol);
+    const nameMap = new Map<string, string>();
+    if (Array.isArray(sp500Res)) for (const s of sp500Res) { symbolSet.add(s.symbol); nameMap.set(s.symbol, s.name); }
+    if (Array.isArray(nasdaqRes)) for (const s of nasdaqRes) { symbolSet.add(s.symbol); nameMap.set(s.symbol, s.name); }
     const allSymbols = Array.from(symbolSet);
 
-    // Step 2: Batch fetch quotes — rough pre-filter with SMA50 (> -3% below)
-    const batchSize = 40;
-    const allQuotes: Map<string, { symbol: string; name: string; price: number; marketCap: number }> = new Map();
-    const roughCandidates: string[] = [];
-
+    // Step 3: Batch quotes for price/marketCap
+    const quoteMap = new Map<string, { price: number; marketCap: number; name: string }>();
+    const batchSize = 50;
     for (let i = 0; i < allSymbols.length; i += batchSize) {
       const batch = allSymbols.slice(i, i + batchSize).join(',');
       try {
@@ -209,87 +146,84 @@ export async function GET() {
         const data = await res.json();
         if (Array.isArray(data)) {
           for (const q of data) {
-            if (!q?.symbol || !q?.price) continue;
-            allQuotes.set(q.symbol, { symbol: q.symbol, name: q.name, price: q.price, marketCap: q.marketCap });
-            // Rough pre-filter: at least 3% below SMA50 → worth checking SMA20
-            if (q.priceAvg50 && ((q.price - q.priceAvg50) / q.priceAvg50) * 100 < 0) {
-              roughCandidates.push(q.symbol);
+            if (q?.symbol && q?.price) {
+              quoteMap.set(q.symbol, { price: q.price, marketCap: q.marketCap || 0, name: q.name || nameMap.get(q.symbol) || q.symbol });
             }
           }
         }
-      } catch { /* skip batch */ }
+      } catch {}
     }
 
-    if (roughCandidates.length === 0) {
-      // Don't cache empty results for long
-      const response = NextResponse.json([]);
-      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
-      response.headers.set('CDN-Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
-      trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
-      return response;
+    // Step 4: Fetch historical from START_DATE for ALL stocks, check continuous decline + slope
+    interface Candidate {
+      symbol: string;
+      dropPct: number;
+      peakPrice: number;
+      peakDate: string;
+      slopeStock: number;
+      slopeScore: number;
     }
+    const candidates: Candidate[] = [];
 
-    // Step 3: Fetch historical data for rough candidates → calculate real SMA20/ATR14 σ
-    const oversoldStocks: Map<string, { deviation: number; sma20: number; atr30: number; sma130: number; isUptrend: boolean; patternScore: number; patternGrade: string }> = new Map();
-
-    for (let i = 0; i < roughCandidates.length; i += 10) {
-      const batch = roughCandidates.slice(i, i + 10);
+    for (let i = 0; i < allSymbols.length; i += 10) {
+      const batch = allSymbols.slice(i, i + 10);
       await Promise.all(
         batch.map(async (symbol) => {
           try {
             const res = await fetch(
-              `${BASE}/stable/historical-price-eod/full?symbol=${symbol}&apikey=${API_KEY}`,
+              `${BASE}/stable/historical-price-eod/full?symbol=${symbol}&from=${START_DATE}&apikey=${API_KEY}`,
               { signal: AbortSignal.timeout(8000) }
             );
             const raw = await res.json();
-            const items = Array.isArray(raw) ? raw : (raw?.historical ?? []);
-            if (items.length < 21) return;
+            const items = Array.isArray(raw) ? raw : [];
+            if (items.length < 5) return;
 
-            // Sort oldest-first
-            items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
-            const result = calcIndicators(items);
-            // Criteria: uptrend (price > SMA130) + σ < -1 (deviation > 1x ATR30)
-            if (result && result.isUptrend && result.deviation < -1) {
-              const pattern = calcPatternScore(items);
-              oversoldStocks.set(symbol, {
-                deviation: Math.round(result.deviation * 10) / 10,
-                sma20: Math.round(result.sma20 * 100) / 100,
-                atr30: Math.round(result.atr30 * 100) / 100,
-                sma130: Math.round(result.sma130 * 100) / 100,
-                isUptrend: result.isUptrend,
-                patternScore: pattern.score,
-                patternGrade: pattern.grade,
-              });
-            }
-          } catch { /* skip */ }
+            const prices = items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+
+            // Check continuous decline 0-35%
+            const decline = checkContinuousDecline(prices);
+            if (!decline) return;
+
+            // Check 7-day slope similarity to IXIC
+            const last7 = prices.slice(-7);
+            const stockSlope = linearSlope(last7.map((d: { close: number }) => d.close));
+            if (stockSlope === null) return;
+
+            // Slope similarity: ratio of difference to IXIC slope
+            const slopeDiff = Math.abs(stockSlope - ixicSlope!);
+            const slopeRatio = Math.abs(ixicSlope!) > 0.01 ? slopeDiff / Math.abs(ixicSlope!) : slopeDiff;
+            if (slopeRatio > 0.5 && slopeDiff > 0.3) return; // too different from IXIC
+
+            // Convert slope similarity to 0-100 score (100 = identical)
+            const slopeScore = Math.round(Math.max(0, 100 - slopeRatio * 100));
+
+            candidates.push({
+              symbol,
+              dropPct: decline.drop,
+              peakPrice: decline.peakPrice,
+              peakDate: decline.peakDate,
+              slopeStock: Math.round(stockSlope * 10000) / 10000,
+              slopeScore,
+            });
+          } catch {}
         })
       );
     }
 
-    if (oversoldStocks.size === 0) {
-      // Don't cache empty results for long
-      const response = NextResponse.json([]);
-      response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
-      response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
-      trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
-      return response;
-    }
-
-    // Step 4: For oversold candidates (σ < -3), check Rule of 35
-    const oversoldSymbols = Array.from(oversoldStocks.keys());
+    // Step 5: Check R40 for candidates
     const results: AntiMarketPick[] = [];
 
-    for (let i = 0; i < oversoldSymbols.length; i += 5) {
-      const batch = oversoldSymbols.slice(i, i + 5);
-      const batchResults = await Promise.all(
-        batch.map(async (symbol) => {
+    for (let i = 0; i < candidates.length; i += 5) {
+      const batch = candidates.slice(i, i + 5);
+      await Promise.all(
+        batch.map(async (cand) => {
           try {
             const estRes = await fetch(
-              `${BASE}/stable/analyst-estimates?symbol=${symbol}&period=annual&limit=6&apikey=${API_KEY}`,
+              `${BASE}/stable/analyst-estimates?symbol=${cand.symbol}&period=annual&limit=6&apikey=${API_KEY}`,
               { signal: AbortSignal.timeout(8000) }
             );
             const estimates = await estRes.json();
-            if (!Array.isArray(estimates) || estimates.length < 2) return null;
+            if (!Array.isArray(estimates) || estimates.length < 2) return;
 
             let revCY2025 = 0, revCY2026 = 0, netIncomeCY2026 = 0;
             for (const est of estimates) {
@@ -301,38 +235,36 @@ export async function GET() {
                 netIncomeCY2026 = est.netIncomeAvg;
               }
             }
-            if (!revCY2025 || !revCY2026) return null;
+            if (!revCY2025 || !revCY2026) return;
 
             const revenueGrowth = ((revCY2026 - revCY2025) / revCY2025) * 100;
             const profitMargin = revCY2026 > 0 ? (netIncomeCY2026 / revCY2026) * 100 : 0;
             const rule40Score = revenueGrowth + profitMargin;
-            if (rule40Score < 35) return null;
+            if (rule40Score < 40) return;
 
-            const quote = allQuotes.get(symbol);
-            const oversold = oversoldStocks.get(symbol)!;
-            return {
-              symbol,
-              name: quote?.name || symbol,
+            const quote = quoteMap.get(cand.symbol);
+
+            results.push({
+              symbol: cand.symbol,
+              name: quote?.name || nameMap.get(cand.symbol) || cand.symbol,
               price: quote?.price || 0,
               marketCap: quote?.marketCap || 0,
-              deviation: oversold.deviation,
-              sma20: oversold.sma20,
-              atr30: oversold.atr30,
-              sma130: oversold.sma130,
-              isUptrend: oversold.isUptrend,
+              dropPct: cand.dropPct,
+              peakPrice: cand.peakPrice,
+              peakDate: cand.peakDate,
+              slopeScore: cand.slopeScore,
+              slopeStock: cand.slopeStock,
+              slopeIxic: Math.round(ixicSlope! * 10000) / 10000,
               revenueGrowth: Math.round(revenueGrowth * 10) / 10,
               profitMargin: Math.round(profitMargin * 10) / 10,
               rule40Score: Math.round(rule40Score * 10) / 10,
-              patternScore: oversold.patternScore,
-              patternGrade: oversold.patternGrade,
-            } as AntiMarketPick;
-          } catch { return null; }
+            });
+          } catch {}
         })
       );
-      results.push(...batchResults.filter((r): r is AntiMarketPick => r !== null));
     }
 
-    results.sort((a, b) => a.deviation - b.deviation); // most oversold first
+    results.sort((a, b) => b.dropPct - a.dropPct); // most declined first
     cachedData = results;
     cacheTimestamp = now;
     cachedVersion = CACHE_VERSION;

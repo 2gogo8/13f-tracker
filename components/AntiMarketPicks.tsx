@@ -8,25 +8,18 @@ interface AntiMarketPick {
   name: string;
   price: number;
   marketCap: number;
-  deviation: number;
-  isUptrend: boolean;
+  dropPct: number;
+  peakPrice: number;
+  peakDate: string;
+  slopeScore: number;
+  slopeStock: number;
+  slopeIxic: number;
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
-  patternScore: number;
-  patternGrade: string;
 }
 
-type SortField = 'deviation' | 'rule40Rank' | 'patternScore';
-
-function gradeColor(grade: string): string {
-  switch (grade) {
-    case 'A': return 'text-green-500';
-    case 'B': return 'text-blue-400';
-    case 'C': return 'text-yellow-500';
-    default: return 'text-gray-400';
-  }
-}
+type SortField = 'dropPct' | 'rule40Rank' | 'slopeScore';
 
 function formatMktCap(n: number): string {
   if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
@@ -37,8 +30,8 @@ function formatMktCap(n: number): string {
 export default function AntiMarketPicks() {
   const [picks, setPicks] = useState<AntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('rule40Rank');
-  const [sortAsc, setSortAsc] = useState(false); // default descending
+  const [sortField, setSortField] = useState<SortField>('dropPct');
+  const [sortAsc, setSortAsc] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const INITIAL_COUNT = 10;
 
@@ -54,7 +47,7 @@ export default function AntiMarketPicks() {
     fetchPicks();
   }, []);
 
-  // Compute R40 rank within this pick list (1 = highest R40)
+  // Compute R40 rank within this pick list
   const r40Ranked = useMemo(() => {
     const byR40 = [...picks].sort((a, b) => b.rule40Score - a.rule40Score);
     const rankMap = new Map<string, number>();
@@ -82,8 +75,7 @@ export default function AntiMarketPicks() {
       setSortAsc(!sortAsc);
     } else {
       setSortField(field);
-      // Default sort direction per field
-      setSortAsc(field === 'deviation' || field === 'rule40Rank' ? true : false);
+      setSortAsc(field === 'rule40Rank');
     }
   };
 
@@ -127,14 +119,14 @@ export default function AntiMarketPicks() {
         </span>
       </div>
       <p className="text-[10px] text-gray-600 mb-4">
-        趨勢向上（SMA130）+ 負乖離 &gt; 2×ATR30 + R40 ≥ 40・共 {picks.length} 檔命中
+        連續下跌 0-35%（自 1/20 起）+ 走勢斜率近 IXIC + R40 ≥ 40・共 {picks.length} 檔命中
       </p>
 
       {picks.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-400 text-sm">目前無交叉命中的標的</p>
           <p className="text-[10px] text-gray-600 mt-1">
-            當好公司被市場錯殺時，這裡會出現機會
+            當好公司跟著大盤被錯殺時，這裡會出現機會
           </p>
         </div>
       ) : (
@@ -142,8 +134,8 @@ export default function AntiMarketPicks() {
           {/* Sortable Header */}
           <div className="flex items-center px-2 pb-2">
             <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
-            <SortHeader field="patternScore" label="型態" />
-            <SortHeader field="deviation" label="偏離" />
+            <SortHeader field="slopeScore" label="型態" />
+            <SortHeader field="dropPct" label="跌幅" />
             <SortHeader field="rule40Rank" label="R40排名" />
           </div>
 
@@ -160,17 +152,22 @@ export default function AntiMarketPicks() {
                     <span className="text-[9px] text-gray-500 truncate">{stock.name}</span>
                   </div>
                   <div className="text-[9px] text-gray-600 mt-0.5">
-                    ${stock.price.toFixed(2)}・{formatMktCap(stock.marketCap)}
+                    ${stock.price.toFixed(2)}・{formatMktCap(stock.marketCap)}・高點 {stock.peakDate}
                   </div>
                 </div>
-                <span className={`w-14 text-right text-xs font-mono font-bold ${gradeColor(stock.patternGrade)}`}>
-                  {stock.patternGrade}<span className="text-[9px] font-normal text-gray-500 ml-0.5">{stock.patternScore?.toFixed(0) || '-'}</span>
+                <span className={`w-14 text-right text-xs font-mono font-bold ${
+                  stock.slopeScore >= 80 ? 'text-green-500' :
+                  stock.slopeScore >= 50 ? 'text-blue-400' :
+                  'text-yellow-500'
+                }`}>
+                  {stock.slopeScore}
+                  <span className="text-[8px] font-normal text-gray-400">分</span>
                 </span>
                 <span className={`w-14 text-right text-xs font-mono font-semibold ${
-                  stock.deviation <= -3 ? 'text-green-500' : 
-                  stock.deviation <= -2 ? 'text-primary' : 'text-gray-500'
+                  stock.dropPct >= 25 ? 'text-primary font-bold' :
+                  stock.dropPct >= 15 ? 'text-red-400' : 'text-gray-500'
                 }`}>
-                  {stock.deviation.toFixed(1)}σ
+                  -{stock.dropPct}%
                 </span>
                 <span className="w-14 text-right text-sm font-mono font-bold text-accent">
                   #{r40Ranked.get(stock.symbol) || '-'}
@@ -199,7 +196,7 @@ export default function AntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        型態 = 股價圖形DNA評分(A最佳) | 偏離 = (現價-SMA20)/ATR14 | R40排名 = 反市場精選內的 Rule of 40 排名 | 僅供參考
+        型態 = 7日走勢與IXIC斜率相似度(100=完全一致) | 跌幅 = 自高點連續下跌% | R40排名 = 精選內的 Rule of 40 排名 | 僅供參考
       </p>
     </div>
   );
