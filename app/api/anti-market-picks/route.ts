@@ -212,7 +212,7 @@ export async function GET() {
             if (!q?.symbol || !q?.price) continue;
             allQuotes.set(q.symbol, { symbol: q.symbol, name: q.name, price: q.price, marketCap: q.marketCap });
             // Rough pre-filter: at least 3% below SMA50 → worth checking SMA20
-            if (q.priceAvg50 && ((q.price - q.priceAvg50) / q.priceAvg50) * 100 < -3) {
+            if (q.priceAvg50 && ((q.price - q.priceAvg50) / q.priceAvg50) * 100 < -1) {
               roughCandidates.push(q.symbol);
             }
           }
@@ -248,8 +248,8 @@ export async function GET() {
             // Sort oldest-first
             items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
             const result = calcIndicators(items);
-            // New criteria: uptrend (price > SMA130) + negative deviation from SMA20
-            if (result && result.isUptrend && result.deviation < -1) {
+            // Criteria: uptrend (price > SMA130) + any negative deviation from SMA20
+            if (result && result.isUptrend && result.deviation < -0.5) {
               const pattern = calcPatternScore(items);
               oversoldStocks.set(symbol, {
                 deviation: Math.round(result.deviation * 10) / 10,

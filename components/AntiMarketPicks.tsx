@@ -156,7 +156,10 @@ export default function AntiMarketPicks() {
                 <span className={`w-14 text-right text-xs font-mono font-bold ${gradeColor(stock.patternGrade)}`}>
                   {stock.patternGrade}<span className="text-[9px] font-normal text-gray-500 ml-0.5">{stock.patternScore?.toFixed(0) || '-'}</span>
                 </span>
-                <span className="w-14 text-right text-xs font-mono text-primary font-semibold">
+                <span className={`w-14 text-right text-xs font-mono font-semibold ${
+                  stock.deviation <= -3 ? 'text-green-500' : 
+                  stock.deviation <= -2 ? 'text-primary' : 'text-gray-500'
+                }`}>
                   {stock.deviation.toFixed(1)}σ
                 </span>
                 <span className="w-14 text-right text-xs font-mono text-blue-400">
