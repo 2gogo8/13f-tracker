@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { trackApiCall } from '@/lib/api-stats';
+import { withScanLock } from '@/lib/scan-lock';
 
 const FMP_KEY = process.env.FMP_API_KEY || '3c03eZvjdPpKONYydbgoAT9chCaQDnsp';
 

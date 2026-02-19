@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { trackApiCall } from '@/lib/api-stats';
+import { withScanLock } from '@/lib/scan-lock';
 
 export const maxDuration = 60;
 

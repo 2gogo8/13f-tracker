@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { trackApiCall } from '@/lib/api-stats';
+import { withScanLock, checkRateLimit } from '@/lib/scan-lock';
 
 export const maxDuration = 60;
 
@@ -99,6 +100,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
     }
 
+    // Rate limit: max 5 unique dates per 10 minutes (per serverless instance)
+    if (fromDate !== DEFAULT_START_DATE && !checkRateLimit('anti-market-dates', 5, 10 * 60 * 1000)) {
+      return NextResponse.json({ error: 'Too many scan requests. Try again later.' }, { status: 429 });
+    }
+
     const now = Date.now();
     const cached = cacheMap.get(fromDate);
     if (cached && now - cached.timestamp < CACHE_DURATION && cached.version === CACHE_VERSION) {
@@ -109,6 +115,29 @@ export async function GET(request: Request) {
       return response;
     }
 
+    // Use scan lock to prevent thundering herd
+    const result = await withScanLock(`anti-market-${fromDate}`, async () => {
+      // Double-check cache inside lock (another request may have populated it)
+      const cached2 = cacheMap.get(fromDate);
+      if (cached2 && Date.now() - cached2.timestamp < CACHE_DURATION && cached2.version === CACHE_VERSION) {
+        return cached2.data;
+      }
+      return doScan(fromDate);
+    });
+
+    const response = NextResponse.json(result);
+    response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+    response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
+    trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
+    return response;
+  } catch (error) {
+    console.error('Error in anti-market picks:', error);
+    trackApiCall('/api/anti-market-picks', Date.now() - startTime, true);
+    return NextResponse.json([]);
+  }
+}
+
+async function doScan(fromDate: string) {
     // Step 1: Get IXIC 7-day slope
     let ixicSlope: number | null = null;
     try {
@@ -124,10 +153,7 @@ export async function GET(request: Request) {
     } catch {}
 
     if (ixicSlope === null) {
-      const response = NextResponse.json([]);
-      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=300');
-      trackApiCall('/api/anti-market-picks', Date.now() - startTime, true);
-      return response;
+      return [];
     }
 
     // Step 2: Get stock universe
@@ -273,23 +299,14 @@ export async function GET(request: Request) {
     }
 
     results.sort((a, b) => b.dropPct - a.dropPct); // most declined first
-    cacheMap.set(fromDate, { data: results, timestamp: now, version: CACHE_VERSION });
+    cacheMap.set(fromDate, { data: results, timestamp: Date.now(), version: CACHE_VERSION });
     // Keep cache map small — max 5 dates
     if (cacheMap.size > 5) {
       const oldest = [...cacheMap.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
       if (oldest) cacheMap.delete(oldest[0]);
     }
 
-    const response = NextResponse.json(results);
-    response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
-    response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
-    trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
-    return response;
-  } catch (error) {
-    console.error('Error in anti-market picks:', error);
-    trackApiCall('/api/anti-market-picks', Date.now() - startTime, true);
-    return NextResponse.json([]);
-  }
+    return results;
 }
 
 function getDateStr(daysOffset: number): string {
