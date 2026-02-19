@@ -1,3 +1,4 @@
+export const maxDuration = 10;
 import { NextResponse } from 'next/server';
 import { getStats, getTopSymbols, resetStats } from '@/lib/api-stats';
 

@@ -1,3 +1,4 @@
+export const maxDuration = 10;
 import { NextRequest, NextResponse } from 'next/server';
 
 const SITE_PASSWORD = process.env.SITE_PASSWORD || '290';
