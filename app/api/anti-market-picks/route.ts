@@ -6,13 +6,12 @@ export const maxDuration = 60;
 const API_KEY = process.env.FMP_API_KEY || '';
 const BASE = 'https://financialmodelingprep.com';
 
-let cachedData: unknown = null;
-let cacheTimestamp = 0;
-let cachedVersion = 0;
+// Cache per fromDate
+const cacheMap = new Map<string, { data: unknown; timestamp: number; version: number }>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min
-const CACHE_VERSION = 12; // fix: use close price for bounce check, not intraday high
+const CACHE_VERSION = 13; // dynamic fromDate support
 
-const START_DATE = '2026-01-20';
+const DEFAULT_START_DATE = '2026-01-20';
 
 interface AntiMarketPick {
   symbol: string;
@@ -89,13 +88,21 @@ function checkContinuousDecline(prices: { date: string; high: number; low: numbe
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const startTime = Date.now();
 
   try {
+    const { searchParams } = new URL(request.url);
+    const fromDate = searchParams.get('fromDate') || DEFAULT_START_DATE;
+    // Validate date format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+      return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
+    }
+
     const now = Date.now();
-    if (cachedData && now - cacheTimestamp < CACHE_DURATION && cachedVersion === CACHE_VERSION) {
-      const response = NextResponse.json(cachedData);
+    const cached = cacheMap.get(fromDate);
+    if (cached && now - cached.timestamp < CACHE_DURATION && cached.version === CACHE_VERSION) {
+      const response = NextResponse.json(cached.data);
       response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
       response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
       trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
@@ -172,7 +179,7 @@ export async function GET() {
         batch.map(async (symbol) => {
           try {
             const res = await fetch(
-              `${BASE}/stable/historical-price-eod/full?symbol=${symbol}&from=${START_DATE}&apikey=${API_KEY}`,
+              `${BASE}/stable/historical-price-eod/full?symbol=${symbol}&from=${fromDate}&apikey=${API_KEY}`,
               { signal: AbortSignal.timeout(8000) }
             );
             const raw = await res.json();
@@ -266,9 +273,12 @@ export async function GET() {
     }
 
     results.sort((a, b) => b.dropPct - a.dropPct); // most declined first
-    cachedData = results;
-    cacheTimestamp = now;
-    cachedVersion = CACHE_VERSION;
+    cacheMap.set(fromDate, { data: results, timestamp: now, version: CACHE_VERSION });
+    // Keep cache map small — max 5 dates
+    if (cacheMap.size > 5) {
+      const oldest = [...cacheMap.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
+      if (oldest) cacheMap.delete(oldest[0]);
+    }
 
     const response = NextResponse.json(results);
     response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 
 interface AntiMarketPick {
@@ -27,25 +27,38 @@ function formatMktCap(n: number): string {
   return `$${(n / 1e6).toFixed(0)}M`;
 }
 
+const DEFAULT_DATE = '2026-01-20';
+
 export default function AntiMarketPicks() {
   const [picks, setPicks] = useState<AntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('dropPct');
   const [sortAsc, setSortAsc] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [fromDate, setFromDate] = useState(DEFAULT_DATE);
+  const [pendingDate, setPendingDate] = useState(DEFAULT_DATE);
   const INITIAL_COUNT = 10;
 
-  useEffect(() => {
-    async function fetchPicks() {
-      try {
-        const res = await fetch('/api/anti-market-picks');
-        const data = await res.json();
-        if (Array.isArray(data)) setPicks(data);
-      } catch {}
-      setLoading(false);
-    }
-    fetchPicks();
+  const fetchPicks = useCallback(async (date: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/anti-market-picks?fromDate=${date}`);
+      const data = await res.json();
+      if (Array.isArray(data)) setPicks(data);
+    } catch {}
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    fetchPicks(fromDate);
+  }, [fromDate, fetchPicks]);
+
+  const handleDateChange = () => {
+    if (pendingDate && pendingDate !== fromDate) {
+      setFromDate(pendingDate);
+      setShowAll(false);
+    }
+  };
 
   // Compute R40 rank within this pick list
   const r40Ranked = useMemo(() => {
@@ -81,15 +94,6 @@ export default function AntiMarketPicks() {
 
   const displayed = showAll ? sorted : sorted.slice(0, INITIAL_COUNT);
 
-  if (loading) {
-    return (
-      <div className="apple-card p-5 md:p-6 mb-8">
-        <h2 className="font-serif text-lg font-bold text-primary glow-red">美股反市場精選</h2>
-        <p className="text-[10px] text-gray-600 mt-1">交叉比對中...</p>
-      </div>
-    );
-  }
-
   const SortHeader = ({ field, label }: { field: SortField; label: string }) => {
     const isActive = sortField === field;
     return (
@@ -118,11 +122,46 @@ export default function AntiMarketPicks() {
           Contrarian
         </span>
       </div>
+
+      {/* Date Picker */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-[10px] text-gray-500">起算日期</span>
+        <input
+          type="date"
+          value={pendingDate}
+          onChange={(e) => setPendingDate(e.target.value)}
+          className="text-xs px-2 py-1 rounded-md border border-gray-200 bg-white/80 text-gray-700 focus:outline-none focus:ring-1 focus:ring-accent/30"
+          max={new Date().toISOString().split('T')[0]}
+          min="2024-01-01"
+        />
+        {pendingDate !== fromDate && (
+          <button
+            onClick={handleDateChange}
+            className="text-[10px] px-2.5 py-1 rounded-md bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+          >
+            掃描
+          </button>
+        )}
+        {fromDate !== DEFAULT_DATE && (
+          <button
+            onClick={() => { setPendingDate(DEFAULT_DATE); setFromDate(DEFAULT_DATE); }}
+            className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            重置
+          </button>
+        )}
+      </div>
+
       <p className="text-[10px] text-gray-600 mb-4">
-        連續下跌 0-35%（自 1/20 起）+ 走勢斜率近 IXIC + R40 ≥ 40・共 {picks.length} 檔命中
+        連續下跌 0-35%（自 {fromDate} 起）+ 走勢斜率近 IXIC + R40 ≥ 40{!loading && `・共 ${picks.length} 檔命中`}
       </p>
 
-      {picks.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="inline-block w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+          <p className="text-[10px] text-gray-500 mt-2">掃描中（約 30 秒）...</p>
+        </div>
+      ) : picks.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-400 text-sm">目前無交叉命中的標的</p>
           <p className="text-[10px] text-gray-600 mt-1">
