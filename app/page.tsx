@@ -287,11 +287,11 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Sector Heatmap - 10 Day Performance */}
-        <SectorHeatmap />
-
         {/* Top Picks - Oversold + Large Cap */}
         <AntiMarketPicks />
+
+        {/* Sector Heatmap - 10 Day Performance */}
+        <SectorHeatmap />
         
         {/* Taiwan Anti-Market Picks */}
         <TwAntiMarketPicks />
