@@ -17,7 +17,7 @@ interface AntiMarketPick {
   patternGrade: string;
 }
 
-type SortField = 'deviation' | 'revenueGrowth' | 'profitMargin' | 'rule40Score' | 'patternScore';
+type SortField = 'deviation' | 'rule40Rank' | 'patternScore';
 
 function gradeColor(grade: string): string {
   switch (grade) {
@@ -54,16 +54,28 @@ export default function AntiMarketPicks() {
     fetchPicks();
   }, []);
 
+  // Compute R40 rank within this pick list (1 = highest R40)
+  const r40Ranked = useMemo(() => {
+    const byR40 = [...picks].sort((a, b) => b.rule40Score - a.rule40Score);
+    const rankMap = new Map<string, number>();
+    byR40.forEach((p, i) => rankMap.set(p.symbol, i + 1));
+    return rankMap;
+  }, [picks]);
+
   const sorted = useMemo(() => {
     const arr = [...picks];
     arr.sort((a, b) => {
-      const va = a[sortField];
-      const vb = b[sortField];
-      // For deviation, "more negative" = more oversold, so ascending means most oversold first
+      if (sortField === 'rule40Rank') {
+        const ra = r40Ranked.get(a.symbol) || 999;
+        const rb = r40Ranked.get(b.symbol) || 999;
+        return sortAsc ? ra - rb : rb - ra;
+      }
+      const va = a[sortField as keyof AntiMarketPick] as number;
+      const vb = b[sortField as keyof AntiMarketPick] as number;
       return sortAsc ? va - vb : vb - va;
     });
     return arr;
-  }, [picks, sortField, sortAsc]);
+  }, [picks, sortField, sortAsc, r40Ranked]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -71,7 +83,7 @@ export default function AntiMarketPicks() {
     } else {
       setSortField(field);
       // Default sort direction per field
-      setSortAsc(field === 'deviation' ? true : false);
+      setSortAsc(field === 'deviation' || field === 'rule40Rank' ? true : false);
     }
   };
 
@@ -132,9 +144,7 @@ export default function AntiMarketPicks() {
             <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
             <SortHeader field="patternScore" label="型態" />
             <SortHeader field="deviation" label="偏離" />
-            <SortHeader field="revenueGrowth" label="成長" />
-            <SortHeader field="profitMargin" label="利潤" />
-            <SortHeader field="rule40Score" label="R40" />
+            <SortHeader field="rule40Rank" label="R40排名" />
           </div>
 
           <div className="divide-y divide-accent/[0.15]">
@@ -162,14 +172,8 @@ export default function AntiMarketPicks() {
                 }`}>
                   {stock.deviation.toFixed(1)}σ
                 </span>
-                <span className="w-14 text-right text-xs font-mono text-blue-400">
-                  +{stock.revenueGrowth.toFixed(0)}%
-                </span>
-                <span className="w-14 text-right text-xs font-mono text-yellow-500">
-                  {stock.profitMargin.toFixed(0)}%
-                </span>
-                <span className="w-14 text-right text-sm font-mono font-bold text-green-500">
-                  {stock.rule40Score.toFixed(0)}
+                <span className="w-14 text-right text-sm font-mono font-bold text-accent">
+                  #{r40Ranked.get(stock.symbol) || '-'}
                 </span>
               </Link>
             ))}
@@ -195,7 +199,7 @@ export default function AntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        篩選：現價 &gt; SMA130（趨勢向上）+ σ = (現價-SMA20)/ATR30 | 型態 = 圖形DNA | R40 = 成長率 + 淨利率
+        型態 = 股價圖形DNA評分(A最佳) | 偏離 = (現價-SMA20)/ATR14 | R40排名 = 反市場精選內的 Rule of 40 排名 | 僅供參考
       </p>
     </div>
   );
