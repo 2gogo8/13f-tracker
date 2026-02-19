@@ -9,6 +9,7 @@ interface AntiMarketPick {
   price: number;
   marketCap: number;
   deviation: number;
+  isUptrend: boolean;
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
@@ -114,7 +115,7 @@ export default function AntiMarketPicks() {
         </span>
       </div>
       <p className="text-[10px] text-gray-600 mb-4">
-        負乖離超賣 + Rule of 40 達標（營收成長率 + 利潤率 ≥ 40）・共 {picks.length} 檔交叉命中
+        6 個月上升趨勢 + 月均線負乖離 + R40 達標・共 {picks.length} 檔交叉命中
       </p>
 
       {picks.length === 0 ? (
@@ -191,7 +192,7 @@ export default function AntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        型態 = 股價圖形DNA評分(A最佳) | 偏離 = (現價-SMA20)/ATR14 | R40 = 成長率 + 淨利率 | 僅供參考
+        篩選：現價 &gt; SMA130（趨勢向上）+ σ = (現價-SMA20)/ATR30 | 型態 = 圖形DNA | R40 = 成長率 + 淨利率
       </p>
     </div>
   );

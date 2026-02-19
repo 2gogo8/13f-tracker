@@ -147,12 +147,10 @@ export default function StockDetailPage({
 
   const isPositive = quote.change >= 0;
 
-  // Calculate ATR (14-day Average True Range)
-  const atr14 = (() => {
-    if (historicalData.length < 15) return null;
-    // historicalData is oldest-first (ascending by date)
-    // Take the last 15 entries to calculate ATR from most recent 14 days
-    const recent = historicalData.slice(-15);
+  // Calculate ATR30 (30-day Average True Range)
+  const atr30 = (() => {
+    if (historicalData.length < 31) return null;
+    const recent = historicalData.slice(-31);
     const trValues: number[] = [];
     for (let i = 1; i < recent.length; i++) {
       const high = recent[i].high ?? 0;
@@ -164,22 +162,30 @@ export default function StockDetailPage({
     if (trValues.length === 0) return null;
     return trValues.reduce((a, b) => a + b, 0) / trValues.length;
   })();
-  const atrPercent = atr14 && quote.price ? (atr14 / quote.price) * 100 : null;
+  const atrPercent = atr30 && quote.price ? (atr30 / quote.price) * 100 : null;
 
-  // Calculate SMA20 and Oversold/Overbought Signal
+  // Calculate SMA20 (monthly MA)
   const sma20 = (() => {
     if (historicalData.length < 20) return null;
-    const recent20 = historicalData.slice(-20); // data is oldest-first, take last 20
+    const recent20 = historicalData.slice(-20);
     return recent20.reduce((sum, d) => sum + (d.close ?? 0), 0) / 20;
   })();
 
+  // Calculate SMA130 (6-month trend)
+  const sma130 = (() => {
+    if (historicalData.length < 130) return null;
+    const recent130 = historicalData.slice(-130);
+    return recent130.reduce((sum, d) => sum + (d.close ?? 0), 0) / 130;
+  })();
+  const isUptrend = sma130 ? quote.price > sma130 : null;
+
   type SignalLevel = 'deep-value' | 'oversold' | 'normal' | 'overbought';
   const signalLevel: SignalLevel = (() => {
-    if (!sma20 || !atr14) return 'normal';
+    if (!sma20 || !atr30) return 'normal';
     const price = quote.price;
-    if (price < sma20 - 3 * atr14) return 'deep-value';
-    if (price < sma20 - 2 * atr14) return 'oversold';
-    if (price > sma20 + 2 * atr14) return 'overbought';
+    if (price < sma20 - 3 * atr30) return 'deep-value';
+    if (price < sma20 - 2 * atr30) return 'oversold';
+    if (price > sma20 + 2 * atr30) return 'overbought';
     return 'normal';
   })();
 
@@ -190,7 +196,7 @@ export default function StockDetailPage({
     'overbought': { emoji: '🔴', label: '過熱', color: 'text-red-400', bg: 'bg-red-900/40' },
   };
   const signal = signalConfig[signalLevel];
-  const deviation = sma20 && atr14 ? (quote.price - sma20) / atr14 : null;
+  const deviation = sma20 && atr30 ? (quote.price - sma20) / atr30 : null;
 
   // Filter and sort holders based on Smart Money filter
   const filteredAndSortedHolders = (() => {
@@ -272,11 +278,11 @@ export default function StockDetailPage({
               <p className={`text-2xl font-light ${isPositive ? 'text-accent glow-gold' : 'text-primary glow-red'}`}>
                 {isPositive ? '+' : ''}${quote.change.toFixed(2)} ({isPositive ? '+' : ''}{(quote.changesPercentage ?? quote.changePercentage ?? 0).toFixed(2)}%)
               </p>
-              {atr14 !== null && (
+              {atr30 !== null && (
                 <div className="mt-3 space-y-2">
                   <div className="flex items-center gap-3 justify-end">
-                    <span className="text-xs text-gray-400">ATR(14)</span>
-                    <span className="text-sm font-semibold text-gray-900">${atr14.toFixed(2)}</span>
+                    <span className="text-xs text-gray-400">ATR(30)</span>
+                    <span className="text-sm font-semibold text-gray-900">${atr30.toFixed(2)}</span>
                     {atrPercent !== null && (
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                         atrPercent >= 4 ? 'bg-red-900/40 text-red-400' :

@@ -17,9 +17,11 @@ interface AntiMarketPick {
   name: string;
   price: number;
   marketCap: number;
-  deviation: number;   // σ value (SMA20/ATR14)
+  deviation: number;   // σ value (price - SMA20) / ATR30
   sma20: number;
-  atr14: number;
+  atr30: number;
+  sma130: number;
+  isUptrend: boolean;   // price > SMA130
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
@@ -27,32 +29,43 @@ interface AntiMarketPick {
   patternGrade: string; // A/B/C/D
 }
 
-// Calculate SMA20 and ATR14 from historical data (oldest-first array)
+// Calculate indicators from historical data (oldest-first array)
+// New formula: SMA20 (monthly MA), ATR30 (30-day volatility), SMA130 (6-month trend)
 function calcIndicators(prices: { close: number; high: number; low: number }[]) {
-  if (prices.length < 21) return null;
-  const recent21 = prices.slice(-21);
-  const recent20 = recent21.slice(-20);
+  if (prices.length < 131) return null; // need 130+ days for SMA130
+
+  const currentPrice = prices[prices.length - 1].close;
+
+  // SMA20 (monthly moving average)
+  const recent20 = prices.slice(-20);
   const sma20 = recent20.reduce((s, d) => s + d.close, 0) / 20;
 
-  // ATR14 from last 15 entries
-  const recent15 = prices.slice(-15);
+  // SMA130 (6-month trend)
+  const recent130 = prices.slice(-130);
+  const sma130 = recent130.reduce((s, d) => s + d.close, 0) / 130;
+
+  // ATR30 (30-day average true range — more stable volatility measure)
+  const recent31 = prices.slice(-31);
   const trValues: number[] = [];
-  for (let i = 1; i < recent15.length; i++) {
+  for (let i = 1; i < recent31.length; i++) {
     const tr = Math.max(
-      recent15[i].high - recent15[i].low,
-      Math.abs(recent15[i].high - recent15[i - 1].close),
-      Math.abs(recent15[i].low - recent15[i - 1].close)
+      recent31[i].high - recent31[i].low,
+      Math.abs(recent31[i].high - recent31[i - 1].close),
+      Math.abs(recent31[i].low - recent31[i - 1].close)
     );
     trValues.push(tr);
   }
   if (trValues.length === 0) return null;
-  const atr14 = trValues.reduce((a, b) => a + b, 0) / trValues.length;
-  if (atr14 === 0) return null;
+  const atr30 = trValues.reduce((a, b) => a + b, 0) / trValues.length;
+  if (atr30 === 0) return null;
 
-  const currentPrice = prices[prices.length - 1].close;
-  const deviation = (currentPrice - sma20) / atr14;
+  // σ = (price - SMA20) / ATR30
+  const deviation = (currentPrice - sma20) / atr30;
 
-  return { sma20, atr14, deviation, currentPrice };
+  // Trend check: price > SMA130 = uptrend
+  const isUptrend = currentPrice > sma130;
+
+  return { sma20, atr30, sma130, deviation, currentPrice, isUptrend };
 }
 
 // Pattern Score: quantify "PLTR-like" chart DNA from historical prices
@@ -217,7 +230,7 @@ export async function GET() {
     }
 
     // Step 3: Fetch historical data for rough candidates → calculate real SMA20/ATR14 σ
-    const oversoldStocks: Map<string, { deviation: number; sma20: number; atr14: number; patternScore: number; patternGrade: string }> = new Map();
+    const oversoldStocks: Map<string, { deviation: number; sma20: number; atr30: number; sma130: number; isUptrend: boolean; patternScore: number; patternGrade: string }> = new Map();
 
     for (let i = 0; i < roughCandidates.length; i += 10) {
       const batch = roughCandidates.slice(i, i + 10);
@@ -235,13 +248,15 @@ export async function GET() {
             // Sort oldest-first
             items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
             const result = calcIndicators(items);
-            if (result && result.deviation < -1) {
-              // Calculate pattern score from full history
+            // New criteria: uptrend (price > SMA130) + negative deviation from SMA20
+            if (result && result.isUptrend && result.deviation < -1) {
               const pattern = calcPatternScore(items);
               oversoldStocks.set(symbol, {
                 deviation: Math.round(result.deviation * 10) / 10,
                 sma20: Math.round(result.sma20 * 100) / 100,
-                atr14: Math.round(result.atr14 * 100) / 100,
+                atr30: Math.round(result.atr30 * 100) / 100,
+                sma130: Math.round(result.sma130 * 100) / 100,
+                isUptrend: result.isUptrend,
                 patternScore: pattern.score,
                 patternGrade: pattern.grade,
               });
@@ -302,7 +317,9 @@ export async function GET() {
               marketCap: quote?.marketCap || 0,
               deviation: oversold.deviation,
               sma20: oversold.sma20,
-              atr14: oversold.atr14,
+              atr30: oversold.atr30,
+              sma130: oversold.sma130,
+              isUptrend: oversold.isUptrend,
               revenueGrowth: Math.round(revenueGrowth * 10) / 10,
               profitMargin: Math.round(profitMargin * 10) / 10,
               rule40Score: Math.round(rule40Score * 10) / 10,
