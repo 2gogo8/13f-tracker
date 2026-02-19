@@ -4,47 +4,59 @@ import { useEffect, useState } from 'react';
 
 interface SectorData {
   sector: string;
-  changesPercentage: number;
+  etf: string;
+  change10d: number;
+  prices: number[];
 }
 
-// Shorten long Chinese sector names for compact display
-const SHORT_NAMES: Record<string, string> = {
-  '醫療保健': '醫療',
-  '非必需消費品': '消費',
-  '必需消費品': '必需',
-  '通訊服務': '通訊',
-  '基礎材料': '原料',
-  '房地產': '地產',
-};
-
 function getColor(pct: number): string {
-  if (pct > 2) return '#16a34a';    // deep green
-  if (pct > 1) return '#22c55e';    // green
-  if (pct > 0.3) return '#4ade80';  // light green
-  if (pct > -0.3) return '#9ca3af'; // gray
-  if (pct > -1) return '#f87171';   // light red
-  if (pct > -2) return '#ef4444';   // red
-  return '#C41E3A';                  // deep red (Cartier)
+  if (pct > 4) return '#15803d';
+  if (pct > 2) return '#16a34a';
+  if (pct > 1) return '#22c55e';
+  if (pct > 0.3) return '#4ade80';
+  if (pct > -0.3) return '#d1d5db';
+  if (pct > -1) return '#f87171';
+  if (pct > -2) return '#ef4444';
+  if (pct > -4) return '#dc2626';
+  return '#991b1b';
 }
 
 function getTextColor(pct: number): string {
-  if (Math.abs(pct) > 1) return '#fff';
-  return pct > -0.3 ? '#1f2937' : '#fff';
+  if (Math.abs(pct) < 0.3) return '#374151';
+  return '#fff';
+}
+
+// Mini sparkline SVG
+function Sparkline({ prices, color }: { prices: number[]; color: string }) {
+  if (prices.length < 2) return null;
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const w = 48, h = 16;
+  const points = prices.map((p, i) => {
+    const x = (i / (prices.length - 1)) * w;
+    const y = h - ((p - min) / range) * h;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg width={w} height={h} className="opacity-50">
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.5" />
+    </svg>
+  );
 }
 
 export default function SectorHeatmap() {
   const [sectors, setSectors] = useState<SectorData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isLive, setIsLive] = useState(true);
 
   useEffect(() => {
     async function fetchSectors() {
       try {
-        const res = await fetch('/api/sector-performance');
+        const res = await fetch('/api/sector-performance-10d');
         const data = await res.json();
-        if (data.sectors && Array.isArray(data.sectors)) {
-          setSectors(data.sectors.filter((s: SectorData) => s.sector && s.changesPercentage !== undefined));
-          setIsLive(data.isLive !== false);
+        if (Array.isArray(data) && data.length > 0) {
+          setSectors(data);
         }
       } catch {}
       setLoading(false);
@@ -54,8 +66,8 @@ export default function SectorHeatmap() {
 
   if (loading) {
     return (
-      <div className="apple-card p-6">
-        <h2 className="font-serif text-lg font-bold text-gray-900">產業板塊漲跌圖</h2>
+      <div className="apple-card p-5 md:p-6">
+        <h2 className="font-serif text-lg font-bold text-gray-900">產業板塊 10 日表現</h2>
         <p className="text-[10px] text-gray-500 mt-1">載入中...</p>
       </div>
     );
@@ -63,50 +75,40 @@ export default function SectorHeatmap() {
 
   if (sectors.length === 0) return null;
 
-  // Sort by absolute change for layout (biggest movers = biggest tiles)
-  const sorted = [...sectors].sort((a, b) => Math.abs(b.changesPercentage) - Math.abs(a.changesPercentage));
-
-  // Calculate tile sizes: bigger absolute change = bigger tile
-  const maxAbs = Math.max(...sorted.map(s => Math.abs(s.changesPercentage)), 0.5);
-
   return (
     <div className="apple-card p-5 md:p-6">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="font-serif text-lg font-bold text-gray-900">產業板塊漲跌圖</h2>
-        {!isLive && (
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
-            上個交易日數據
-          </span>
-        )}
+        <h2 className="font-serif text-lg font-bold text-gray-900">產業板塊 10 日表現</h2>
+        <span className="text-[9px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
+          近 10 個交易日
+        </span>
       </div>
       <p className="text-[10px] text-gray-500 mb-4">
-        即時產業板塊表現 | 面積 = 波動幅度
+        以板塊 ETF 計算 | 含走勢線
       </p>
 
-      {/* Treemap-style grid */}
-      <div className="grid grid-cols-4 gap-1.5 auto-rows-auto">
-        {sorted.map((sector, idx) => {
-          const pct = sector.changesPercentage;
-          const bg = getColor(pct);
-          const textCol = getTextColor(pct);
-          const zhName = SHORT_NAMES[sector.sector] || sector.sector;
-          // First 4 sectors get 2-col span if they're big movers
-          const isLarge = idx < 3 && Math.abs(pct) > 0.5;
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+        {sectors.map((sector) => {
+          const bg = getColor(sector.change10d);
+          const textCol = getTextColor(sector.change10d);
+          const sparkColor = sector.change10d >= 0 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.5)';
+          const isNeutral = Math.abs(sector.change10d) < 0.3;
 
           return (
             <div
               key={sector.sector}
-              className={`rounded-lg flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02] cursor-default ${
-                isLarge ? 'col-span-2 py-5' : 'py-3'
-              }`}
+              className="rounded-lg flex flex-col items-center justify-center text-center py-3 px-1 transition-all hover:scale-[1.03] cursor-default relative overflow-hidden"
               style={{ backgroundColor: bg, color: textCol }}
+              title={`${sector.sector} (${sector.etf}): ${sector.change10d > 0 ? '+' : ''}${sector.change10d}%`}
             >
-              <span className={`font-bold ${isLarge ? 'text-sm' : 'text-[11px]'} leading-tight`}>
-                {zhName}
+              <span className="font-bold text-[12px] leading-tight">{sector.sector}</span>
+              <span className="font-mono font-bold text-sm mt-0.5">
+                {sector.change10d > 0 ? '+' : ''}{sector.change10d.toFixed(1)}%
               </span>
-              <span className={`font-mono font-bold ${isLarge ? 'text-lg' : 'text-xs'} mt-0.5`}>
-                {pct > 0 ? '+' : ''}{pct.toFixed(2)}%
-              </span>
+              <div className="mt-1">
+                <Sparkline prices={sector.prices} color={isNeutral ? '#6b7280' : sparkColor} />
+              </div>
+              <span className="text-[8px] opacity-50 mt-0.5">{sector.etf}</span>
             </div>
           );
         })}
