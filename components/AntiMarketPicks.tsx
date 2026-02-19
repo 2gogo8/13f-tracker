@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Suspense, useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 interface AntiMarketPick {
@@ -26,16 +27,45 @@ function formatMktCap(n: number): string {
 }
 
 const DEFAULT_DATE = '2026-01-20';
+const VALID_SORT_FIELDS: SortField[] = ['dropPct', 'rule40Score', 'sma130pct'];
 
 export default function AntiMarketPicks() {
+  return (
+    <Suspense fallback={<div className="apple-card p-5 md:p-6 mb-8"><h2 className="font-serif text-lg font-bold text-primary glow-red">美股反市場精選</h2><p className="text-[10px] text-gray-600 mt-1">載入中...</p></div>}>
+      <AntiMarketPicksInner />
+    </Suspense>
+  );
+}
+
+function AntiMarketPicksInner() {
+  const searchParams = useSearchParams();
+
+  // Restore state from URL params
+  const urlSort = searchParams.get('amSort') as SortField | null;
+  const urlAsc = searchParams.get('amAsc');
+  const urlDate = searchParams.get('amDate');
+
   const [picks, setPicks] = useState<AntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('rule40Score');
-  const [sortAsc, setSortAsc] = useState(false);
+  const [sortField, setSortField] = useState<SortField>(
+    urlSort && VALID_SORT_FIELDS.includes(urlSort) ? urlSort : 'rule40Score'
+  );
+  const [sortAsc, setSortAsc] = useState(urlAsc === '1');
   const [showAll, setShowAll] = useState(false);
-  const [fromDate, setFromDate] = useState(DEFAULT_DATE);
-  const [pendingDate, setPendingDate] = useState(DEFAULT_DATE);
+  const [fromDate, setFromDate] = useState(urlDate || DEFAULT_DATE);
+  const [pendingDate, setPendingDate] = useState(urlDate || DEFAULT_DATE);
   const INITIAL_COUNT = 10;
+
+  // Persist sort/date state to URL (replaceState, no navigation)
+  const updateUrl = useCallback((field: SortField, asc: boolean, date: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('amSort', field);
+    params.set('amAsc', asc ? '1' : '0');
+    if (date !== DEFAULT_DATE) params.set('amDate', date);
+    else params.delete('amDate');
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, '', newUrl);
+  }, []);
 
   const fetchPicks = useCallback(async (date: string) => {
     setLoading(true);
@@ -55,6 +85,7 @@ export default function AntiMarketPicks() {
     if (pendingDate && pendingDate !== fromDate) {
       setFromDate(pendingDate);
       setShowAll(false);
+      updateUrl(sortField, sortAsc, pendingDate);
     }
   };
 
@@ -75,12 +106,15 @@ export default function AntiMarketPicks() {
   }, [picks, sortField, sortAsc]);
 
   const handleSort = (field: SortField) => {
+    let newAsc: boolean;
     if (sortField === field) {
-      setSortAsc(!sortAsc);
+      newAsc = !sortAsc;
     } else {
-      setSortField(field);
-      setSortAsc(false);
+      newAsc = false;
     }
+    setSortField(field);
+    setSortAsc(newAsc);
+    updateUrl(field, newAsc, fromDate);
   };
 
   const displayed = showAll ? sorted : sorted.slice(0, INITIAL_COUNT);
@@ -135,7 +169,7 @@ export default function AntiMarketPicks() {
         )}
         {fromDate !== DEFAULT_DATE && (
           <button
-            onClick={() => { setPendingDate(DEFAULT_DATE); setFromDate(DEFAULT_DATE); }}
+            onClick={() => { setPendingDate(DEFAULT_DATE); setFromDate(DEFAULT_DATE); updateUrl(sortField, sortAsc, DEFAULT_DATE); }}
             className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
           >
             重置
