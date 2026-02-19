@@ -515,3 +515,23 @@ AMD 正處於關鍵轉型期，從 CPU 廠商蛻變為 **AI 全方位平台供�
 
 **研究機構：** OpenClaw AI Investment Research  
 **報告日期：** 2026年2月19日
+
+
+---
+
+## 十三、競爭對手比較（2026）
+
+### AMD vs NVIDIA（AI GPU）
+- **NVIDIA 2026做法：** Blackwell 生態 + CUDA 鎖定企業AI開發流程。
+- **AMD 2026做法：** MI350/MI400 性價比切入 + ROCm 生態追趕。
+- **誰有優勢：** **NVIDIA 明顯領先**（軟體生態與市占）。
+
+### AMD vs Intel（伺服器CPU）
+- **Intel 2026做法：** Granite Rapids / Sierra Forest 反攻資料中心。
+- **AMD 2026做法：** EPYC Turin 放大核心數與能效優勢。
+- **誰有優勢：** **AMD 略佔上風**，主要因產品節奏與TCO表現。
+
+### 綜合判斷
+- **AI GPU：** AMD 是最強挑戰者，但仍需時間追趕 NVIDIA
+- **伺服器CPU：** AMD 持續吃下 Intel 市占
+- **關鍵變數：** ROCm 生態成熟度 + HBM 成本曲線

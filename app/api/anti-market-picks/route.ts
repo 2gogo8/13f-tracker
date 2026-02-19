@@ -248,8 +248,8 @@ export async function GET() {
             // Sort oldest-first
             items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
             const result = calcIndicators(items);
-            // Criteria: uptrend (price > SMA130) + σ < -2 (deviation > 2x ATR30)
-            if (result && result.isUptrend && result.deviation < -2) {
+            // Criteria: uptrend (price > SMA130) + σ < -1 (deviation > 1x ATR30)
+            if (result && result.isUptrend && result.deviation < -1) {
               const pattern = calcPatternScore(items);
               oversoldStocks.set(symbol, {
                 deviation: Math.round(result.deviation * 10) / 10,

@@ -515,3 +515,19 @@ Rocket Lab USA (RKLB) 處於商業太空產業的黃金發展期。公司以 **E
 **報告編制:** AI 投資研究助理  
 **數據來源:** Financial Modeling Prep (FMP), Yahoo Finance, CNBC, SpaceNews, 公司公告  
 **最後更新:** 2026年2月19日
+
+
+---
+
+## 十二、競爭對手比較（2026補充）
+
+### RKLB vs SpaceX / Firefly / Relativity Space
+- **SpaceX：** 成本與發射頻率絕對領先，Starship 持續推進。
+- **Firefly：** 小型火箭市場追趕中，可靠度仍在驗證。
+- **Relativity：** Terran R 進度受關注，但商業化仍有時間差。
+- **RKLB：** Electron 已商業驗證，Neutron 在中型火箭切入點明確。
+
+### 2026 差異化與勝負
+- **規模戰：** SpaceX 勝
+- **次佳替代供應商：** **RKLB 勝**（尤其美國政府多供應商策略）
+- **結論：** RKLB 不是要打贏 SpaceX，而是要成為「第二名但可持續賺錢」的太空基建公司。

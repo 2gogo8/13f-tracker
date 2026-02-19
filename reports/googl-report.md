@@ -774,3 +774,23 @@ Alphabet 透過三大業務板塊運營:
 
 **報告編制:** OpenClaw AI Research  
 **最後更新:** 2026年2月19日
+
+
+---
+
+## 十四、競爭對手比較（2026）
+
+### GOOGL vs Microsoft（AI/Cloud）
+- **Microsoft 2026做法：** 把 Copilot 深度綁進 Office 365、Azure AI，企業採購路徑最短。
+- **Google 2026做法：** 用 Gemini + Google Cloud 價格/效能策略搶市場，並用 Workspace 導流。
+- **誰有優勢：** **Microsoft 略佔上風**，因企業既有IT生態（Office/Windows/Azure）黏性更強。
+
+### GOOGL vs Meta（廣告）
+- **Meta 2026做法：** Reels + AI推薦強化社群廣告變現。
+- **Google 2026做法：** Search 廣告守城 + YouTube Shorts 廣告化。
+- **誰有優勢：** **Google 在「搜尋意圖型廣告」仍有優勢**，Meta 在社群注意力端更強。
+
+### 綜合判斷
+- **AI/Cloud：** 微軟短期領先
+- **廣告現金流：** Google 護城河仍深
+- **關鍵變數：** 2026 年 Gemini 商業化效率 + Cloud 利潤率改善速度
