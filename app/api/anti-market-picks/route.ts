@@ -10,7 +10,7 @@ let cachedData: unknown = null;
 let cacheTimestamp = 0;
 let cachedVersion = 0;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min (shorter to avoid stale empty results)
-const CACHE_VERSION = 7; // bump - loosen stage1 prefilter to 0%
+const CACHE_VERSION = 8; // R40 threshold 40→33
 
 interface AntiMarketPick {
   symbol: string;
@@ -306,7 +306,7 @@ export async function GET() {
             const revenueGrowth = ((revCY2026 - revCY2025) / revCY2025) * 100;
             const profitMargin = revCY2026 > 0 ? (netIncomeCY2026 / revCY2026) * 100 : 0;
             const rule40Score = revenueGrowth + profitMargin;
-            if (rule40Score < 40) return null;
+            if (rule40Score < 33) return null;
 
             const quote = allQuotes.get(symbol);
             const oversold = oversoldStocks.get(symbol)!;
