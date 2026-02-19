@@ -60,7 +60,7 @@ export default function Home() {
             '#A0522D', '#8B4513', '#9B59B6'
           ];
           setSectorPieData(
-            data.sectors.map((s: { sector: string; value: number }, i: number) => ({
+            data.sectors.slice(0, 5).map((s: { sector: string; value: number }, i: number) => ({
               label: s.sector,
               value: s.value,
               color: colors[i % colors.length],
@@ -287,6 +287,9 @@ export default function Home() {
           </button>
         </div>
 
+        {/* Sector Heatmap - 10 Day Performance */}
+        <SectorHeatmap />
+
         {/* Top Picks - Oversold + Large Cap */}
         <AntiMarketPicks />
         
@@ -378,8 +381,7 @@ export default function Home() {
                   />
                 )}
 
-                {/* Sector Heatmap */}
-                <SectorHeatmap />
+                {/* Sector Heatmap moved above anti-market picks */}
               </div>
             )}
 
