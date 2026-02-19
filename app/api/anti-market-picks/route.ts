@@ -10,7 +10,7 @@ let cachedData: unknown = null;
 let cacheTimestamp = 0;
 let cachedVersion = 0;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min
-const CACHE_VERSION = 11; // continuous decline + IXIC slope + R40
+const CACHE_VERSION = 12; // fix: use close price for bounce check, not intraday high
 
 const START_DATE = '2026-01-20';
 
@@ -67,13 +67,14 @@ function checkContinuousDecline(prices: { date: string; high: number; low: numbe
   // Check continuous: any bounce from trough must be < 40% of drop-so-far
   let lowestSincePeak = peakPrice;
   for (let j = peakIdx + 1; j < prices.length; j++) {
-    if (prices[j].low < lowestSincePeak) {
-      lowestSincePeak = prices[j].low;
+    if (prices[j].close < lowestSincePeak) {
+      lowestSincePeak = prices[j].close;
     }
 
+    // Use CLOSE price for bounce check (not intraday high)
     const dropSoFar = peakPrice - lowestSincePeak;
-    if (dropSoFar > 0 && prices[j].low > lowestSincePeak) {
-      const bounce = prices[j].high - lowestSincePeak;
+    if (dropSoFar > 0 && prices[j].close > lowestSincePeak) {
+      const bounce = prices[j].close - lowestSincePeak;
       if (bounce / dropSoFar > 0.4) {
         return null; // bounce too big, not continuous
       }
