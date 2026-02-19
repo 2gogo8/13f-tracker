@@ -115,7 +115,7 @@ export default function AntiMarketPicks() {
         </span>
       </div>
       <p className="text-[10px] text-gray-600 mb-4">
-        6 個月上升趨勢 + 月均線負乖離 + R40 達標・共 {picks.length} 檔交叉命中
+        6 個月上升趨勢（現價 &gt; SMA130）+ 月均線負乖離超過 2 倍 ATR30・共 {picks.length} 檔命中
       </p>
 
       {picks.length === 0 ? (

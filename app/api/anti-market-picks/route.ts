@@ -10,7 +10,7 @@ let cachedData: unknown = null;
 let cacheTimestamp = 0;
 let cachedVersion = 0;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min (shorter to avoid stale empty results)
-const CACHE_VERSION = 3; // bump to invalidate old cache
+const CACHE_VERSION = 4; // bump to invalidate old cache
 
 interface AntiMarketPick {
   symbol: string;
@@ -248,8 +248,8 @@ export async function GET() {
             // Sort oldest-first
             items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
             const result = calcIndicators(items);
-            // Criteria: uptrend (price > SMA130) + any negative deviation from SMA20
-            if (result && result.isUptrend && result.deviation < -0.5) {
+            // Criteria: uptrend (price > SMA130) + σ < -2 (deviation > 2x ATR30)
+            if (result && result.isUptrend && result.deviation < -2) {
               const pattern = calcPatternScore(items);
               oversoldStocks.set(symbol, {
                 deviation: Math.round(result.deviation * 10) / 10,
@@ -289,7 +289,18 @@ export async function GET() {
               { signal: AbortSignal.timeout(8000) }
             );
             const estimates = await estRes.json();
-            if (!Array.isArray(estimates) || estimates.length < 2) return null;
+            if (!Array.isArray(estimates) || estimates.length < 2) {
+              // No estimates available — still include with R40 = 0
+              const quote = allQuotes.get(symbol);
+              const oversold = oversoldStocks.get(symbol)!;
+              return {
+                symbol, name: quote?.name || symbol, price: quote?.price || 0,
+                marketCap: quote?.marketCap || 0, deviation: oversold.deviation,
+                sma20: oversold.sma20, atr30: oversold.atr30, sma130: oversold.sma130,
+                isUptrend: oversold.isUptrend, revenueGrowth: 0, profitMargin: 0, rule40Score: 0,
+                patternScore: oversold.patternScore, patternGrade: oversold.patternGrade,
+              } as AntiMarketPick;
+            }
 
             let revCY2025 = 0, revCY2026 = 0, netIncomeCY2026 = 0;
             for (const est of estimates) {
@@ -301,12 +312,12 @@ export async function GET() {
                 netIncomeCY2026 = est.netIncomeAvg;
               }
             }
-            if (!revCY2025 || !revCY2026) return null;
-
-            const revenueGrowth = ((revCY2026 - revCY2025) / revCY2025) * 100;
-            const profitMargin = revCY2026 > 0 ? (netIncomeCY2026 / revCY2026) * 100 : 0;
-            const rule40Score = revenueGrowth + profitMargin;
-            if (rule40Score < 40) return null;
+            let revenueGrowth = 0, profitMargin = 0, rule40Score = 0;
+            if (revCY2025 && revCY2026) {
+              revenueGrowth = ((revCY2026 - revCY2025) / revCY2025) * 100;
+              profitMargin = revCY2026 > 0 ? (netIncomeCY2026 / revCY2026) * 100 : 0;
+              rule40Score = revenueGrowth + profitMargin;
+            }
 
             const quote = allQuotes.get(symbol);
             const oversold = oversoldStocks.get(symbol)!;
@@ -332,7 +343,7 @@ export async function GET() {
       results.push(...batchResults.filter((r): r is AntiMarketPick => r !== null));
     }
 
-    results.sort((a, b) => b.rule40Score - a.rule40Score);
+    results.sort((a, b) => a.deviation - b.deviation); // most oversold first
     cachedData = results;
     cacheTimestamp = now;
     cachedVersion = CACHE_VERSION;
