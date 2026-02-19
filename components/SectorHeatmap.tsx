@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface SectorData {
   sector: string;
@@ -95,11 +96,12 @@ export default function SectorHeatmap() {
           const isNeutral = Math.abs(sector.change10d) < 0.3;
 
           return (
-            <div
+            <Link
               key={sector.sector}
-              className="rounded-lg flex flex-col items-center justify-center text-center py-3 px-1 transition-all hover:scale-[1.03] cursor-default relative overflow-hidden"
+              href={`/sector/${encodeURIComponent(sector.sector)}`}
+              className="rounded-lg flex flex-col items-center justify-center text-center py-3 px-1 transition-all hover:scale-[1.05] cursor-pointer relative overflow-hidden no-underline"
               style={{ backgroundColor: bg, color: textCol }}
-              title={`${sector.sector} (${sector.etf}): ${sector.change10d > 0 ? '+' : ''}${sector.change10d}%`}
+              title={`${sector.sector} (${sector.etf}): ${sector.change10d > 0 ? '+' : ''}${sector.change10d}% — 點擊查看板塊個股`}
             >
               <span className="font-bold text-[12px] leading-tight">{sector.sector}</span>
               <span className="font-mono font-bold text-sm mt-0.5">
@@ -109,7 +111,7 @@ export default function SectorHeatmap() {
                 <Sparkline prices={sector.prices} color={isNeutral ? '#6b7280' : sparkColor} />
               </div>
               <span className="text-[8px] opacity-50 mt-0.5">{sector.etf}</span>
-            </div>
+            </Link>
           );
         })}
       </div>
