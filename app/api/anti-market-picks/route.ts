@@ -10,7 +10,7 @@ let cachedData: unknown = null;
 let cacheTimestamp = 0;
 let cachedVersion = 0;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min (shorter to avoid stale empty results)
-const CACHE_VERSION = 5; // bump to invalidate old cache
+const CACHE_VERSION = 6; // bump to invalidate old cache - σ threshold changed to -1
 
 interface AntiMarketPick {
   symbol: string;
