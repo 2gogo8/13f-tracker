@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { Suspense, useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 interface TwAntiMarketPick {
@@ -8,81 +9,116 @@ interface TwAntiMarketPick {
   name: string;
   sector: string;
   price: number;
-  change: number;
-  changePercent: number;
-  sma20: number;
-  atr14: number;
-  deviation: number;
-  signal: string;
+  dropPct: number;
+  peakPrice: number;
+  peakDate: string;
+  sma130: number;
 }
 
-type SortField = 'deviation' | 'price' | 'sma20' | 'atr14';
+type SortField = 'dropPct' | 'sma130pct' | 'price';
+
+const DEFAULT_DATE = '2026-01-20';
+const VALID_SORT_FIELDS: SortField[] = ['dropPct', 'sma130pct', 'price'];
 
 export default function TwAntiMarketPicks() {
+  return (
+    <Suspense fallback={<div className="apple-card p-5 md:p-6 mb-8"><h2 className="font-serif text-lg font-bold text-primary glow-red">台股反市場精選</h2><p className="text-[10px] text-gray-600 mt-1">載入中...</p></div>}>
+      <TwAntiMarketPicksInner />
+    </Suspense>
+  );
+}
+
+function TwAntiMarketPicksInner() {
+  const searchParams = useSearchParams();
+
+  const urlSort = searchParams.get('twSort') as SortField | null;
+  const urlAsc = searchParams.get('twAsc');
+  const urlDate = searchParams.get('twDate');
+
   const [picks, setPicks] = useState<TwAntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('deviation');
-  const [sortAsc, setSortAsc] = useState(true); // ascending for deviation (most oversold first)
+  const [sortField, setSortField] = useState<SortField>(
+    urlSort && VALID_SORT_FIELDS.includes(urlSort) ? urlSort : 'dropPct'
+  );
+  const [sortAsc, setSortAsc] = useState(urlAsc === '1');
   const [showAll, setShowAll] = useState(false);
+  const [fromDate, setFromDate] = useState(urlDate || DEFAULT_DATE);
+  const [pendingDate, setPendingDate] = useState(urlDate || DEFAULT_DATE);
   const INITIAL_COUNT = 10;
 
-  useEffect(() => {
-    async function fetchPicks() {
-      try {
-        const res = await fetch('/api/tw/oversold');
-        const data = await res.json();
-        if (Array.isArray(data)) setPicks(data);
-      } catch (e) {
-        console.error('Failed to fetch TW oversold picks:', e);
-      }
-      setLoading(false);
-    }
-    fetchPicks();
+  const updateUrl = useCallback((field: SortField, asc: boolean, date: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('twSort', field);
+    params.set('twAsc', asc ? '1' : '0');
+    if (date !== DEFAULT_DATE) params.set('twDate', date);
+    else params.delete('twDate');
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, '', newUrl);
   }, []);
+
+  const fetchPicks = useCallback(async (date: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/tw/oversold?fromDate=${date}`);
+      const data = await res.json();
+      if (Array.isArray(data)) setPicks(data);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchPicks(fromDate);
+  }, [fromDate, fetchPicks]);
+
+  const handleDateChange = () => {
+    if (pendingDate && pendingDate !== fromDate) {
+      setFromDate(pendingDate);
+      setShowAll(false);
+      updateUrl(sortField, sortAsc, pendingDate);
+    }
+  };
 
   const sorted = useMemo(() => {
     const arr = [...picks];
     arr.sort((a, b) => {
-      const va = a[sortField];
-      const vb = b[sortField];
+      let va: number, vb: number;
+      if (sortField === 'sma130pct') {
+        va = a.price / a.sma130;
+        vb = b.price / b.sma130;
+      } else {
+        va = a[sortField as keyof TwAntiMarketPick] as number;
+        vb = b[sortField as keyof TwAntiMarketPick] as number;
+      }
       return sortAsc ? va - vb : vb - va;
     });
     return arr;
   }, [picks, sortField, sortAsc]);
 
   const handleSort = (field: SortField) => {
+    let newAsc: boolean;
     if (sortField === field) {
-      setSortAsc(!sortAsc);
+      newAsc = !sortAsc;
     } else {
-      setSortField(field);
-      setSortAsc(field === 'deviation' ? true : false);
+      newAsc = false;
     }
+    setSortField(field);
+    setSortAsc(newAsc);
+    updateUrl(field, newAsc, fromDate);
   };
 
   const displayed = showAll ? sorted : sorted.slice(0, INITIAL_COUNT);
 
-  if (loading) {
-    return (
-      <div className="apple-card p-5 md:p-6 mb-8">
-        <h2 className="font-serif text-lg font-bold text-primary glow-red">台股反市場精選</h2>
-        <p className="text-[10px] text-gray-600 mt-1">掃描台股中...</p>
-      </div>
-    );
-  }
-
-  const SortHeader = ({ field, label }: { field: SortField; label: string }) => {
+  const SortHeader = ({ field, label, width }: { field: SortField; label: string; width?: string }) => {
     const isActive = sortField === field;
     return (
       <button
         onClick={() => handleSort(field)}
-        className={`w-14 text-right text-[9px] uppercase tracking-wider transition-colors ${
+        className={`${width || 'w-14'} text-right text-[9px] uppercase tracking-wider transition-colors ${
           isActive ? 'text-accent font-bold' : 'text-gray-600 hover:text-gray-500'
         }`}
       >
         {label}
-        {isActive && (
-          <span className="ml-0.5">{sortAsc ? '↑' : '↓'}</span>
-        )}
+        {isActive && <span className="ml-0.5">{sortAsc ? '↑' : '↓'}</span>}
       </button>
     );
   };
@@ -98,54 +134,96 @@ export default function TwAntiMarketPicks() {
           Contrarian
         </span>
       </div>
+
+      {/* Date Picker */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-[10px] text-gray-500">起算日期</span>
+        <input
+          type="date"
+          value={pendingDate}
+          onChange={(e) => setPendingDate(e.target.value)}
+          className="text-xs px-2 py-1 rounded-md border border-gray-200 bg-white/80 text-gray-700 focus:outline-none focus:ring-1 focus:ring-accent/30"
+          max={new Date().toISOString().split('T')[0]}
+          min="2024-01-01"
+        />
+        {pendingDate !== fromDate && (
+          <button
+            onClick={handleDateChange}
+            className="text-[10px] px-2.5 py-1 rounded-md bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+          >
+            掃描
+          </button>
+        )}
+        {fromDate !== DEFAULT_DATE && (
+          <button
+            onClick={() => { setPendingDate(DEFAULT_DATE); setFromDate(DEFAULT_DATE); updateUrl(sortField, sortAsc, DEFAULT_DATE); }}
+            className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            重置
+          </button>
+        )}
+      </div>
+
       <p className="text-[10px] text-gray-600 mb-4">
-        負乖離超賣・台股50+中型100・共 {picks.length} 檔負偏離超過 -1σ
+        連續下跌 0-35%（自 {fromDate} 起）+ 股價 &gt; SMA130{!loading && `・共 ${picks.length} 檔命中`}
       </p>
 
-      {picks.length === 0 ? (
+      {loading ? (
         <div className="text-center py-8">
-          <p className="text-gray-400 text-sm">目前無負乖離超賣標的</p>
+          <div className="inline-block w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+          <p className="text-[10px] text-gray-500 mt-2">掃描台股中（約 60 秒）...</p>
+        </div>
+      ) : picks.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-gray-400 text-sm">目前無符合條件的台股標的</p>
           <p className="text-[10px] text-gray-600 mt-1">
-            當台股優質個股被市場錯殺時，這裡會出現機會
+            當台股優質個股跟著大盤被錯殺時，這裡會出現機會
           </p>
         </div>
       ) : (
         <>
-          {/* Sortable Header */}
           <div className="flex items-center px-2 pb-2">
             <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
-            <SortHeader field="deviation" label="偏離" />
-            <SortHeader field="sma20" label="SMA20" />
-            <SortHeader field="atr14" label="ATR14" />
+            <SortHeader field="dropPct" label="跌幅" />
+            <SortHeader field="price" label="現價" />
+            <SortHeader field="sma130pct" label="SMA130" width="w-16" />
           </div>
 
           <div className="divide-y divide-accent/[0.15]">
-            {displayed.map((stock) => (
-              <Link
-                key={stock.symbol}
-                href={`/tw/${stock.symbol}`}
-                className="flex items-center py-3 px-2 rounded transition-all hover:bg-gray-50 active:bg-primary/10 group cursor-pointer"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-serif text-sm font-bold text-accent">{stock.symbol}</span>
-                    <span className="text-[9px] text-gray-500 truncate">{stock.name}</span>
+            {displayed.map((stock) => {
+              const sma130pct = ((stock.price / stock.sma130 - 1) * 100);
+              return (
+                <Link
+                  key={stock.symbol}
+                  href={`/tw/${stock.symbol}`}
+                  className="flex items-center py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-serif text-sm font-bold text-accent">{stock.symbol}</span>
+                      <span className="text-[9px] text-gray-500 truncate">{stock.name}</span>
+                    </div>
+                    <div className="text-[9px] text-gray-600 mt-0.5">
+                      {stock.sector}・高點 {stock.peakDate}
+                    </div>
                   </div>
-                  <div className="text-[9px] text-gray-600 mt-0.5">
-                    ${stock.price.toFixed(2)}・{stock.sector}
-                  </div>
-                </div>
-                <span className="w-14 text-right text-xs font-mono text-primary font-semibold">
-                  {stock.deviation.toFixed(1)}σ
-                </span>
-                <span className="w-14 text-right text-xs font-mono text-gray-600">
-                  {stock.sma20.toFixed(1)}
-                </span>
-                <span className="w-14 text-right text-xs font-mono text-gray-600">
-                  {stock.atr14.toFixed(1)}
-                </span>
-              </Link>
-            ))}
+                  <span className={`w-14 text-right text-xs font-mono font-semibold ${
+                    stock.dropPct >= 25 ? 'text-primary font-bold' :
+                    stock.dropPct >= 15 ? 'text-red-400' : 'text-gray-500'
+                  }`}>
+                    -{stock.dropPct}%
+                  </span>
+                  <span className="w-14 text-right text-xs font-mono text-gray-700">
+                    {stock.price.toFixed(0)}
+                  </span>
+                  <span className={`w-16 text-right text-[10px] font-mono ${
+                    sma130pct >= 10 ? 'text-green-500' : 'text-gray-500'
+                  }`}>
+                    +{sma130pct.toFixed(1)}%
+                  </span>
+                </Link>
+              );
+            })}
           </div>
 
           {!showAll && picks.length > INITIAL_COUNT && (
@@ -168,7 +246,7 @@ export default function TwAntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        點擊欄位標題排序 | 偏離 = (現價 - SMA20) / ATR14 | 僅供參考，非投資建議
+        跌幅 = 自高點連續下跌% | SMA130 = 現價高於130日均線% | 台股50+中型100 | 僅供參考
       </p>
     </div>
   );
