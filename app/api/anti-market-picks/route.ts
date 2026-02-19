@@ -10,7 +10,7 @@ const BASE = 'https://financialmodelingprep.com';
 // Cache per fromDate
 const cacheMap = new Map<string, { data: unknown; timestamp: number; version: number }>();
 const CACHE_DURATION = 30 * 60 * 1000; // 30 min
-const CACHE_VERSION = 13; // dynamic fromDate support
+const CACHE_VERSION = 14; // simplified: decline + R40>40 + SMA130
 
 const DEFAULT_START_DATE = '2026-01-20';
 
@@ -22,25 +22,10 @@ interface AntiMarketPick {
   dropPct: number;        // continuous decline %
   peakPrice: number;
   peakDate: string;
-  slopeScore: number;     // 0-100: how similar slope is to IXIC (100=identical)
-  slopeStock: number;     // stock's 7-day slope
-  slopeIxic: number;      // IXIC's 7-day slope
+  sma130: number;         // SMA130 value
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
-}
-
-// Linear regression slope as % per day (normalized by first price)
-function linearSlope(prices: number[]): number | null {
-  const n = prices.length;
-  if (n < 3) return null;
-  const base = prices[0];
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (let i = 0; i < n; i++) {
-    const y = (prices[i] / base - 1) * 100;
-    sumX += i; sumY += y; sumXY += i * y; sumX2 += i * i;
-  }
-  return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
 }
 
 // Check continuous decline: from peak, drop is 0-35%, bounces < 40% of drop
@@ -138,25 +123,7 @@ export async function GET(request: Request) {
 }
 
 async function doScan(fromDate: string) {
-    // Step 1: Get IXIC 7-day slope
-    let ixicSlope: number | null = null;
-    try {
-      const ixicRes = await fetch(
-        `${BASE}/stable/historical-price-eod/full?symbol=^IXIC&from=${getDateStr(-14)}&apikey=${API_KEY}`,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      const ixicData = await ixicRes.json();
-      if (Array.isArray(ixicData) && ixicData.length >= 5) {
-        const sorted = ixicData.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date)).slice(-7);
-        ixicSlope = linearSlope(sorted.map((d: { close: number }) => d.close));
-      }
-    } catch {}
-
-    if (ixicSlope === null) {
-      return [];
-    }
-
-    // Step 2: Get stock universe
+    // Step 1: Get stock universe
     const [sp500Res, nasdaqRes] = await Promise.all([
       fetch(`${BASE}/stable/sp500-constituent?apikey=${API_KEY}`).then(r => r.json()),
       fetch(`${BASE}/stable/nasdaq-constituent?apikey=${API_KEY}`).then(r => r.json()),
@@ -168,7 +135,7 @@ async function doScan(fromDate: string) {
     if (Array.isArray(nasdaqRes)) for (const s of nasdaqRes) { symbolSet.add(s.symbol); nameMap.set(s.symbol, s.name); }
     const allSymbols = Array.from(symbolSet);
 
-    // Step 3: Batch quotes for price/marketCap
+    // Step 2: Batch quotes for price/marketCap
     const quoteMap = new Map<string, { price: number; marketCap: number; name: string }>();
     const batchSize = 50;
     for (let i = 0; i < allSymbols.length; i += batchSize) {
@@ -188,14 +155,19 @@ async function doScan(fromDate: string) {
       } catch {}
     }
 
-    // Step 4: Fetch historical from START_DATE for ALL stocks, check continuous decline + slope
+    // Step 3: Fetch historical — check continuous decline 0-35% + SMA130
+    // We need ~130 trading days before fromDate for SMA130, so fetch from ~7 months before
+    const fromDateObj = new Date(fromDate);
+    const extendedFrom = new Date(fromDateObj);
+    extendedFrom.setDate(extendedFrom.getDate() - 200); // ~200 calendar days ≈ 130+ trading days
+    const extendedFromStr = extendedFrom.toISOString().split('T')[0];
+
     interface Candidate {
       symbol: string;
       dropPct: number;
       peakPrice: number;
       peakDate: string;
-      slopeStock: number;
-      slopeScore: number;
+      sma130: number;
     }
     const candidates: Candidate[] = [];
 
@@ -205,46 +177,45 @@ async function doScan(fromDate: string) {
         batch.map(async (symbol) => {
           try {
             const res = await fetch(
-              `${BASE}/stable/historical-price-eod/full?symbol=${symbol}&from=${fromDate}&apikey=${API_KEY}`,
+              `${BASE}/stable/historical-price-eod/full?symbol=${symbol}&from=${extendedFromStr}&apikey=${API_KEY}`,
               { signal: AbortSignal.timeout(8000) }
             );
             const raw = await res.json();
             const items = Array.isArray(raw) ? raw : [];
-            if (items.length < 5) return;
+            if (items.length < 30) return;
 
-            const prices = items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+            const allPrices = items.sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date));
+
+            // Calculate SMA130 from all available data
+            const closes = allPrices.map((d: { close: number }) => d.close);
+            if (closes.length < 130) return;
+            const sma130 = closes.slice(-130).reduce((a: number, b: number) => a + b, 0) / 130;
+
+            // Current price must be above SMA130
+            const currentPrice = closes[closes.length - 1];
+            if (currentPrice < sma130) return;
+
+            // Filter to only prices from fromDate onwards for decline check
+            const pricesFromDate = allPrices.filter((d: { date: string }) => d.date >= fromDate);
+            if (pricesFromDate.length < 5) return;
 
             // Check continuous decline 0-35%
-            const decline = checkContinuousDecline(prices);
+            const decline = checkContinuousDecline(pricesFromDate);
             if (!decline) return;
-
-            // Check 7-day slope similarity to IXIC
-            const last7 = prices.slice(-7);
-            const stockSlope = linearSlope(last7.map((d: { close: number }) => d.close));
-            if (stockSlope === null) return;
-
-            // Slope similarity: ratio of difference to IXIC slope
-            const slopeDiff = Math.abs(stockSlope - ixicSlope!);
-            const slopeRatio = Math.abs(ixicSlope!) > 0.01 ? slopeDiff / Math.abs(ixicSlope!) : slopeDiff;
-            if (slopeRatio > 0.5 && slopeDiff > 0.3) return; // too different from IXIC
-
-            // Convert slope similarity to 0-100 score (100 = identical)
-            const slopeScore = Math.round(Math.max(0, 100 - slopeRatio * 100));
 
             candidates.push({
               symbol,
               dropPct: decline.drop,
               peakPrice: decline.peakPrice,
               peakDate: decline.peakDate,
-              slopeStock: Math.round(stockSlope * 10000) / 10000,
-              slopeScore,
+              sma130: Math.round(sma130 * 100) / 100,
             });
           } catch {}
         })
       );
     }
 
-    // Step 5: Check R40 for candidates
+    // Step 4: Check R40 for candidates
     const results: AntiMarketPick[] = [];
 
     for (let i = 0; i < candidates.length; i += 5) {
@@ -286,9 +257,7 @@ async function doScan(fromDate: string) {
               dropPct: cand.dropPct,
               peakPrice: cand.peakPrice,
               peakDate: cand.peakDate,
-              slopeScore: cand.slopeScore,
-              slopeStock: cand.slopeStock,
-              slopeIxic: Math.round(ixicSlope! * 10000) / 10000,
+              sma130: cand.sma130,
               revenueGrowth: Math.round(revenueGrowth * 10) / 10,
               profitMargin: Math.round(profitMargin * 10) / 10,
               rule40Score: Math.round(rule40Score * 10) / 10,
@@ -298,9 +267,8 @@ async function doScan(fromDate: string) {
       );
     }
 
-    results.sort((a, b) => b.dropPct - a.dropPct); // most declined first
+    results.sort((a, b) => b.rule40Score - a.rule40Score); // best R40 first
     cacheMap.set(fromDate, { data: results, timestamp: Date.now(), version: CACHE_VERSION });
-    // Keep cache map small — max 5 dates
     if (cacheMap.size > 5) {
       const oldest = [...cacheMap.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
       if (oldest) cacheMap.delete(oldest[0]);

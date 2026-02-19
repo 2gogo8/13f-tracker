@@ -11,15 +11,13 @@ interface AntiMarketPick {
   dropPct: number;
   peakPrice: number;
   peakDate: string;
-  slopeScore: number;
-  slopeStock: number;
-  slopeIxic: number;
+  sma130: number;
   revenueGrowth: number;
   profitMargin: number;
   rule40Score: number;
 }
 
-type SortField = 'dropPct' | 'rule40Rank' | 'slopeScore';
+type SortField = 'dropPct' | 'rule40Score' | 'sma130pct';
 
 function formatMktCap(n: number): string {
   if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
@@ -32,7 +30,7 @@ const DEFAULT_DATE = '2026-01-20';
 export default function AntiMarketPicks() {
   const [picks, setPicks] = useState<AntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('dropPct');
+  const [sortField, setSortField] = useState<SortField>('rule40Score');
   const [sortAsc, setSortAsc] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [fromDate, setFromDate] = useState(DEFAULT_DATE);
@@ -60,46 +58,39 @@ export default function AntiMarketPicks() {
     }
   };
 
-  // Compute R40 rank within this pick list
-  const r40Ranked = useMemo(() => {
-    const byR40 = [...picks].sort((a, b) => b.rule40Score - a.rule40Score);
-    const rankMap = new Map<string, number>();
-    byR40.forEach((p, i) => rankMap.set(p.symbol, i + 1));
-    return rankMap;
-  }, [picks]);
-
   const sorted = useMemo(() => {
     const arr = [...picks];
     arr.sort((a, b) => {
-      if (sortField === 'rule40Rank') {
-        const ra = r40Ranked.get(a.symbol) || 999;
-        const rb = r40Ranked.get(b.symbol) || 999;
-        return sortAsc ? ra - rb : rb - ra;
+      let va: number, vb: number;
+      if (sortField === 'sma130pct') {
+        va = a.price / a.sma130;
+        vb = b.price / b.sma130;
+      } else {
+        va = a[sortField as keyof AntiMarketPick] as number;
+        vb = b[sortField as keyof AntiMarketPick] as number;
       }
-      const va = a[sortField as keyof AntiMarketPick] as number;
-      const vb = b[sortField as keyof AntiMarketPick] as number;
       return sortAsc ? va - vb : vb - va;
     });
     return arr;
-  }, [picks, sortField, sortAsc, r40Ranked]);
+  }, [picks, sortField, sortAsc]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
     } else {
       setSortField(field);
-      setSortAsc(field === 'rule40Rank');
+      setSortAsc(false);
     }
   };
 
   const displayed = showAll ? sorted : sorted.slice(0, INITIAL_COUNT);
 
-  const SortHeader = ({ field, label }: { field: SortField; label: string }) => {
+  const SortHeader = ({ field, label, width }: { field: SortField; label: string; width?: string }) => {
     const isActive = sortField === field;
     return (
       <button
         onClick={() => handleSort(field)}
-        className={`w-14 text-right text-[9px] uppercase tracking-wider transition-colors ${
+        className={`${width || 'w-14'} text-right text-[9px] uppercase tracking-wider transition-colors ${
           isActive ? 'text-accent font-bold' : 'text-gray-600 hover:text-gray-500'
         }`}
       >
@@ -153,7 +144,7 @@ export default function AntiMarketPicks() {
       </div>
 
       <p className="text-[10px] text-gray-600 mb-4">
-        連續下跌 0-35%（自 {fromDate} 起）+ 走勢斜率近 IXIC + R40 ≥ 40{!loading && `・共 ${picks.length} 檔命中`}
+        連續下跌 0-35%（自 {fromDate} 起）+ R40 &gt; 40 + 股價 &gt; SMA130{!loading && `・共 ${picks.length} 檔命中`}
       </p>
 
       {loading ? (
@@ -173,46 +164,50 @@ export default function AntiMarketPicks() {
           {/* Sortable Header */}
           <div className="flex items-center px-2 pb-2">
             <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
-            <SortHeader field="slopeScore" label="型態" />
             <SortHeader field="dropPct" label="跌幅" />
-            <SortHeader field="rule40Rank" label="R40排名" />
+            <SortHeader field="rule40Score" label="R40" />
+            <SortHeader field="sma130pct" label="SMA130" width="w-16" />
           </div>
 
           <div className="divide-y divide-accent/[0.15]">
-            {displayed.map((stock) => (
-              <Link
-                key={stock.symbol}
-                href={`/stock/${stock.symbol}`}
-                className="flex items-center py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-serif text-sm font-bold text-accent">{stock.symbol}</span>
-                    <span className="text-[9px] text-gray-500 truncate">{stock.name}</span>
+            {displayed.map((stock) => {
+              const sma130pct = ((stock.price / stock.sma130 - 1) * 100);
+              return (
+                <Link
+                  key={stock.symbol}
+                  href={`/stock/${stock.symbol}`}
+                  className="flex items-center py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-serif text-sm font-bold text-accent">{stock.symbol}</span>
+                      <span className="text-[9px] text-gray-500 truncate">{stock.name}</span>
+                    </div>
+                    <div className="text-[9px] text-gray-600 mt-0.5">
+                      ${stock.price.toFixed(2)}・{formatMktCap(stock.marketCap)}・高點 {stock.peakDate}
+                    </div>
                   </div>
-                  <div className="text-[9px] text-gray-600 mt-0.5">
-                    ${stock.price.toFixed(2)}・{formatMktCap(stock.marketCap)}・高點 {stock.peakDate}
-                  </div>
-                </div>
-                <span className={`w-14 text-right text-xs font-mono font-bold ${
-                  stock.slopeScore >= 80 ? 'text-green-500' :
-                  stock.slopeScore >= 50 ? 'text-blue-400' :
-                  'text-yellow-500'
-                }`}>
-                  {stock.slopeScore}
-                  <span className="text-[8px] font-normal text-gray-400">分</span>
-                </span>
-                <span className={`w-14 text-right text-xs font-mono font-semibold ${
-                  stock.dropPct >= 25 ? 'text-primary font-bold' :
-                  stock.dropPct >= 15 ? 'text-red-400' : 'text-gray-500'
-                }`}>
-                  -{stock.dropPct}%
-                </span>
-                <span className="w-14 text-right text-sm font-mono font-bold text-accent">
-                  #{r40Ranked.get(stock.symbol) || '-'}
-                </span>
-              </Link>
-            ))}
+                  <span className={`w-14 text-right text-xs font-mono font-semibold ${
+                    stock.dropPct >= 25 ? 'text-primary font-bold' :
+                    stock.dropPct >= 15 ? 'text-red-400' : 'text-gray-500'
+                  }`}>
+                    -{stock.dropPct}%
+                  </span>
+                  <span className={`w-14 text-right text-xs font-mono font-bold ${
+                    stock.rule40Score >= 60 ? 'text-green-500' :
+                    stock.rule40Score >= 50 ? 'text-blue-400' :
+                    'text-accent'
+                  }`}>
+                    {stock.rule40Score.toFixed(0)}
+                  </span>
+                  <span className={`w-16 text-right text-[10px] font-mono ${
+                    sma130pct >= 10 ? 'text-green-500' : 'text-gray-500'
+                  }`}>
+                    +{sma130pct.toFixed(1)}%
+                  </span>
+                </Link>
+              );
+            })}
           </div>
 
           {!showAll && picks.length > INITIAL_COUNT && (
@@ -235,7 +230,7 @@ export default function AntiMarketPicks() {
       )}
 
       <p className="text-[9px] text-gray-500 mt-3 text-center">
-        型態 = 7日走勢與IXIC斜率相似度(100=完全一致) | 跌幅 = 自高點連續下跌% | R40排名 = 精選內的 Rule of 40 排名 | 僅供參考
+        跌幅 = 自高點連續下跌% | R40 = 營收成長率+利潤率 | SMA130 = 現價高於130日均線% | 僅供參考
       </p>
     </div>
   );
