@@ -37,7 +37,7 @@ function formatMktCap(n: number): string {
 export default function AntiMarketPicks() {
   const [picks, setPicks] = useState<AntiMarketPick[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortField, setSortField] = useState<SortField>('rule40Score');
+  const [sortField, setSortField] = useState<SortField>('rule40Rank');
   const [sortAsc, setSortAsc] = useState(false); // default descending
   const [showAll, setShowAll] = useState(false);
   const INITIAL_COUNT = 10;
