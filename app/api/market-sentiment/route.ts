@@ -45,8 +45,8 @@ export async function GET() {
     // Signal 2: Market gainers vs losers
     try {
       const [gainersRes, losersRes] = await Promise.all([
-        fetch(`https://financialmodelingprep.com/stable/biggest-gainers?apikey=${FMP_KEY}`),
-        fetch(`https://financialmodelingprep.com/stable/biggest-losers?apikey=${FMP_KEY}`),
+        fetch(`https://financialmodelingprep.com/stable/biggest-gainers?apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(8000) }),
+        fetch(`https://financialmodelingprep.com/stable/biggest-losers?apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(8000) }),
       ]);
       const gainers = await gainersRes.json();
       const losers = await losersRes.json();
