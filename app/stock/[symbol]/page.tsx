@@ -9,6 +9,7 @@ import PriceChart from '@/components/PriceChart';
 import SupplyChain from '@/components/SupplyChain';
 import CommentSection from '@/components/CommentSection';
 import AIAnalysis from '@/components/AIAnalysis';
+import AnalystConsensus from '@/components/AnalystConsensus';
 import { getSupplyChain } from '@/data/supply-chain';
 
 function formatNumber(n: number): string {
@@ -374,6 +375,9 @@ export default function StockDetailPage({
             </div>
           </div>
         )}
+
+        {/* Analyst Consensus */}
+        <AnalystConsensus symbol={symbol} currentPrice={quote?.price} />
 
         {/* AI Analysis */}
         <AIAnalysis symbol={symbol} />

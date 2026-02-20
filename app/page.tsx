@@ -14,6 +14,7 @@ import SentimentGauge from '@/components/SentimentGauge';
 import AntiMarketPicks from '@/components/AntiMarketPicks';
 import TwAntiMarketPicks from '@/components/TwAntiMarketPicks';
 import TrendingNews from '@/components/TrendingNews';
+import AnalystOverview from '@/components/AnalystOverview';
 import { DashboardStock, TopMoverStock, SortOption, SectorPerformance, TrendingNewsItem } from '@/types';
 
 const sortOptions: SortOption[] = [
@@ -295,6 +296,9 @@ export default function Home() {
         
         {/* Taiwan Anti-Market Picks */}
         <TwAntiMarketPicks />
+
+        {/* Analyst Consensus Overview */}
+        <AnalystOverview />
 
         {loading ? (
           <div className="text-center py-32">
