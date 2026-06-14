@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 import supplyChainDB from '@/data/supply-chain';
+import { twStocks } from '@/data/tw-stocks';
+
+// Build sector map: code (e.g. '2330') -> sector
+const SECTOR_MAP: Record<string, string> = {};
+for (const s of twStocks) {
+  SECTOR_MAP[s.symbol] = s.sector;
+}
 
 export const maxDuration = 30;
 
@@ -190,10 +197,13 @@ export async function POST(request: NextRequest) {
       if (twSlope < roundedTaiex) continue;
 
       const meta = twCache.metadata[twTicker];
+      // Look up sector from tw-stocks.ts static map
+      const code = twTicker.replace('.TW', '').replace('.TWO', '');
+      const sector = SECTOR_MAP[code] || meta?.sector || '';
       type2.push({
         twSymbol: twTicker,
         twName: meta?.name || twTicker,
-        sector: meta?.sector || '',
+        sector,
         twSlope,
         taiexSlope: roundedTaiex,
       });
