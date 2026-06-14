@@ -7,8 +7,12 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  /* config options here */
   turbopack: {},
+  // Ensure large data files are included in Vercel serverless bundles
+  outputFileTracingIncludes: {
+    '/api/slope-scanner': ['./data/**/*'],
+    '/api/tw-slope': ['./data/**/*'],
+  },
 };
 
 export default withPWA(nextConfig);
