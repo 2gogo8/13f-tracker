@@ -70,7 +70,7 @@ export default function SlopeScanner() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ScanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<GroupFilter>('all');
+  const [activeFilter, setActiveFilter] = useState<GroupFilter>('⚡爆賺');
   const [sortKey, setSortKey] = useState<SortKey>('slope');
   const [sortAsc, setSortAsc] = useState(false);
 
