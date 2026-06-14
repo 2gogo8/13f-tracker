@@ -54,10 +54,10 @@ export default function SlopeScanner() {
   const [date2, setDate2] = useState('2026-02-28');
   const [benchmark, setBenchmark] = useState('QQQ');
 
-  // Restore last session from localStorage
+  // Restore last session from localStorage (v2: default filter = 爆賺)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('us_slope_state');
+      const saved = localStorage.getItem('us_slope_state_v2');
       if (saved) {
         const state = JSON.parse(saved);
         if (state.date1) setDate1(state.date1);
@@ -65,6 +65,8 @@ export default function SlopeScanner() {
         if (state.benchmark) setBenchmark(state.benchmark);
         if (state.data) setData(state.data);
       }
+      // Clear old version
+      localStorage.removeItem('us_slope_state');
     } catch {}
   }, []);
   const [loading, setLoading] = useState(false);
@@ -97,7 +99,7 @@ export default function SlopeScanner() {
       }
       setData(json);
       try {
-        localStorage.setItem('us_slope_state', JSON.stringify({ date1, date2, benchmark, data: json }));
+        localStorage.setItem('us_slope_state_v2', JSON.stringify({ date1, date2, benchmark, data: json }));
       } catch {}
     } catch (e) {
       setError(`請求失敗: ${e}`);
