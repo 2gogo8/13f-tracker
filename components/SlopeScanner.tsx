@@ -328,7 +328,7 @@ export default function SlopeScanner() {
                   className="text-right py-2 px-3 cursor-pointer hover:text-gray-900 font-semibold"
                   onClick={() => handleSort('post_return')}
                 >
-                  後續報酬%{sortIndicator('post_return')}
+                  股價倍數{sortIndicator('post_return')}
                 </th>
                 <th
                   className="text-right py-2 px-3 cursor-pointer hover:text-gray-900 font-semibold hidden sm:table-cell"
@@ -388,8 +388,7 @@ export default function SlopeScanner() {
                       r.post_return > 0 ? 'text-emerald-700' : 'text-red-600'
                     }`}
                   >
-                    {r.post_return > 0 ? '+' : ''}
-                    {r.post_return.toFixed(1)}%
+                    {(1 + r.post_return / 100).toFixed(2)}倍
                   </td>
                   <td
                     className={`py-2 px-3 text-right font-mono hidden sm:table-cell ${
