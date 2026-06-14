@@ -34,19 +34,38 @@ type TabKey = 'type1' | 'type2';
 type SortKey1 = 'twSymbol' | 'twSlope' | 'usSlope' | 'usParent';
 type SortKey2 = 'twSymbol' | 'twSlope' | 'sector';
 
+function StatCard({
+  label,
+  value,
+  sub,
+  color,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  color: string;
+  accent: string;
+}) {
+  return (
+    <div className={`rounded-xl p-4 border-l-4 bg-white shadow-sm border border-gray-100 ${accent}`}>
+      <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{label}</div>
+      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+      <div className="text-xs text-gray-400 mt-1">{sub}</div>
+    </div>
+  );
+}
+
 export default function TWSlopeScanner() {
-  const [date1, setDate1] = useState('2025-11-20');
-  const [date2, setDate2] = useState('2026-02-28');
+  const [date1, setDate1] = useState('2026-05-20');
+  const [date2, setDate2] = useState('2026-06-11');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<TWScanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabKey>('type1');
+  const [activeTab, setActiveTab] = useState<TabKey>('type2');
 
-  // Type1 sort
   const [sort1Key, setSort1Key] = useState<SortKey1>('twSlope');
   const [sort1Asc, setSort1Asc] = useState(true);
-
-  // Type2 sort
   const [sort2Key, setSort2Key] = useState<SortKey2>('twSlope');
   const [sort2Asc, setSort2Asc] = useState(false);
 
@@ -54,7 +73,6 @@ export default function TWSlopeScanner() {
     setLoading(true);
     setError(null);
     setData(null);
-
     try {
       const res = await fetch('/api/tw-slope', {
         method: 'POST',
@@ -62,9 +80,8 @@ export default function TWSlopeScanner() {
         body: JSON.stringify({ date1, date2 }),
       });
       const json = await res.json();
-
       if (json.error === 'tw_data_not_ready') {
-        setError('台股資料尚未準備好，請先執行 scripts/update_tw_slope_cache.py');
+        setError('台股資料尚未準備，請先執行 scripts/update_tw_slope_cache.py');
         return;
       }
       if (json.error) {
@@ -79,338 +96,271 @@ export default function TWSlopeScanner() {
     }
   }
 
-  // Type1 sorted
   const sortedType1 = useMemo(() => {
     if (!data) return [];
-    const arr = [...data.type1];
-    arr.sort((a, b) => {
+    return [...data.type1].sort((a, b) => {
       const valA = a[sort1Key];
       const valB = b[sort1Key];
-      if (typeof valA === 'string' && typeof valB === 'string') {
+      if (typeof valA === 'string' && typeof valB === 'string')
         return sort1Asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      }
-      return sort1Asc
-        ? (valA as number) - (valB as number)
-        : (valB as number) - (valA as number);
+      return sort1Asc ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
     });
-    return arr;
   }, [data, sort1Key, sort1Asc]);
 
-  // Type2 sorted
   const sortedType2 = useMemo(() => {
     if (!data) return [];
-    const arr = [...data.type2];
-    arr.sort((a, b) => {
+    return [...data.type2].sort((a, b) => {
       const valA = a[sort2Key];
       const valB = b[sort2Key];
-      if (typeof valA === 'string' && typeof valB === 'string') {
+      if (typeof valA === 'string' && typeof valB === 'string')
         return sort2Asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      }
-      return sort2Asc
-        ? (valA as number) - (valB as number)
-        : (valB as number) - (valA as number);
+      return sort2Asc ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
     });
-    return arr;
   }, [data, sort2Key, sort2Asc]);
 
   function handleSort1(key: SortKey1) {
-    if (sort1Key === key) {
-      setSort1Asc(!sort1Asc);
-    } else {
-      setSort1Key(key);
-      setSort1Asc(key === 'twSlope'); // slope default asc (most negative first)
-    }
+    if (sort1Key === key) setSort1Asc(!sort1Asc);
+    else { setSort1Key(key); setSort1Asc(key === 'twSlope'); }
   }
-
   function handleSort2(key: SortKey2) {
-    if (sort2Key === key) {
-      setSort2Asc(!sort2Asc);
-    } else {
-      setSort2Key(key);
-      setSort2Asc(false);
-    }
+    if (sort2Key === key) setSort2Asc(!sort2Asc);
+    else { setSort2Key(key); setSort2Asc(false); }
   }
+  const si1 = (k: SortKey1) => sort1Key === k ? (sort1Asc ? ' ↑' : ' ↓') : '';
+  const si2 = (k: SortKey2) => sort2Key === k ? (sort2Asc ? ' ↑' : ' ↓') : '';
 
-  const sortIndicator1 = (key: SortKey1) => {
-    if (sort1Key !== key) return '';
-    return sort1Asc ? ' ↑' : ' ↓';
-  };
-
-  const sortIndicator2 = (key: SortKey2) => {
-    if (sort2Key !== key) return '';
-    return sort2Asc ? ' ↑' : ' ↓';
-  };
-
-  const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: 'type1', label: '🔗 供應鏈補漲', count: data?.type1.length ?? 0 },
-    { key: 'type2', label: '📈 跟盤型', count: data?.type2.length ?? 0 },
-  ];
+  const slopeColor = (v: number) =>
+    v >= 20 ? 'text-emerald-600 font-bold' : v > 0 ? 'text-emerald-600' : v > -15 ? 'text-orange-500' : 'text-red-600 font-bold';
 
   return (
     <div className="apple-card p-4 sm:p-8 mb-10">
-      <h2 className="font-serif text-2xl md:text-3xl font-bold mb-6 flex items-center gap-3">
-        🇹🇼 爆賺選股 — 台股
-      </h2>
-
-      {/* Date inputs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <label className="block text-xs text-gray-500 mb-1 font-medium">
-            第一低點（紅線）
+          <h2 className="font-serif text-2xl md:text-3xl font-bold text-gray-900">
+            🇹🇼 台股斜率選股
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">供應鏈補漲型 × 跟盤型 雙模式篩選</p>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap items-end gap-3 mb-8 p-4 bg-gray-50 rounded-xl border border-gray-100">
+        <div className="flex-1 min-w-[140px]">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            📍 錨點一（起點）
           </label>
           <input
             type="date"
             value={date1}
             onChange={(e) => setDate1(e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
           />
         </div>
-        <div>
-          <label className="block text-xs text-gray-500 mb-1 font-medium">
-            第二低點（黃線）
+        <div className="flex-1 min-w-[140px]">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            🏁 錨點二（終點）
           </label>
           <input
             type="date"
             value={date2}
             onChange={(e) => setDate2(e.target.value)}
-            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
           />
         </div>
-        <div className="flex items-end">
-          <button
-            onClick={handleScan}
-            disabled={loading}
-            className="w-full bg-primary hover:bg-primary/80 disabled:bg-gray-300 text-white font-semibold rounded-lg px-6 py-2 text-sm transition-all shadow-[0_4px_20px_rgba(196,30,58,0.3)]"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
-                分析中...
-              </span>
-            ) : (
-              '開始分析'
-            )}
-          </button>
-        </div>
+        <button
+          onClick={handleScan}
+          disabled={loading}
+          className="px-8 py-2.5 bg-primary hover:bg-primary/85 disabled:bg-gray-300 text-white font-bold rounded-lg text-sm transition-all shadow-[0_4px_20px_rgba(196,30,58,0.25)] hover:shadow-[0_6px_24px_rgba(196,30,58,0.35)] active:scale-95"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full" />
+              分析中…
+            </span>
+          ) : (
+            '🔍 開始分析'
+          )}
+        </button>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-red-600 text-sm">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm flex items-start gap-2">
+          <span className="text-red-400 mt-0.5">⚠</span>
           {error}
         </div>
       )}
 
-      {/* Stats cards */}
+      {/* Stats */}
       {data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-500 mb-1 font-medium">TAIEX 斜率</div>
-            <div className="text-xl font-bold text-accent">
-              {data.taiex_slope.toFixed(2)}%
-            </div>
-            <div className="text-xs text-gray-500 mt-1">加權指數基準</div>
-          </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-500 mb-1 font-medium">美股基準 (QQQ)</div>
-            <div className="text-xl font-bold text-blue-700">
-              {data.bench_slope_us.toFixed(2)}%
-            </div>
-            <div className="text-xs text-gray-500 mt-1">NASDAQ 斜率</div>
-          </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-500 mb-1 font-medium">⚡ 爆賺門檻</div>
-            <div className="text-xl font-bold text-amber-600">
-              {data.explosive_threshold.toFixed(1)}%
-            </div>
-            <div className="text-xs text-gray-500 mt-1">QQQ × 10</div>
-          </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-500 mb-1 font-medium">補漲 / 跟盤</div>
-            <div className="text-xl font-bold text-emerald-700">
-              {data.type1.length} / {data.type2.length}
-            </div>
-            <div className="text-xs text-gray-500 mt-1">命中檔數</div>
-          </div>
+          <StatCard
+            label="TAIEX 大盤"
+            value={`${data.taiex_slope >= 0 ? '+' : ''}${data.taiex_slope.toFixed(2)}%`}
+            sub="加權指數斜率"
+            color="text-primary"
+            accent="border-l-primary"
+          />
+          <StatCard
+            label="美股 QQQ"
+            value={data.bench_slope_us !== 0 ? `${data.bench_slope_us >= 0 ? '+' : ''}${data.bench_slope_us.toFixed(2)}%` : '—'}
+            sub="NASDAQ 基準"
+            color="text-blue-600"
+            accent="border-l-blue-500"
+          />
+          <StatCard
+            label="⚡ 爆賺門檻"
+            value={data.explosive_threshold !== 0 ? `${data.explosive_threshold.toFixed(1)}%` : '—'}
+            sub="美股 QQQ × 10"
+            color="text-amber-600"
+            accent="border-l-amber-500"
+          />
+          <StatCard
+            label="命中檔數"
+            value={`${data.type1.length} + ${data.type2.length}`}
+            sub="補漲 + 跟盤"
+            color="text-emerald-600"
+            accent="border-l-emerald-500"
+          />
         </div>
       )}
 
       {/* Tabs */}
       {data && (
-        <div className="flex gap-2 mb-4">
-          {tabs.map((tab) => (
+        <div className="flex gap-2 mb-5 border-b border-gray-100 pb-4">
+          {([
+            { key: 'type1' as TabKey, emoji: '🔗', label: '供應鏈補漲', count: data.type1.length, desc: '美股爆賺股的台灣供應商，且回檔 ≥15%' },
+            { key: 'type2' as TabKey, emoji: '📈', label: '跟盤型', count: data.type2.length, desc: `斜率 ≥ TAIEX ${data.taiex_slope.toFixed(2)}%` },
+          ]).map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all border ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
                 activeTab === tab.key
-                  ? 'bg-primary border-primary text-white'
-                  : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                  ? 'bg-primary text-white border-primary shadow-[0_2px_12px_rgba(196,30,58,0.3)]'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
-              {tab.label} ({tab.count})
+              <span>{tab.emoji} {tab.label}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.key ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                {tab.count}
+              </span>
             </button>
           ))}
+          <div className="ml-3 text-xs text-gray-400 self-center">
+            {activeTab === 'type1' ? '篩選條件：美股爆賺股供應商 ＋ 台股回檔≥15%' : `篩選條件：台股斜率 ≥ TAIEX ${data.taiex_slope.toFixed(2)}%`}
+          </div>
         </div>
       )}
 
-      {/* Type1 table */}
+      {/* Type1 Table */}
       {data && activeTab === 'type1' && (
-        <>
-          {sortedType1.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-gray-600 border-b border-gray-200">
-                    <th
-                      className="text-left py-2 px-2 cursor-pointer hover:text-gray-900"
-                      onClick={() => handleSort1('twSymbol')}
-                    >
-                      代碼{sortIndicator1('twSymbol')}
-                    </th>
-                    <th className="text-left py-2 px-2">名稱</th>
-                    <th
-                      className="text-center py-2 px-2 cursor-pointer hover:text-gray-900"
-                      onClick={() => handleSort1('usParent')}
-                    >
-                      美股母公司{sortIndicator1('usParent')}
-                    </th>
-                    <th className="text-left py-2 px-2 hidden md:table-cell">供應角色</th>
-                    <th
-                      className="text-right py-2 px-2 cursor-pointer hover:text-gray-900"
-                      onClick={() => handleSort1('twSlope')}
-                    >
-                      台股斜率%{sortIndicator1('twSlope')}
-                    </th>
-                    <th
-                      className="text-right py-2 px-2 cursor-pointer hover:text-gray-900"
-                      onClick={() => handleSort1('usSlope')}
-                    >
-                      美股斜率%{sortIndicator1('usSlope')}
-                    </th>
+        sortedType1.length > 0 ? (
+          <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <th className="text-left px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('twSymbol')}>代碼{si1('twSymbol')}</th>
+                  <th className="text-left px-4 py-3">名稱</th>
+                  <th className="text-center px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('usParent')}>美股母公司{si1('usParent')}</th>
+                  <th className="text-left px-4 py-3 hidden lg:table-cell">供應角色</th>
+                  <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('twSlope')}>台股斜率{si1('twSlope')}</th>
+                  <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('usSlope')}>美股斜率{si1('usSlope')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedType1.map((r, i) => (
+                  <tr key={`${r.twSymbol}-${r.usParent}-${i}`}
+                    className={`border-t border-gray-50 hover:bg-blue-50/40 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                    <td className="px-4 py-3 font-mono font-bold text-gray-900 text-sm">{r.twSymbol}</td>
+                    <td className="px-4 py-3 text-gray-700 text-sm">{r.twName || '—'}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 border border-amber-200 text-amber-700">
+                        ⚡ {r.usParent}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs hidden lg:table-cell max-w-[160px] truncate">{r.role}</td>
+                    <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
+                      {r.twSlope >= 0 ? '+' : ''}{r.twSlope.toFixed(1)}%
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-sm text-emerald-600 font-semibold">
+                      +{r.usSlope.toFixed(1)}%
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {sortedType1.map((r, i) => (
-                    <tr
-                      key={`${r.twSymbol}-${r.usParent}-${i}`}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="py-2 px-2 font-medium font-mono text-gray-900 font-semibold">
-                        {r.twSymbol}
-                      </td>
-                      <td className="py-2 px-2 text-gray-300">{r.twName}</td>
-                      <td className="py-2 px-2 text-center">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-xs border bg-yellow-500/10 border-yellow-500/30 text-amber-600">
-                          ⚡ {r.usParent}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2 text-gray-600 text-xs hidden md:table-cell">
-                        {r.role}
-                      </td>
-                      <td className="py-2 px-2 text-right font-mono text-red-600">
-                        {r.twSlope.toFixed(1)}%
-                      </td>
-                      <td className="py-2 px-2 text-right font-mono text-emerald-700">
-                        {r.usSlope.toFixed(1)}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500 text-sm">
-              目前沒有符合條件的供應鏈補漲股
-              <div className="text-xs text-gray-600 mt-2">
-                條件：美股母公司爆賺（斜率 ≥ {data.explosive_threshold.toFixed(1)}%）且台股回檔 ≥ 15%
-              </div>
-            </div>
-          )}
-        </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-400">
+            <div className="text-4xl mb-3">🔍</div>
+            <div className="font-medium text-gray-500 mb-1">目前無供應鏈補漲標的</div>
+            <div className="text-xs text-gray-400">條件：美股爆賺（QQQ×10）+ 台股同期回檔 ≥ 15%</div>
+          </div>
+        )
       )}
 
-      {/* Type2 table */}
+      {/* Type2 Table */}
       {data && activeTab === 'type2' && (
-        <>
-          {sortedType2.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-gray-600 border-b border-gray-200">
-                    <th
-                      className="text-left py-2 px-2 cursor-pointer hover:text-gray-900"
-                      onClick={() => handleSort2('twSymbol')}
-                    >
-                      代碼{sortIndicator2('twSymbol')}
-                    </th>
-                    <th className="text-left py-2 px-2">名稱</th>
-                    <th
-                      className="text-center py-2 px-2 cursor-pointer hover:text-gray-900"
-                      onClick={() => handleSort2('sector')}
-                    >
-                      產業{sortIndicator2('sector')}
-                    </th>
-                    <th
-                      className="text-right py-2 px-2 cursor-pointer hover:text-gray-900"
-                      onClick={() => handleSort2('twSlope')}
-                    >
-                      台股斜率%{sortIndicator2('twSlope')}
-                    </th>
-                    <th className="text-right py-2 px-2">
-                      TAIEX基準%
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedType2.map((r) => (
-                    <tr
-                      key={r.twSymbol}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="py-2 px-2 font-medium font-mono text-gray-900 font-semibold">
-                        {r.twSymbol}
+        sortedType2.length > 0 ? (
+          <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <th className="text-left px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('twSymbol')}>代碼{si2('twSymbol')}</th>
+                  <th className="text-left px-4 py-3">名稱</th>
+                  <th className="text-center px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('sector')}>產業{si2('sector')}</th>
+                  <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('twSlope')}>個股斜率{si2('twSlope')}</th>
+                  <th className="text-right px-4 py-3">相對強度</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedType2.map((r, i) => {
+                  const relStrength = r.taiexSlope !== 0 ? (r.twSlope / Math.abs(r.taiexSlope)).toFixed(2) : '—';
+                  return (
+                    <tr key={r.twSymbol}
+                      className={`border-t border-gray-50 hover:bg-emerald-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                      <td className="px-4 py-3 font-mono font-bold text-gray-900 text-sm">{r.twSymbol}</td>
+                      <td className="px-4 py-3 text-gray-700 text-sm">{r.twName || '—'}</td>
+                      <td className="px-4 py-3 text-center">
+                        {r.sector ? (
+                          <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 border border-blue-100 text-blue-700">
+                            {r.sector}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
                       </td>
-                      <td className="py-2 px-2 text-gray-300">{r.twName}</td>
-                      <td className="py-2 px-2 text-center">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-xs border bg-blue-500/10 border-blue-500/30 text-blue-700">
-                          {r.sector || '—'}
-                        </span>
+                      <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
+                        {r.twSlope >= 0 ? '+' : ''}{r.twSlope.toFixed(1)}%
                       </td>
-                      <td
-                        className={`py-2 px-2 text-right font-mono ${
-                          r.twSlope > 50
-                            ? 'text-emerald-700'
-                            : r.twSlope > 0
-                              ? 'text-white'
-                              : 'text-red-600'
-                        }`}
-                      >
-                        {r.twSlope.toFixed(1)}%
-                      </td>
-                      <td className="py-2 px-2 text-right font-mono text-gray-400">
-                        {r.taiexSlope.toFixed(1)}%
+                      <td className="px-4 py-3 text-right font-mono text-xs text-gray-500">
+                        {relStrength}×
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400 text-right">
+              共 {sortedType2.length} 支 ｜ TAIEX 基準 {data.taiex_slope.toFixed(2)}%
             </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500 text-sm">
-              目前沒有符合條件的跟盤型股票
-              <div className="text-xs text-gray-600 mt-2">
-                條件：台股斜率 ≥ TAIEX 斜率（{data.taiex_slope.toFixed(2)}%）
-              </div>
-            </div>
-          )}
-        </>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-400">
+            <div className="text-4xl mb-3">📊</div>
+            <div className="font-medium text-gray-500 mb-1">目前無符合的跟盤股</div>
+            <div className="text-xs text-gray-400">條件：台股斜率 ≥ TAIEX {data.taiex_slope.toFixed(2)}%</div>
+          </div>
+        )
       )}
 
       {/* Footer */}
       {data && (
-        <div className="mt-4 text-xs text-gray-500 text-right">
-          資料更新：{new Date(data.data_updated_at).toLocaleString('zh-TW')}
+        <div className="mt-6 flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-100">
+          <span>資料含 1,976 支台股（TWSE + TPEx）</span>
+          <span>更新：{new Date(data.data_updated_at).toLocaleString('zh-TW')}</span>
         </div>
       )}
     </div>
