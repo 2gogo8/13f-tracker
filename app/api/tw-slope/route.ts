@@ -85,6 +85,7 @@ interface Type2Result {
   sector: string;
   twSlope: number;
   taiexSlope: number;
+  explosiveParents: string[]; // 爆賺美股中，哪些是此台股的客戶
 }
 
 function findClosestPrice(prices: PriceRecord[], targetDate: string): number | null {
@@ -242,6 +243,18 @@ export async function POST(request: NextRequest) {
     // Sort groups by number of suppliers desc
     type1.sort((a, b) => b.suppliers.length - a.suppliers.length);
 
+    // Build reverse supply chain: TW ticker -> US parents
+    const twToUSParents: Map<string, string[]> = new Map();
+    for (const [usSymbol, suppliers] of Object.entries(supplyChainDB)) {
+      if (!Array.isArray(suppliers)) continue;
+      for (const supplier of suppliers as Array<{market: string; ticker?: string}>) {
+        if (supplier.market !== 'TW' || !supplier.ticker) continue;
+        const twTicker = supplier.ticker;
+        if (!twToUSParents.has(twTicker)) twToUSParents.set(twTicker, []);
+        twToUSParents.get(twTicker)!.push(usSymbol);
+      }
+    }
+
     // ===== Type 2: 跟盤型 =====
     const type2: Type2Result[] = [];
     const roundedTaiex = Math.round(taiexSlope * 100) / 100;
@@ -254,12 +267,17 @@ export async function POST(request: NextRequest) {
       // Look up sector from tw-stocks.ts static map
       const code = twTicker.replace('.TW', '').replace('.TWO', '');
       const sector = SECTOR_MAP[code] || meta?.sector || '';
+      // Find explosive US parents for this TW stock
+      const allParents = twToUSParents.get(twTicker) || [];
+      const explosiveParents = allParents.filter(us => explosiveUSStocks.has(us));
+
       type2.push({
         twSymbol: twTicker,
         twName: meta?.name || twTicker,
         sector,
         twSlope,
         taiexSlope: roundedTaiex,
+        explosiveParents,
       });
     }
 

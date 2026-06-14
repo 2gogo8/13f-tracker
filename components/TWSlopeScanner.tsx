@@ -24,6 +24,7 @@ interface Type2Result {
   sector: string;
   twSlope: number;
   taiexSlope: number;
+  explosiveParents: string[];
 }
 
 interface TWScanResponse {
@@ -329,6 +330,7 @@ export default function TWSlopeScanner() {
                   <th className="text-center px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('sector')}>產業{si2('sector')}</th>
                   <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('twSlope')}>倍數{si2('twSlope')}</th>
                   <th className="text-right px-4 py-3">台股%</th>
+                  <th className="text-left px-4 py-3 hidden sm:table-cell">爆賺美股</th>
                 </tr>
               </thead>
               <tbody>
@@ -353,6 +355,22 @@ export default function TWSlopeScanner() {
                       </td>
                       <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
                         {r.twSlope >= 0 ? '+' : ''}{r.twSlope.toFixed(1)}%
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        {r.explosiveParents && r.explosiveParents.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {r.explosiveParents.slice(0, 4).map(us => (
+                              <span key={us} className="inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-amber-50 border border-amber-200 text-amber-700">
+                                ⚡{us}
+                              </span>
+                            ))}
+                            {r.explosiveParents.length > 4 && (
+                              <span className="text-xs text-gray-400">+{r.explosiveParents.length - 4}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
                       </td>
                     </tr>
                   );
