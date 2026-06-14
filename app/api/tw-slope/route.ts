@@ -3,11 +3,15 @@ import fs from 'fs';
 import path from 'path';
 import supplyChainDB from '@/data/supply-chain';
 import { twStocks } from '@/data/tw-stocks';
+import twSectorMapRaw from '@/data/tw_sector_map.json';
 
-// Build sector map: code (e.g. '2330') -> sector
-const SECTOR_MAP: Record<string, string> = {};
+// Comprehensive sector map from TWSE ISIN (1969 stocks)
+const TW_SECTOR_MAP: Record<string, string> = twSectorMapRaw as Record<string, string>;
+
+// Also include tw-stocks.ts sector map as fallback with Chinese names
+const SECTOR_MAP: Record<string, string> = { ...TW_SECTOR_MAP };
 for (const s of twStocks) {
-  SECTOR_MAP[s.symbol] = s.sector;
+  if (!SECTOR_MAP[s.symbol] && s.sector) SECTOR_MAP[s.symbol] = s.sector;
 }
 
 export const maxDuration = 30;
