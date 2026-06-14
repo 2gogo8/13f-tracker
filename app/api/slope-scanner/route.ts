@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
           sector: '',
           industry: '',
           triple_filter: slope > 50 && shortPct >= 5 && shortPct <= 15,
+          tw_suppliers: TW_SUPPLY_MAP[sym] || [],
         });
       }
 
