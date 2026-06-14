@@ -4,6 +4,34 @@ import path from 'path';
 import supplyChainDB from '@/data/supply-chain';
 import { twStocks } from '@/data/tw-stocks';
 import twSectorMapRaw from '@/data/tw_sector_map.json';
+import usSectorMapRaw from '@/data/us_sector_map.json';
+
+const US_SECTOR_MAP: Record<string, { sector_en: string; sector_zh: string; industry: string }> =
+  usSectorMapRaw as Record<string, { sector_en: string; sector_zh: string; industry: string }>;
+
+// Industry zh translation
+const INDUSTRY_ZH: Record<string, string> = {
+  'Semiconductors': '半導體',
+  'Software - Infrastructure': '軟體基礎架構',
+  'Software - Application': '應用軟體',
+  'Consumer Electronics': '消費電子',
+  'Internet Content & Information': '網路服務',
+  'Auto - Manufacturers': '電動車',
+  'Specialty Retail': '電商零售',
+  'Entertainment': '娛樂媒體',
+  'Banks - Diversified': '銀行',
+  'Discount Stores': '量販零售',
+  'Communication Equipment': '通訊設備',
+  'Electronic Components': '電子元件',
+  'Contract Manufacturers': '電子代工',
+};
+
+function getIndustryZh(usSymbol: string): string {
+  const info = US_SECTOR_MAP[usSymbol];
+  if (!info) return usSymbol;
+  const industry = info.industry;
+  return INDUSTRY_ZH[industry] || info.sector_zh || industry;
+}
 
 // Comprehensive sector map from TWSE ISIN (1969 stocks)
 const TW_SECTOR_MAP: Record<string, string> = twSectorMapRaw as Record<string, string>;
@@ -35,13 +63,20 @@ interface USPriceCacheData {
   prices: Record<string, PriceRecord[]>;
 }
 
-interface Type1Result {
+interface Type1Supplier {
   twSymbol: string;
   twName: string;
   usParent: string;
+  usSlope: number;
   role: string;
   twSlope: number;
-  usSlope: number;
+}
+
+interface Type1Group {
+  industry: string;
+  usStocks: string[];
+  usSlopes: number[];
+  suppliers: Type1Supplier[];
 }
 
 interface Type2Result {
@@ -157,7 +192,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ===== Type 1: 供應鏈補漲型 =====
-    const type1: Type1Result[] = [];
+    const type1Groups: Map<string, Type1Group> = new Map();
     const seenType1: Set<string> = new Set();
 
     for (const [usSymbol, usSlope] of explosiveUSStocks) {
@@ -178,19 +213,34 @@ export async function POST(request: NextRequest) {
         seenType1.add(key);
 
         const meta = twCache.metadata[twTicker];
-        type1.push({
+        const industry = getIndustryZh(usSymbol);
+
+        if (!type1Groups.has(industry)) {
+          type1Groups.set(industry, { industry, usStocks: [], usSlopes: [], suppliers: [] });
+        }
+        const group = type1Groups.get(industry)!;
+        if (!group.usStocks.includes(usSymbol)) {
+          group.usStocks.push(usSymbol);
+          group.usSlopes.push(usSlope);
+        }
+        group.suppliers.push({
           twSymbol: twTicker,
           twName: meta?.name || supplier.name,
           usParent: usSymbol,
+          usSlope,
           role: supplier.role,
           twSlope,
-          usSlope,
         });
       }
     }
 
-    // Sort Type1 by twSlope ascending (most pullback first)
-    type1.sort((a, b) => a.twSlope - b.twSlope);
+    // Convert groups map to array, sort each group's suppliers
+    const type1: Type1Group[] = Array.from(type1Groups.values()).map(group => ({
+      ...group,
+      suppliers: group.suppliers.sort((a, b) => a.twSlope - b.twSlope),
+    }));
+    // Sort groups by number of suppliers desc
+    type1.sort((a, b) => b.suppliers.length - a.suppliers.length);
 
     // ===== Type 2: 跟盤型 =====
     const type2: Type2Result[] = [];

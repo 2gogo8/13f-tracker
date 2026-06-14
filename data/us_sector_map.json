@@ -1,0 +1,2587 @@
+{
+  "FDXF": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "VEEV": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CASY": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "COHR": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "LITE": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "SATS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "VRT": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "CIEN": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "CRH": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "CVNA": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "FIX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "ARES": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "SNDK": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "Q": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "APP": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "EME": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "HOOD": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "IBKR": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "XYZ": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TTD": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "DDOG": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "COIN": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "DASH": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "EXE": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "TKO": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "WSM": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "APO": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "LII": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "WDAY": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TPL": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "DELL": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "ERIE": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "PLTR": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "SW": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "CRWD": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "GDDY": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "KKR": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "VST": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "GEV": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "SOLV": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "DECK": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "SMCI": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "BLDR": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "JBL": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "UBER": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "HUBB": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "LULU": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "VLTO": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "ABNB": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "BX": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "KVUE": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "PANW": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "AXON": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "FICO": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "BG": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "PODD": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "GEHC": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "STLD": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "FSLR": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "ACGL": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "TRGP": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "EQT": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "PCG": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "CSGP": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "INVH": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "KDP": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "ON": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "VICI": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "WBD": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "CPT": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "NDSN": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "CEG": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "FDS": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "BRO": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "TECH": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MRNA": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CRL": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "PTC": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "GNRC": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "NXPI": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "MPWR": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TRMB": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TSLA": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": "Auto - Manufacturers"
+  },
+  "POOL": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "TER": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TDY": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TYL": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "WST": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "DPZ": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "DXCM": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CARR": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "OTIS": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "IR": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "LYV": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "STE": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ZBRA": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "ODFL": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "WRB": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "NOW": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "LVS": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "NVR": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "CDW": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "IEX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "LDOS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TROW": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "TMUS": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "AMCR": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "CTVA": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "DD": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "DOW": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "FOX": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "FOXA": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "WAB": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "ATO": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "FANG": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "JKHY": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "KEYS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "FTNT": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "ROL": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "ANET": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "CPRT": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "CPAY": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "BR": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "EVRG": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "MSCI": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "TTWO": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "HII": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "NCLH": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "CDNS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "SBAC": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "IQV": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "AOS": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "MGM": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "PKG": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "RMD": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "BKR": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "ALGN": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "EG": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "HLT": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "IT": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "AMD": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Semiconductors"
+  },
+  "ARE": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "RJF": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "SRE": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "SNPS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "REG": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "CBOE": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "INCY": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "IDXX": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MAA": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "D": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "HWM": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "COO": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CHTR": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "MTD": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ALB": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "FTV": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "LNT": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "TDG": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "AJG": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "DLR": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "GPN": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "ULTA": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "CNC": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "UDR": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "AWK": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "FRT": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "CFG": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "EXR": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "WTW": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "CHD": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "SYF": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "HPE": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "VRSK": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "NWS": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "UAL": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "PYPL": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "KHC": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "JBHT": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "O": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "EQIX": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "HSIC": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "SWKS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "HCA": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "RCL": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "UHS": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "URI": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "MLM": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "AVGO": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Semiconductors"
+  },
+  "GOOGL": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": "Internet Content & Information"
+  },
+  "ESS": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "TSCO": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "META": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": "Internet Content & Information"
+  },
+  "ALLE": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "AME": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "VRTX": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "DAL": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "NWSA": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "ZTS": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "GM": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "REGN": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ABBV": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "APTV": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "GRMN": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "HUM": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "DG": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "MDLZ": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "PNR": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "LYB": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "STX": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "LRCX": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Semiconductors"
+  },
+  "MNST": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "KMI": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "PSX": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "CCI": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "DLTR": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "XYL": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "TEL": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "MOS": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "ACN": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "FCX": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "MPC": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "CMG": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "BLK": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "EW": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "FFIV": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "NFLX": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": "Entertainment"
+  },
+  "TT": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "JCI": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "CB": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "OKE": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "BRK-B": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "NRG": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "ROP": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "ROST": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "V": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "BKNG": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "ES": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "PWR": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "WDC": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "ORLY": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "HRL": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "VTR": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "WELL": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "IRM": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "RSG": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "WYNN": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "SJM": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "WEC": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "NDAQ": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "APH": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "LHX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "CRM": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "FAST": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "CF": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "IVZ": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "DVA": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MA": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "ISRG": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "DOC": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "PM": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "AMT": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "J": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "EXPD": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "EXPE": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "ICE": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "MCHP": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "AKAM": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "AIZ": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "HST": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "CHRW": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "RL": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "AVB": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "CTSH": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "CBRE": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "FIS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "CME": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "KIM": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "BXP": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "GOOG": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "VRSN": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "EL": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "AMZN": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": "Specialty Retail"
+  },
+  "LEN": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "AMP": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "PSA": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "TSN": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "STZ": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "DHI": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "LH": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "TPR": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "TMO": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "GILD": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "VTRS": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MTB": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "BIIB": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "PLD": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "GEN": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "MKC": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "STT": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "VLO": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "DGX": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CMCSA": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "TRV": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "ELV": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "EA": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "EBAY": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "GS": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "PFG": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "PRU": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "UPS": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "SPG": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "WAT": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "EQR": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "NVDA": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Semiconductors"
+  },
+  "PPL": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "COR": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ZBH": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "FISV": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "TXN": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "CTAS": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "SYK": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MET": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "INTU": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "EOG": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "NI": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "DVN": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "SBUX": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "A": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ROK": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "USB": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "ADI": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "PNW": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "QCOM": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Semiconductors"
+  },
+  "VMC": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "BBY": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "NTAP": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "AFL": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "MCK": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CCL": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "DHR": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "AES": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "PAYX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "WM": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "RF": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "COF": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "MCO": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "MAR": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "BEN": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "NTRS": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "OMC": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "CINF": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "TFC": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "FE": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "YUM": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "KLAC": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "HBAN": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "PGR": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "APA": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "EFX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "SCHW": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "CAH": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ADBE": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "AZO": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "AON": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "FITB": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "ALL": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "DRI": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "L": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "BNY": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "AMAT": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Semiconductors"
+  },
+  "GLW": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "BSX": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "PSKY": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "MU": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "LUV": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "UNH": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MSFT": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Software - Infrastructure"
+  },
+  "KEY": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "CSCO": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "COST": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": "Discount Stores"
+  },
+  "MS": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "LIN": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "AMGN": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "AEE": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "ADSK": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "ORCL": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Software - Infrastructure"
+  },
+  "GL": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "ECL": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "NKE": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "C": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "PNC": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "HD": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "AVY": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "MRSH": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "SYY": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "MDT": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ITW": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "PH": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "DOV": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "TJX": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "CNP": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "RVTY": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "APD": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "NUE": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "BALL": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "HAS": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "PHM": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "LOW": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "T": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "VZ": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "CAG": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "AAPL": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Consumer Electronics"
+  },
+  "BF-B": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "SNA": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "SWK": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "WMT": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "GWW": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "MAS": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "ADP": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "FDX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "PCAR": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "AIG": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "WY": {
+    "sector_en": "Real Estate",
+    "sector_zh": "房地產",
+    "industry": ""
+  },
+  "TXT": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "INTC": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": "Semiconductors"
+  },
+  "TGT": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "AXP": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "BAC": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "CI": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "DIS": {
+    "sector_en": "Communication Services",
+    "sector_zh": "通訊服務",
+    "industry": ""
+  },
+  "DUK": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "NEE": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "TAP": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "WFC": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "IFF": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "JPM": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": "Banks - Diversified"
+  },
+  "WMB": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "HPQ": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "GPC": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "JNJ": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "BAX": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "BDX": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "LLY": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MCD": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "NEM": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "CLX": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "CMI": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "EMR": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "SHW": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "ABT": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "ADM": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "AEP": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "BA": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "BMY": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CAT": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "CL": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "CMS": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "COP": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "CPB": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "CSX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "CVS": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "CVX": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "DE": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "DTE": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "ED": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "EIX": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "ETN": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "ETR": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "EXC": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "F": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "GD": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "GE": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "GIS": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "HAL": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "HIG": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "HON": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "HSY": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "IBM": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "IP": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "KMB": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "KO": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "KR": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "LMT": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "MMM": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "MO": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "MRK": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "MSI": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "NOC": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "NSC": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "OXY": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "PEG": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "PEP": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "PFE": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "PG": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "PPG": {
+    "sector_en": "Basic Materials",
+    "sector_zh": "Basic Materials",
+    "industry": ""
+  },
+  "RTX": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "SLB": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "SO": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "SPGI": {
+    "sector_en": "Financial Services",
+    "sector_zh": "Financial Services",
+    "industry": ""
+  },
+  "UNP": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "XEL": {
+    "sector_en": "Utilities",
+    "sector_zh": "公用事業",
+    "industry": ""
+  },
+  "XOM": {
+    "sector_en": "Energy",
+    "sector_zh": "能源",
+    "industry": ""
+  },
+  "ALNY": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "FER": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "INSM": {
+    "sector_en": "Healthcare",
+    "sector_zh": "醫療",
+    "industry": ""
+  },
+  "TRI": {
+    "sector_en": "Industrials",
+    "sector_zh": "工業",
+    "industry": ""
+  },
+  "SHOP": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "MSTR": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "ARM": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "CCEP": {
+    "sector_en": "Consumer Defensive",
+    "sector_zh": "Consumer Defensive",
+    "industry": ""
+  },
+  "TEAM": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "ZS": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "PDD": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "ASML": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  },
+  "MELI": {
+    "sector_en": "Consumer Cyclical",
+    "sector_zh": "Consumer Cyclical",
+    "industry": ""
+  },
+  "MRVL": {
+    "sector_en": "Technology",
+    "sector_zh": "科技",
+    "industry": ""
+  }
+}

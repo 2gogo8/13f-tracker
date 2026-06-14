@@ -2,13 +2,20 @@
 
 import { useState, useMemo, useEffect } from 'react';
 
-interface Type1Result {
+interface Type1Supplier {
   twSymbol: string;
   twName: string;
   usParent: string;
+  usSlope: number;
   role: string;
   twSlope: number;
-  usSlope: number;
+}
+
+interface Type1Group {
+  industry: string;
+  usStocks: string[];
+  usSlopes: number[];
+  suppliers: Type1Supplier[];
 }
 
 interface Type2Result {
@@ -24,7 +31,7 @@ interface TWScanResponse {
   bench_slope_us: number;
   explosive_threshold: number;
   data_updated_at: string;
-  type1: Type1Result[];
+  type1: Type1Group[];
   type2: Type2Result[];
   error?: string;
   message?: string;
@@ -77,8 +84,6 @@ export default function TWSlopeScanner() {
     } catch {}
   }, []);
 
-  const [sort1Key, setSort1Key] = useState<SortKey1>('twSlope');
-  const [sort1Asc, setSort1Asc] = useState(true);
   const [sort2Key, setSort2Key] = useState<SortKey2>('twSlope');
   const [sort2Asc, setSort2Asc] = useState(false);
 
@@ -112,16 +117,7 @@ export default function TWSlopeScanner() {
     }
   }
 
-  const sortedType1 = useMemo(() => {
-    if (!data) return [];
-    return [...data.type1].sort((a, b) => {
-      const valA = a[sort1Key];
-      const valB = b[sort1Key];
-      if (typeof valA === 'string' && typeof valB === 'string')
-        return sort1Asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      return sort1Asc ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
-    });
-  }, [data, sort1Key, sort1Asc]);
+
 
   const sortedType2 = useMemo(() => {
     if (!data) return [];
@@ -134,15 +130,11 @@ export default function TWSlopeScanner() {
     });
   }, [data, sort2Key, sort2Asc]);
 
-  function handleSort1(key: SortKey1) {
-    if (sort1Key === key) setSort1Asc(!sort1Asc);
-    else { setSort1Key(key); setSort1Asc(key === 'twSlope'); }
-  }
+
   function handleSort2(key: SortKey2) {
     if (sort2Key === key) setSort2Asc(!sort2Asc);
     else { setSort2Key(key); setSort2Asc(false); }
   }
-  const si1 = (k: SortKey1) => sort1Key === k ? (sort1Asc ? ' ↑' : ' ↓') : '';
   const si2 = (k: SortKey2) => sort2Key === k ? (sort2Asc ? ' ↑' : ' ↓') : '';
 
   const slopeColor = (v: number) =>
@@ -246,7 +238,7 @@ export default function TWSlopeScanner() {
       {data && (
         <div className="flex gap-2 mb-5 border-b border-gray-100 pb-4">
           {([
-            { key: 'type1' as TabKey, emoji: '🔗', label: '供應鏈補漲', count: data.type1.length, desc: '美股爆賺股的台灣供應商，且回檔 ≥15%' },
+            { key: 'type1' as TabKey, emoji: '🔗', label: '供應鏈補漲', count: data.type1.reduce((s, g) => s + g.suppliers.length, 0), desc: '美股爆賺股的台灣供應商，且回檔 ≥15%' },
             { key: 'type2' as TabKey, emoji: '📈', label: '跟盤型', count: data.type2.length, desc: `斜率 ≥ TAIEX ${data.taiex_slope.toFixed(2)}%` },
           ]).map((tab) => (
             <button
@@ -270,41 +262,51 @@ export default function TWSlopeScanner() {
 
       {/* Type1 Table */}
       {data && activeTab === 'type1' && (
-        sortedType1.length > 0 ? (
-          <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  <th className="text-left px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('twSymbol')}>代碼{si1('twSymbol')}</th>
-                  <th className="text-left px-4 py-3">名稱</th>
-                  <th className="text-center px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('usParent')}>美股母公司{si1('usParent')}</th>
-                  <th className="text-left px-4 py-3 hidden lg:table-cell">供應角色</th>
-                  <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('twSlope')}>台股斜率{si1('twSlope')}</th>
-                  <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort1('usSlope')}>美股斜率{si1('usSlope')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedType1.map((r, i) => (
-                  <tr key={`${r.twSymbol}-${r.usParent}-${i}`}
-                    className={`border-t border-gray-50 hover:bg-blue-50/40 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                    <td className="px-4 py-3 font-mono font-bold text-gray-900 text-sm">{r.twSymbol}</td>
-                    <td className="px-4 py-3 text-gray-900 text-sm font-medium">{r.twName || '—'}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 border border-amber-200 text-amber-700">
-                        ⚡ {r.usParent}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs hidden lg:table-cell max-w-[160px] truncate">{r.role}</td>
-                    <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
-                      {r.twSlope >= 0 ? '+' : ''}{r.twSlope.toFixed(1)}%
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-sm text-emerald-600 font-semibold">
-                      +{r.usSlope.toFixed(1)}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        data.type1.length > 0 ? (
+          <div className="space-y-5">
+            {data.type1.map((group) => (
+              <div key={group.industry} className="rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                {/* Group header */}
+                <div className="bg-amber-50 border-b border-amber-100 px-4 py-3 flex items-center gap-3">
+                  <span className="text-lg">🏭</span>
+                  <div className="flex-1">
+                    <span className="font-bold text-gray-900 text-base">{group.industry}</span>
+                    <span className="ml-2 text-sm text-amber-700 font-medium">
+                      （{group.usStocks.join('、')}）
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-400">{group.suppliers.length} 支供應商</span>
+                </div>
+                {/* Suppliers table */}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      <th className="text-left px-4 py-2">代碼</th>
+                      <th className="text-left px-4 py-2">名稱</th>
+                      <th className="text-left px-4 py-2 hidden md:table-cell">供應角色</th>
+                      <th className="text-right px-4 py-2">台股%</th>
+                      <th className="text-right px-4 py-2 hidden sm:table-cell">美股倍</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.suppliers.map((r, i) => (
+                      <tr key={`${r.twSymbol}-${r.usParent}`}
+                        className={`border-t border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/20'}`}>
+                        <td className="px-4 py-2.5 font-mono font-bold text-gray-900 text-sm">{r.twSymbol}</td>
+                        <td className="px-4 py-2.5 text-gray-900 text-sm font-medium">{r.twName || '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-500 text-xs hidden md:table-cell max-w-[180px] truncate">{r.role}</td>
+                        <td className={`px-4 py-2.5 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
+                          {r.twSlope >= 0 ? '+' : ''}{r.twSlope.toFixed(1)}%
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono text-xs text-amber-700 font-semibold hidden sm:table-cell">
+                          {(r.usSlope / 100 + 1).toFixed(2)}x
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-12 text-gray-400">
