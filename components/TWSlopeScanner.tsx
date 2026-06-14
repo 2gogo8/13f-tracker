@@ -155,32 +155,32 @@ export default function TWSlopeScanner() {
       {/* Date inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">
+          <label className="block text-xs text-gray-500 mb-1 font-medium">
             第一低點（紅線）
           </label>
           <input
             type="date"
             value={date1}
             onChange={(e) => setDate1(e.target.value)}
-            className="w-full bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-accent focus:outline-none"
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">
+          <label className="block text-xs text-gray-500 mb-1 font-medium">
             第二低點（黃線）
           </label>
           <input
             type="date"
             value={date2}
             onChange={(e) => setDate2(e.target.value)}
-            className="w-full bg-black/40 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-accent focus:outline-none"
+            className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
           />
         </div>
         <div className="flex items-end">
           <button
             onClick={handleScan}
             disabled={loading}
-            className="w-full bg-primary hover:bg-primary/80 disabled:bg-gray-700 text-white font-semibold rounded-lg px-6 py-2 text-sm transition-all shadow-[0_4px_20px_rgba(196,30,58,0.3)]"
+            className="w-full bg-primary hover:bg-primary/80 disabled:bg-gray-300 text-white font-semibold rounded-lg px-6 py-2 text-sm transition-all shadow-[0_4px_20px_rgba(196,30,58,0.3)]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -196,7 +196,7 @@ export default function TWSlopeScanner() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-red-400 text-sm">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-red-600 text-sm">
           {error}
         </div>
       )}
@@ -204,30 +204,30 @@ export default function TWSlopeScanner() {
       {/* Stats cards */}
       {data && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div className="bg-black/40 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-400 mb-1">TAIEX 斜率</div>
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+            <div className="text-xs text-gray-500 mb-1 font-medium">TAIEX 斜率</div>
             <div className="text-xl font-bold text-accent">
               {data.taiex_slope.toFixed(2)}%
             </div>
             <div className="text-xs text-gray-500 mt-1">加權指數基準</div>
           </div>
-          <div className="bg-black/40 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-400 mb-1">美股基準 (QQQ)</div>
-            <div className="text-xl font-bold text-blue-400">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+            <div className="text-xs text-gray-500 mb-1 font-medium">美股基準 (QQQ)</div>
+            <div className="text-xl font-bold text-blue-700">
               {data.bench_slope_us.toFixed(2)}%
             </div>
             <div className="text-xs text-gray-500 mt-1">NASDAQ 斜率</div>
           </div>
-          <div className="bg-black/40 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-400 mb-1">⚡ 爆賺門檻</div>
-            <div className="text-xl font-bold text-yellow-400">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+            <div className="text-xs text-gray-500 mb-1 font-medium">⚡ 爆賺門檻</div>
+            <div className="text-xl font-bold text-amber-600">
               {data.explosive_threshold.toFixed(1)}%
             </div>
             <div className="text-xs text-gray-500 mt-1">QQQ × 10</div>
           </div>
-          <div className="bg-black/40 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-400 mb-1">補漲 / 跟盤</div>
-            <div className="text-xl font-bold text-emerald-400">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
+            <div className="text-xs text-gray-500 mb-1 font-medium">補漲 / 跟盤</div>
+            <div className="text-xl font-bold text-emerald-700">
               {data.type1.length} / {data.type2.length}
             </div>
             <div className="text-xs text-gray-500 mt-1">命中檔數</div>
@@ -244,8 +244,8 @@ export default function TWSlopeScanner() {
               onClick={() => setActiveTab(tab.key)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all border ${
                 activeTab === tab.key
-                  ? 'bg-primary/20 border-primary text-white'
-                  : 'bg-black/30 border-gray-700 text-gray-400 hover:border-gray-500'
+                  ? 'bg-primary border-primary text-white'
+                  : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
               }`}
             >
               {tab.label} ({tab.count})
@@ -261,29 +261,29 @@ export default function TWSlopeScanner() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-400 border-b border-gray-800">
+                  <tr className="text-xs text-gray-600 border-b border-gray-200">
                     <th
-                      className="text-left py-2 px-2 cursor-pointer hover:text-white"
+                      className="text-left py-2 px-2 cursor-pointer hover:text-gray-900"
                       onClick={() => handleSort1('twSymbol')}
                     >
                       代碼{sortIndicator1('twSymbol')}
                     </th>
                     <th className="text-left py-2 px-2">名稱</th>
                     <th
-                      className="text-center py-2 px-2 cursor-pointer hover:text-white"
+                      className="text-center py-2 px-2 cursor-pointer hover:text-gray-900"
                       onClick={() => handleSort1('usParent')}
                     >
                       美股母公司{sortIndicator1('usParent')}
                     </th>
                     <th className="text-left py-2 px-2 hidden md:table-cell">供應角色</th>
                     <th
-                      className="text-right py-2 px-2 cursor-pointer hover:text-white"
+                      className="text-right py-2 px-2 cursor-pointer hover:text-gray-900"
                       onClick={() => handleSort1('twSlope')}
                     >
                       台股斜率%{sortIndicator1('twSlope')}
                     </th>
                     <th
-                      className="text-right py-2 px-2 cursor-pointer hover:text-white"
+                      className="text-right py-2 px-2 cursor-pointer hover:text-gray-900"
                       onClick={() => handleSort1('usSlope')}
                     >
                       美股斜率%{sortIndicator1('usSlope')}
@@ -294,24 +294,24 @@ export default function TWSlopeScanner() {
                   {sortedType1.map((r, i) => (
                     <tr
                       key={`${r.twSymbol}-${r.usParent}-${i}`}
-                      className="border-b border-gray-800/50 hover:bg-white/5 transition-colors"
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="py-2 px-2 font-medium font-mono text-white">
+                      <td className="py-2 px-2 font-medium font-mono text-gray-900 font-semibold">
                         {r.twSymbol}
                       </td>
                       <td className="py-2 px-2 text-gray-300">{r.twName}</td>
                       <td className="py-2 px-2 text-center">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-xs border bg-yellow-500/10 border-yellow-500/30 text-yellow-400">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-xs border bg-yellow-500/10 border-yellow-500/30 text-amber-600">
                           ⚡ {r.usParent}
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-gray-400 text-xs hidden md:table-cell">
+                      <td className="py-2 px-2 text-gray-600 text-xs hidden md:table-cell">
                         {r.role}
                       </td>
-                      <td className="py-2 px-2 text-right font-mono text-red-400">
+                      <td className="py-2 px-2 text-right font-mono text-red-600">
                         {r.twSlope.toFixed(1)}%
                       </td>
-                      <td className="py-2 px-2 text-right font-mono text-emerald-400">
+                      <td className="py-2 px-2 text-right font-mono text-emerald-700">
                         {r.usSlope.toFixed(1)}%
                       </td>
                     </tr>
@@ -337,22 +337,22 @@ export default function TWSlopeScanner() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-gray-400 border-b border-gray-800">
+                  <tr className="text-xs text-gray-600 border-b border-gray-200">
                     <th
-                      className="text-left py-2 px-2 cursor-pointer hover:text-white"
+                      className="text-left py-2 px-2 cursor-pointer hover:text-gray-900"
                       onClick={() => handleSort2('twSymbol')}
                     >
                       代碼{sortIndicator2('twSymbol')}
                     </th>
                     <th className="text-left py-2 px-2">名稱</th>
                     <th
-                      className="text-center py-2 px-2 cursor-pointer hover:text-white"
+                      className="text-center py-2 px-2 cursor-pointer hover:text-gray-900"
                       onClick={() => handleSort2('sector')}
                     >
                       產業{sortIndicator2('sector')}
                     </th>
                     <th
-                      className="text-right py-2 px-2 cursor-pointer hover:text-white"
+                      className="text-right py-2 px-2 cursor-pointer hover:text-gray-900"
                       onClick={() => handleSort2('twSlope')}
                     >
                       台股斜率%{sortIndicator2('twSlope')}
@@ -366,24 +366,24 @@ export default function TWSlopeScanner() {
                   {sortedType2.map((r) => (
                     <tr
                       key={r.twSymbol}
-                      className="border-b border-gray-800/50 hover:bg-white/5 transition-colors"
+                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
-                      <td className="py-2 px-2 font-medium font-mono text-white">
+                      <td className="py-2 px-2 font-medium font-mono text-gray-900 font-semibold">
                         {r.twSymbol}
                       </td>
                       <td className="py-2 px-2 text-gray-300">{r.twName}</td>
                       <td className="py-2 px-2 text-center">
-                        <span className="inline-block px-2 py-0.5 rounded-full text-xs border bg-blue-500/10 border-blue-500/30 text-blue-400">
+                        <span className="inline-block px-2 py-0.5 rounded-full text-xs border bg-blue-500/10 border-blue-500/30 text-blue-700">
                           {r.sector || '—'}
                         </span>
                       </td>
                       <td
                         className={`py-2 px-2 text-right font-mono ${
                           r.twSlope > 50
-                            ? 'text-emerald-400'
+                            ? 'text-emerald-700'
                             : r.twSlope > 0
                               ? 'text-white'
-                              : 'text-red-400'
+                              : 'text-red-600'
                         }`}
                       >
                         {r.twSlope.toFixed(1)}%
