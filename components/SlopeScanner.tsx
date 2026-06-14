@@ -150,7 +150,7 @@ export default function SlopeScanner() {
   return (
     <div className="apple-card p-4 sm:p-8 mb-10">
       <h2 className="font-serif text-2xl md:text-3xl font-bold mb-6 flex items-center gap-3 text-gray-900">
-        📐 斜率選股掃描器
+        🇺🇸 美股爆賺選股
       </h2>
 
       {/* Input controls */}

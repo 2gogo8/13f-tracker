@@ -138,7 +138,7 @@ export default function TWSlopeScanner() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="font-serif text-2xl md:text-3xl font-bold text-gray-900">
-            🇹🇼 台股斜率選股
+            🇹🇼 台股爆賺選股
           </h2>
           <p className="text-sm text-gray-500 mt-1">供應鏈補漲型 × 跟盤型 雙模式篩選</p>
         </div>
@@ -248,9 +248,7 @@ export default function TWSlopeScanner() {
               </span>
             </button>
           ))}
-          <div className="ml-3 text-xs text-gray-400 self-center">
-            {activeTab === 'type1' ? '篩選條件：美股爆賺股供應商 ＋ 台股回檔≥15%' : `篩選條件：台股斜率 ≥ TAIEX ${data.taiex_slope.toFixed(2)}%`}
-          </div>
+
         </div>
       )}
 
