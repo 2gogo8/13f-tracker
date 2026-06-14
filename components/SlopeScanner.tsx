@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 interface SlopeResult {
   symbol: string;
@@ -52,6 +52,20 @@ export default function SlopeScanner() {
   const [date1, setDate1] = useState('2025-11-20');
   const [date2, setDate2] = useState('2026-02-28');
   const [benchmark, setBenchmark] = useState('QQQ');
+
+  // Restore last session from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('us_slope_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        if (state.date1) setDate1(state.date1);
+        if (state.date2) setDate2(state.date2);
+        if (state.benchmark) setBenchmark(state.benchmark);
+        if (state.data) setData(state.data);
+      }
+    } catch {}
+  }, []);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ScanResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +95,9 @@ export default function SlopeScanner() {
         return;
       }
       setData(json);
+      try {
+        localStorage.setItem('us_slope_state', JSON.stringify({ date1, date2, benchmark, data: json }));
+      } catch {}
     } catch (e) {
       setError(`請求失敗: ${e}`);
     } finally {

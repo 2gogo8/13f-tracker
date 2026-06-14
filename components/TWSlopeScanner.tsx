@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 interface Type1Result {
   twSymbol: string;
@@ -64,6 +64,19 @@ export default function TWSlopeScanner() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('type2');
 
+  // Restore last session from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('tw_slope_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        if (state.date1) setDate1(state.date1);
+        if (state.date2) setDate2(state.date2);
+        if (state.data) setData(state.data);
+      }
+    } catch {}
+  }, []);
+
   const [sort1Key, setSort1Key] = useState<SortKey1>('twSlope');
   const [sort1Asc, setSort1Asc] = useState(true);
   const [sort2Key, setSort2Key] = useState<SortKey2>('twSlope');
@@ -89,6 +102,9 @@ export default function TWSlopeScanner() {
         return;
       }
       setData(json);
+      try {
+        localStorage.setItem('tw_slope_state', JSON.stringify({ date1, date2, data: json }));
+      } catch {}
     } catch (e) {
       setError(`請求失敗: ${e}`);
     } finally {
