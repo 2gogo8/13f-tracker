@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import supplyChainDB from '@/data/supply-chain';
+
+// Build TW suppliers map: US symbol -> TW codes
+const TW_SUPPLY_MAP: Record<string, string[]> = {};
+for (const [usSymbol, suppliers] of Object.entries(supplyChainDB)) {
+  const twList = (suppliers as Array<{market:string;ticker?:string;name:string}>)
+    .filter(s => s.market === 'TW' && s.ticker)
+    .map(s => s.ticker!.replace('.TW','').replace('.TWO',''));
+  if (twList.length > 0) TW_SUPPLY_MAP[usSymbol] = twList;
+}
 import fs from 'fs';
 import path from 'path';
 
@@ -43,6 +53,7 @@ interface SlopeResult {
   sector: string;
   industry: string;
   triple_filter: boolean;
+  tw_suppliers?: string[]; // Taiwan supply chain tickers
 }
 
 function findClosestPrice(prices: PriceRecord[], targetDate: string): number | null {
@@ -193,6 +204,7 @@ export async function POST(request: NextRequest) {
           sector: '',
           industry: '',
           triple_filter: r.slope > 50 && shortPct >= 5 && shortPct <= 15,
+          tw_suppliers: TW_SUPPLY_MAP[r.symbol] || [],
         };
       });
 

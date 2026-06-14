@@ -12,6 +12,7 @@ interface SlopeResult {
   sector: string;
   industry: string;
   triple_filter: boolean;
+  tw_suppliers?: string[];
 }
 
 interface ScanResponse {
@@ -364,6 +365,18 @@ export default function SlopeScanner() {
                       )}
                       {r.symbol}
                     </a>
+                    {r.tw_suppliers && r.tw_suppliers.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {r.tw_suppliers.slice(0, 5).map(tw => (
+                          <span key={tw} className="inline-block px-1.5 py-0.5 rounded text-xs font-mono bg-blue-50 border border-blue-200 text-blue-700">
+                            🇹🇼{tw}
+                          </span>
+                        ))}
+                        {r.tw_suppliers.length > 5 && (
+                          <span className="text-xs text-gray-400">+{r.tw_suppliers.length - 5}</span>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="py-2 px-3 text-center">
                     <span

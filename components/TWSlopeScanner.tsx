@@ -330,7 +330,6 @@ export default function TWSlopeScanner() {
                   <th className="text-center px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('sector')}>產業{si2('sector')}</th>
                   <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('twSlope')}>倍數{si2('twSlope')}</th>
                   <th className="text-right px-4 py-3">台股%</th>
-                  <th className="text-left px-4 py-3 hidden sm:table-cell">爆賺美股</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,7 +339,21 @@ export default function TWSlopeScanner() {
                     <tr key={r.twSymbol}
                       className={`border-t border-gray-50 hover:bg-emerald-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                       <td className="px-4 py-3 font-mono font-bold text-gray-900 text-sm">{r.twSymbol}</td>
-                      <td className="px-4 py-3 text-gray-900 text-sm font-medium">{r.twName || '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="text-gray-900 text-sm font-medium">{r.twName || '—'}</div>
+                        {r.explosiveParents && r.explosiveParents.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {r.explosiveParents.slice(0, 5).map(us => (
+                              <span key={us} className="inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-amber-50 border border-amber-200 text-amber-700">
+                                ⚡{us}
+                              </span>
+                            ))}
+                            {r.explosiveParents.length > 5 && (
+                              <span className="text-xs text-gray-400 self-center">+{r.explosiveParents.length - 5}</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-center">
                         {r.sector ? (
                           <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 border border-blue-100 text-blue-700">
@@ -355,22 +368,6 @@ export default function TWSlopeScanner() {
                       </td>
                       <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
                         {r.twSlope >= 0 ? '+' : ''}{r.twSlope.toFixed(1)}%
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        {r.explosiveParents && r.explosiveParents.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {r.explosiveParents.slice(0, 4).map(us => (
-                              <span key={us} className="inline-block px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-amber-50 border border-amber-200 text-amber-700">
-                                ⚡{us}
-                              </span>
-                            ))}
-                            {r.explosiveParents.length > 4 && (
-                              <span className="text-xs text-gray-400">+{r.explosiveParents.length - 4}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
                       </td>
                     </tr>
                   );
