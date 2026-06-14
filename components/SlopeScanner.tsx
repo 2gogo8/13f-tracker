@@ -54,20 +54,32 @@ export default function SlopeScanner() {
   const [date2, setDate2] = useState('2026-02-28');
   const [benchmark, setBenchmark] = useState('QQQ');
 
-  // Restore last session from localStorage (v2: default filter = 爆賺)
+  // Restore dates only, auto-run on mount
   useEffect(() => {
+    let d1 = date1, d2 = date2, bm = benchmark;
     try {
-      const saved = localStorage.getItem('us_slope_state_v2');
+      localStorage.removeItem('us_slope_state');
+      localStorage.removeItem('us_slope_state_v2');
+      const saved = localStorage.getItem('us_slope_dates');
       if (saved) {
         const state = JSON.parse(saved);
-        if (state.date1) setDate1(state.date1);
-        if (state.date2) setDate2(state.date2);
-        if (state.benchmark) setBenchmark(state.benchmark);
-        if (state.data) setData(state.data);
+        if (state.date1) { d1 = state.date1; setDate1(state.date1); }
+        if (state.date2) { d2 = state.date2; setDate2(state.date2); }
+        if (state.benchmark) { bm = state.benchmark; setBenchmark(state.benchmark); }
       }
-      // Clear old version
-      localStorage.removeItem('us_slope_state');
     } catch {}
+    // Auto-run with saved dates
+    setLoading(true);
+    setError(null);
+    fetch('/api/slope-scanner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date1: d1, date2: d2, benchmark: bm }),
+    }).then(r => r.json()).then(json => {
+      if (!json.error) setData(json);
+      else setError(json.message || '發生錯誤');
+    }).catch(e => setError(String(e))).finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ScanResponse | null>(null);
@@ -99,7 +111,7 @@ export default function SlopeScanner() {
       }
       setData(json);
       try {
-        localStorage.setItem('us_slope_state_v2', JSON.stringify({ date1, date2, benchmark, data: json }));
+        localStorage.setItem('us_slope_dates', JSON.stringify({ date1, date2, benchmark }));
       } catch {}
     } catch (e) {
       setError(`請求失敗: ${e}`);

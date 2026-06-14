@@ -72,17 +72,30 @@ export default function TWSlopeScanner() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('type2');
 
-  // Restore last session from localStorage
+  // Restore dates only, auto-run on mount
   useEffect(() => {
+    let d1 = date1, d2 = date2;
     try {
-      const saved = localStorage.getItem('tw_slope_state');
+      localStorage.removeItem('tw_slope_state');
+      const saved = localStorage.getItem('tw_slope_dates');
       if (saved) {
         const state = JSON.parse(saved);
-        if (state.date1) setDate1(state.date1);
-        if (state.date2) setDate2(state.date2);
-        if (state.data) setData(state.data);
+        if (state.date1) { d1 = state.date1; setDate1(state.date1); }
+        if (state.date2) { d2 = state.date2; setDate2(state.date2); }
       }
     } catch {}
+    // Auto-run with saved dates
+    setLoading(true);
+    setError(null);
+    fetch('/api/tw-slope', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date1: d1, date2: d2 }),
+    }).then(r => r.json()).then(json => {
+      if (!json.error) setData(json);
+      else setError(json.message || '發生錯誤');
+    }).catch(e => setError(String(e))).finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [sort2Key, setSort2Key] = useState<SortKey2>('twSlope');
@@ -109,7 +122,7 @@ export default function TWSlopeScanner() {
       }
       setData(json);
       try {
-        localStorage.setItem('tw_slope_state', JSON.stringify({ date1, date2, data: json }));
+        localStorage.setItem('tw_slope_dates', JSON.stringify({ date1, date2 }));
       } catch {}
     } catch (e) {
       setError(`請求失敗: ${e}`);
