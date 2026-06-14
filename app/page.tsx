@@ -13,6 +13,7 @@ import SectorPerformanceBar from '@/components/SectorPerformanceBar';
 import SentimentGauge from '@/components/SentimentGauge';
 import AntiMarketPicks from '@/components/AntiMarketPicks';
 import SlopeScanner from '@/components/SlopeScanner';
+import TWSlopeScanner from '@/components/TWSlopeScanner';
 import TwAntiMarketPicks from '@/components/TwAntiMarketPicks';
 import TrendingNews from '@/components/TrendingNews';
 import AnalystOverview from '@/components/AnalystOverview';
@@ -294,6 +295,7 @@ export default function Home() {
 
         {/* Slope Scanner */}
         <SlopeScanner />
+        <TWSlopeScanner />
 
         {/* Sector Heatmap - 10 Day Performance */}
         <SectorHeatmap />

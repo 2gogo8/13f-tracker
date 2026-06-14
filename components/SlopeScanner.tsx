@@ -17,6 +17,7 @@ interface SlopeResult {
 interface ScanResponse {
   bench_slope: number;
   bench_post: number;
+  explosive_threshold?: number;
   data_updated_at: string;
   cached_date1?: string;
   cached_date2?: string;
@@ -26,10 +27,11 @@ interface ScanResponse {
   message?: string;
 }
 
-type GroupFilter = 'all' | 'A超強' | 'B中強' | 'C死區' | 'E極弱' | 'triple';
+type GroupFilter = 'all' | '⚡爆賺' | 'A超強' | 'B中強' | 'C死區' | 'E極弱' | 'triple';
 type SortKey = 'slope' | 'post_return' | 'short_pct' | 'short_ratio' | 'symbol';
 
 const GROUP_COLORS: Record<string, string> = {
+  '⚡爆賺': 'text-yellow-300',
   'A超強': 'text-emerald-400',
   'B中強': 'text-blue-400',
   'C死區': 'text-red-400',
@@ -38,6 +40,7 @@ const GROUP_COLORS: Record<string, string> = {
 };
 
 const GROUP_BG: Record<string, string> = {
+  '⚡爆賺': 'bg-yellow-500/10 border-yellow-500/30',
   'A超強': 'bg-emerald-500/10 border-emerald-500/30',
   'B中強': 'bg-blue-500/10 border-blue-500/30',
   'C死區': 'bg-red-500/10 border-red-500/30',
@@ -120,17 +123,19 @@ export default function SlopeScanner() {
 
   const stats = useMemo(() => {
     if (!data) return null;
+    const explosiveCount = data.results.filter((r) => r.group === '⚡爆賺').length;
     const aCount = data.results.filter((r) => r.group === 'A超強').length;
     const tripleCount = data.results.filter((r) => r.triple_filter).length;
     const bigWinners = data.results.filter((r) => r.slope > 50).length;
     const hitRate = data.results.length > 0
       ? Math.round((bigWinners / data.results.length) * 100)
       : 0;
-    return { aCount, tripleCount, hitRate };
+    return { explosiveCount, aCount, tripleCount, hitRate };
   }, [data]);
 
   const filterButtons: { key: GroupFilter; label: string }[] = [
     { key: 'all', label: '全部' },
+    { key: '⚡爆賺', label: '⚡爆賺' },
     { key: 'A超強', label: 'A超強' },
     { key: 'B中強', label: 'B中強' },
     { key: 'C死區', label: 'C死區' },
@@ -231,11 +236,13 @@ export default function SlopeScanner() {
             </div>
           </div>
           <div className="bg-black/40 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-400 mb-1">A超強組</div>
-            <div className="text-xl font-bold text-emerald-400">
-              {stats.aCount}
+            <div className="text-xs text-gray-400 mb-1">⚡ 爆賺門檻 / 檔數</div>
+            <div className="text-xl font-bold text-yellow-400">
+              {data.explosive_threshold !== undefined ? `${data.explosive_threshold.toFixed(1)}%` : '—'}
             </div>
-            <div className="text-xs text-gray-500 mt-1">斜率 &gt; 50%</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {stats.explosiveCount} 檔命中
+            </div>
           </div>
           <div className="bg-black/40 border border-gray-800 rounded-xl p-4 text-center">
             <div className="text-xs text-gray-400 mb-1">三重過濾命中</div>

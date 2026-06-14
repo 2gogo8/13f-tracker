@@ -67,6 +67,7 @@ function findClosestPrice(prices: PriceRecord[], targetDate: string): number | n
 }
 
 function assignGroup(slope: number, benchSlope: number): string {
+  if (slope >= benchSlope * 10) return '⚡爆賺';
   if (slope > 50) return 'A超強';
   if (slope > 20) return 'B中強';
   if (slope > benchSlope) return 'C死區';
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         bench_slope: Math.round(benchSlope * 100) / 100,
         bench_post: Math.round(benchPost * 100) / 100,
+        explosive_threshold: Math.round(benchSlope * 10 * 100) / 100,
         data_updated_at: priceCache.updated_at,
         mode: 'dynamic',
         results,
@@ -199,6 +201,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         bench_slope: Math.round(benchSlope * 100) / 100,
         bench_post: Math.round(slopeCache.bench_post * 100) / 100,
+        explosive_threshold: Math.round(benchSlope * 10 * 100) / 100,
         data_updated_at: slopeCache.updated_at,
         cached_date1: slopeCache.date1,
         cached_date2: slopeCache.date2,
