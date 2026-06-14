@@ -178,6 +178,11 @@ def main():
         else:
             d = d.replace(month=d.month + 1)
     months = list(dict.fromkeys(months))  # 去重
+    # 確保當月一定包含（月份跳躍邏輯可能跳過當月）
+    current_month = today.strftime("%Y%m01")
+    if current_month not in months:
+        months.append(current_month)
+    months.sort()
 
     print(f"\n[1/3] 抓取 TAIEX ({len(months)} 個月)...")
     taiex_data = fetch_taiex(months)
