@@ -258,7 +258,7 @@ export default function SlopeScanner() {
       {data && stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
-            <div className="text-xs text-gray-500 mb-1">大盤斜率</div>
+            <div className="text-xs text-gray-500 mb-1">大盤基準</div>
             <div className="text-xl font-bold text-primary">
               {data.bench_slope.toFixed(2)}%
             </div>
@@ -280,7 +280,7 @@ export default function SlopeScanner() {
             <div className="text-xl font-bold text-amber-600">
               {stats.tripleCount}
             </div>
-            <div className="text-xs text-gray-500 mt-1">斜率+空頭+板塊</div>
+            <div className="text-xs text-gray-500 mt-1">反市場+空頭+板塊</div>
           </div>
           <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center">
             <div className="text-xs text-gray-500 mb-1">大漲股命中率</div>
@@ -339,7 +339,7 @@ export default function SlopeScanner() {
                   className="text-right py-2 px-3 cursor-pointer hover:text-gray-900 font-semibold"
                   onClick={() => handleSort('slope')}
                 >
-                  斜率%{sortIndicator('slope')}
+                  反市場選股指標{sortIndicator('slope')}
                 </th>
                 <th
                   className="text-right py-2 px-3 cursor-pointer hover:text-gray-900 font-semibold"
