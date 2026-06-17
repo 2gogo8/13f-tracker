@@ -12,6 +12,7 @@ import CommentSection from '@/components/CommentSection';
 import AIAnalysis from '@/components/AIAnalysis';
 import AnalystConsensus from '@/components/AnalystConsensus';
 import { getSupplyChain } from '@/data/supply-chain';
+import watchlistData from '@/data/anti-market-watchlist.json';
 
 function formatNumber(n: number): string {
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
@@ -77,7 +78,9 @@ export default function StockDetailPage({
 }) {
   const { symbol } = use(params);
   const searchParams = useSearchParams();
-  const fromAntiMarket = searchParams.get('from') === 'antimarket';
+  const fromAntiMarket =
+    searchParams.get('from') === 'antimarket' ||
+    (watchlistData.symbols as string[]).includes(symbol.toUpperCase());
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [holders, setHolders] = useState<FMPInstitutionalHolder[]>([]);
