@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { use } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { StockQuote, CompanyProfile, FMPInstitutionalHolder, InstitutionalSummary, QuarterlyTrendData, HistoricalPrice } from '@/types';
 import PieChart, { PieSlice } from '@/components/PieChart';
@@ -11,7 +12,6 @@ import CommentSection from '@/components/CommentSection';
 import AIAnalysis from '@/components/AIAnalysis';
 import AnalystConsensus from '@/components/AnalystConsensus';
 import { getSupplyChain } from '@/data/supply-chain';
-import watchlistData from '@/data/anti-market-watchlist.json';
 
 function formatNumber(n: number): string {
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
@@ -76,6 +76,8 @@ export default function StockDetailPage({
   params: Promise<{ symbol: string }> 
 }) {
   const { symbol } = use(params);
+  const searchParams = useSearchParams();
+  const fromAntiMarket = searchParams.get('from') === 'antimarket';
   const [quote, setQuote] = useState<StockQuote | null>(null);
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
   const [holders, setHolders] = useState<FMPInstitutionalHolder[]>([]);
@@ -270,9 +272,9 @@ export default function StockDetailPage({
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-10">
             <div>
               <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary glow-red mb-1">{symbol}</h1>
-              {(watchlistData.symbols as string[]).includes(symbol.toUpperCase()) && (
+              {fromAntiMarket && (
                 <p className="font-serif text-base font-bold mb-3">
-                  <span className="text-primary glow-red">反</span>
+                  <span className="text-primary glow-red">美股反</span>
                   <span className="text-gray-900">市場精選</span>
                 </p>
               )}

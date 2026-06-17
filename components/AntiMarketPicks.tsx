@@ -350,7 +350,7 @@ function AntiMarketPicksInner() {
                   return (
                     <Link
                       key={stock.symbol}
-                      href={`/stock/${stock.symbol}`}
+                      href={`/stock/${stock.symbol}?from=antimarket`}
                       className="flex items-center py-3 px-2 rounded transition-all active:bg-primary/10 hover:bg-gray-50 group"
                     >
                       <div className="flex-1 min-w-0">
@@ -492,7 +492,7 @@ function AntiMarketPicksInner() {
             {sortedCustom.map((stock) => (
               <Link
                 key={stock.symbol}
-                href={`/stock/${stock.symbol}`}
+                href={`/stock/${stock.symbol}?from=antimarket`}
                 className="flex items-center py-3 px-2 rounded hover:bg-gray-50 transition-colors group"
               >
                 <div className="flex-1 min-w-0">
