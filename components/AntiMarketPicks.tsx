@@ -286,39 +286,6 @@ function AntiMarketPicksInner() {
         </button>
       </div>
 
-      {/* ── Date Picker ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-[10px] text-gray-500">起算日期</span>
-        <input
-          type="date"
-          value={pendingDate}
-          onChange={(e) => setPendingDate(e.target.value)}
-          className="text-xs px-2 py-1 rounded-md border border-gray-200 bg-white/80 text-gray-700 focus:outline-none focus:ring-1 focus:ring-accent/30"
-          max={new Date().toISOString().split('T')[0]}
-          min="2024-01-01"
-        />
-        {pendingDate !== fromDate && (
-          <button
-            onClick={handleDateChange}
-            className="text-[10px] px-2.5 py-1 rounded-md bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
-          >
-            {mode === 'auto' ? '掃描' : '更新'}
-          </button>
-        )}
-        {fromDate !== DEFAULT_DATE && (
-          <button
-            onClick={() => {
-              setPendingDate(DEFAULT_DATE);
-              setFromDate(DEFAULT_DATE);
-              updateUrl(sortField, sortAsc, DEFAULT_DATE);
-            }}
-            className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            重置
-          </button>
-        )}
-      </div>
-
       {/* ── Custom Mode: Watchlist info bar ─────────────────────────────────── */}
       {mode === 'custom' && (
         <div className="flex items-center gap-3 mb-4">
@@ -352,10 +319,7 @@ function AntiMarketPicksInner() {
       {/* ── Auto Mode: description ─────────────────────────────────────────── */}
       {mode === 'auto' && (
         <p className="text-[10px] text-gray-600 mb-4">
-          連續下跌 {declineMin}-{declineMax}%（自 {fromDate} 起）
-          + R40 ≥ {r40Min}
-          {sma130Required ? ' + 股價 > SMA130' : ''}
-          {!loading && ` ・共 ${picks.length} 檔命中`}
+          {!loading && `共 ${picks.length} 檔命中`}
         </p>
       )}
 
@@ -419,8 +383,36 @@ function AntiMarketPicksInner() {
                   );
                 })}
               </div>
-              {/* ── Thresholds (above 查看更多, hidden in screenshots) ── */}
+              {/* ── Date + Thresholds (above 查看更多, hidden in screenshots) ── */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-gray-100 px-1">
+                {/* Date picker */}
+                <div className="flex items-center gap-2 w-full mb-1">
+                  <span className="text-[10px] text-gray-400">起算日期</span>
+                  <input
+                    type="date"
+                    value={pendingDate}
+                    onChange={(e) => setPendingDate(e.target.value)}
+                    className="text-xs px-2 py-1 rounded-md border border-gray-200 bg-white/80 text-gray-600 focus:outline-none focus:ring-1 focus:ring-accent/30"
+                    max={new Date().toISOString().split('T')[0]}
+                    min="2024-01-01"
+                  />
+                  {pendingDate !== fromDate && (
+                    <button
+                      onClick={handleDateChange}
+                      className="text-[10px] px-2.5 py-1 rounded-md bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      掃描
+                    </button>
+                  )}
+                  {fromDate !== DEFAULT_DATE && (
+                    <button
+                      onClick={() => { setPendingDate(DEFAULT_DATE); setFromDate(DEFAULT_DATE); updateUrl(sortField, sortAsc, DEFAULT_DATE); }}
+                      className="text-[10px] text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      重置
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] text-gray-400">跌幅</span>
                   <input
