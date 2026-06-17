@@ -273,23 +273,25 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
                     setActiveEvent(isActive ? null : evt);
                   }}
                 >
-                  {/* Vertical tick */}
+                  {/* Vertical tick — very faint, stops short of price line */}
                   <line
-                    x1={evt.point.x} y1={evt.point.y}
+                    x1={evt.point.x} y1={chartHeight - 18}
                     x2={evt.point.x} y2={chartHeight}
-                    stroke={cfg.color} strokeWidth="0.5" strokeDasharray="2,2" opacity={0.4}
+                    stroke={cfg.color} strokeWidth="0.5" strokeDasharray="2,3" opacity={0.25}
                   />
-                  {/* Marker circle */}
+                  {/* Marker circle — pinned to bottom, small & subtle */}
                   <circle
-                    cx={evt.point.x} cy={evt.point.y - 14}
-                    r={isActive ? 10 : 8}
-                    fill={isActive ? cfg.color : `${cfg.color}40`}
-                    stroke={cfg.color} strokeWidth="1.5"
+                    cx={evt.point.x} cy={chartHeight - 22}
+                    r={isActive ? 7 : 5}
+                    fill={isActive ? cfg.color : `${cfg.color}30`}
+                    stroke={cfg.color} strokeWidth={isActive ? 1.5 : 1}
+                    opacity={isActive ? 0.9 : 0.45}
                   />
                   <text
-                    x={evt.point.x} y={evt.point.y - 10}
-                    textAnchor="middle" fill={isActive ? '#000' : cfg.color}
-                    fontSize="9" fontWeight="bold" fontFamily="system-ui"
+                    x={evt.point.x} y={chartHeight - 18}
+                    textAnchor="middle" fill={isActive ? '#fff' : cfg.color}
+                    fontSize="7" fontWeight="bold" fontFamily="system-ui"
+                    opacity={isActive ? 1 : 0.6}
                   >
                     {cfg.label}
                   </text>
