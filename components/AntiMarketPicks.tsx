@@ -319,55 +319,6 @@ function AntiMarketPicksInner() {
         )}
       </div>
 
-      {/* ── Thresholds ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4 px-3 py-2.5 bg-gray-50/80 rounded-lg border border-gray-100">
-        {/* Decline range */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-gray-500">跌幅</span>
-          <input
-            type="number" value={pendingDeclineMin} min={0} max={pendingDeclineMax - 1}
-            onChange={(e) => setPendingDeclineMin(Math.max(0, parseInt(e.target.value) || 0))}
-            className="w-12 text-[10px] px-1.5 py-1 rounded border border-gray-200 bg-white text-center focus:outline-none focus:ring-1 focus:ring-accent/30"
-          />
-          <span className="text-[10px] text-gray-400">%~</span>
-          <input
-            type="number" value={pendingDeclineMax} min={pendingDeclineMin + 1} max={99}
-            onChange={(e) => setPendingDeclineMax(Math.min(99, parseInt(e.target.value) || 35))}
-            className="w-12 text-[10px] px-1.5 py-1 rounded border border-gray-200 bg-white text-center focus:outline-none focus:ring-1 focus:ring-accent/30"
-          />
-          <span className="text-[10px] text-gray-400">%</span>
-        </div>
-        {/* R40 */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-gray-500">R40≥</span>
-          <input
-            type="number" value={pendingR40Min} min={0}
-            onChange={(e) => setPendingR40Min(parseInt(e.target.value) || 0)}
-            className="w-14 text-[10px] px-1.5 py-1 rounded border border-gray-200 bg-white text-center focus:outline-none focus:ring-1 focus:ring-accent/30"
-          />
-        </div>
-        {/* SMA130 */}
-        <div className="flex items-center gap-1.5">
-          <input
-            type="checkbox" id="sma130cb" checked={pendingSma130}
-            onChange={(e) => setPendingSma130(e.target.checked)}
-            className="rounded border-gray-300 text-primary focus:ring-primary/30 cursor-pointer"
-          />
-          <label htmlFor="sma130cb" className="text-[10px] text-gray-500 cursor-pointer select-none">
-            股價 &gt; SMA130
-          </label>
-        </div>
-        {/* Apply button (shows when pending != committed, auto mode only) */}
-        {mode === 'auto' && thresholdsChanged && (
-          <button
-            onClick={applyThresholds}
-            className="text-[10px] px-2.5 py-1 rounded-md bg-accent/80 text-white font-medium hover:bg-accent transition-colors"
-          >
-            套用 ↺
-          </button>
-        )}
-      </div>
-
       {/* ── Custom Mode: Watchlist info bar ─────────────────────────────────── */}
       {mode === 'custom' && (
         <div className="flex items-center gap-3 mb-4">
@@ -558,6 +509,55 @@ function AntiMarketPicksInner() {
       <p className="text-[9px] text-gray-500 mt-3 text-center">
         跌幅 = 自高點連續下跌% | R40 = 營收成長率+利潤率 | SMA130 = 現價相對130日均線% | 僅供參考
       </p>
+
+      {/* ── Thresholds (bottom, hidden in screenshots) ─────────────────────── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-gray-100 px-1">
+        {/* Decline range */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-gray-400">跌幅</span>
+          <input
+            type="number" value={pendingDeclineMin} min={0} max={pendingDeclineMax - 1}
+            onChange={(e) => setPendingDeclineMin(Math.max(0, parseInt(e.target.value) || 0))}
+            className="w-12 text-[10px] px-1.5 py-1 rounded border border-gray-200 bg-white text-center focus:outline-none focus:ring-1 focus:ring-accent/30"
+          />
+          <span className="text-[10px] text-gray-300">%~</span>
+          <input
+            type="number" value={pendingDeclineMax} min={pendingDeclineMin + 1} max={99}
+            onChange={(e) => setPendingDeclineMax(Math.min(99, parseInt(e.target.value) || 35))}
+            className="w-12 text-[10px] px-1.5 py-1 rounded border border-gray-200 bg-white text-center focus:outline-none focus:ring-1 focus:ring-accent/30"
+          />
+          <span className="text-[10px] text-gray-300">%</span>
+        </div>
+        {/* R40 */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-gray-400">R40≥</span>
+          <input
+            type="number" value={pendingR40Min} min={0}
+            onChange={(e) => setPendingR40Min(parseInt(e.target.value) || 0)}
+            className="w-14 text-[10px] px-1.5 py-1 rounded border border-gray-200 bg-white text-center focus:outline-none focus:ring-1 focus:ring-accent/30"
+          />
+        </div>
+        {/* SMA130 */}
+        <div className="flex items-center gap-1.5">
+          <input
+            type="checkbox" id="sma130cb" checked={pendingSma130}
+            onChange={(e) => setPendingSma130(e.target.checked)}
+            className="rounded border-gray-300 text-primary focus:ring-primary/30 cursor-pointer"
+          />
+          <label htmlFor="sma130cb" className="text-[10px] text-gray-400 cursor-pointer select-none">
+            股價 &gt; SMA130
+          </label>
+        </div>
+        {/* Apply button */}
+        {mode === 'auto' && thresholdsChanged && (
+          <button
+            onClick={applyThresholds}
+            className="text-[10px] px-2.5 py-1 rounded-md bg-accent/80 text-white font-medium hover:bg-accent transition-colors"
+          >
+            套用 ↺
+          </button>
+        )}
+      </div>
     </div>
   );
 }
