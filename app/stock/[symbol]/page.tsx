@@ -11,6 +11,7 @@ import CommentSection from '@/components/CommentSection';
 import AIAnalysis from '@/components/AIAnalysis';
 import AnalystConsensus from '@/components/AnalystConsensus';
 import { getSupplyChain } from '@/data/supply-chain';
+import watchlistData from '@/data/anti-market-watchlist.json';
 
 function formatNumber(n: number): string {
   if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
@@ -268,7 +269,14 @@ export default function StockDetailPage({
         <div className="apple-card p-8 md:p-12 mb-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-10">
             <div>
-              <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary glow-red mb-3">{symbol}</h1>
+              <div className="flex items-center gap-3 mb-3">
+                <h1 className="font-serif text-4xl md:text-5xl font-bold text-primary glow-red">{symbol}</h1>
+                {(watchlistData.symbols as string[]).includes(symbol.toUpperCase()) && (
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-primary/15 text-primary font-semibold tracking-wide border border-primary/30 glow-red" style={{fontSize:'11px'}}>
+                    反市場精選
+                  </span>
+                )}
+              </div>
               <p className="text-2xl text-gray-900 font-light mb-2">{profile?.companyName || quote.name}</p>
               <p className="text-sm text-gray-400 font-light tracking-wide">
                 {profile?.sector} • {profile?.industry}
