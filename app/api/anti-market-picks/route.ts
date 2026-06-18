@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { trackApiCall } from '@/lib/api-stats';
-import { withScanLock, checkRateLimit } from '@/lib/scan-lock';
+import { checkRateLimit } from '@/lib/scan-lock';
+import { withCache } from '@/lib/redis-cache';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -9,10 +10,9 @@ export const maxDuration = 60;
 const API_KEY = process.env.FMP_API_KEY || '';
 const BASE = 'https://financialmodelingprep.com';
 
-// Cache per cacheKey (fromDate + thresholds)
-const cacheMap = new Map<string, { data: unknown; timestamp: number; version: number }>();
-const CACHE_DURATION = 30 * 60 * 1000; // 30 min
-const CACHE_VERSION = 15; // threshold support + check mode
+// Redis-backed cache (falls back to in-memory when UPSTASH not configured)
+const CACHE_TTL = 1800; // 30 min in seconds
+const CACHE_VERSION = 16; // bumped for Redis migration
 
 const DEFAULT_START_DATE = '2026-01-20';
 
@@ -157,24 +157,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Too many scan requests. Try again later.' }, { status: 429 });
     }
 
-    const cacheKey = `${fromDate}-${declineMin}-${declineMax}-${r40Min}-${sma130Required}`;
-    const now = Date.now();
-    const cached = cacheMap.get(cacheKey);
-    if (cached && now - cached.timestamp < CACHE_DURATION && cached.version === CACHE_VERSION) {
-      const response = NextResponse.json(cached.data);
-      response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
-      response.headers.set('CDN-Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
-      trackApiCall('/api/anti-market-picks', Date.now() - startTime, false);
-      return response;
-    }
-
-    const result = await withScanLock(`anti-market-${cacheKey}`, async () => {
-      const cached2 = cacheMap.get(cacheKey);
-      if (cached2 && Date.now() - cached2.timestamp < CACHE_DURATION && cached2.version === CACHE_VERSION) {
-        return cached2.data;
-      }
-      return doScan(fromDate, thresholds, cacheKey);
-    });
+    const cacheKey = `anti-market:v${CACHE_VERSION}:${fromDate}-${declineMin}-${declineMax}-${r40Min}-${sma130Required}`;
+    const result = await withCache(cacheKey, CACHE_TTL, () => doScan(fromDate, thresholds));
 
     const response = NextResponse.json(result);
     response.headers.set('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=1800');
@@ -190,7 +174,7 @@ export async function GET(request: Request) {
 
 // ── Auto Scan ────────────────────────────────────────────────────────────────
 
-async function doScan(fromDate: string, thresholds: Thresholds, cacheKey: string) {
+async function doScan(fromDate: string, thresholds: Thresholds) {
   const [sp500Res, nasdaqRes] = await Promise.all([
     fetch(`${BASE}/stable/sp500-constituent?apikey=${API_KEY}`).then(r => r.json()),
     fetch(`${BASE}/stable/nasdaq-constituent?apikey=${API_KEY}`).then(r => r.json()),
@@ -325,12 +309,6 @@ async function doScan(fromDate: string, thresholds: Thresholds, cacheKey: string
   }
 
   results.sort((a, b) => b.rule40Score - a.rule40Score);
-  cacheMap.set(cacheKey, { data: results, timestamp: Date.now(), version: CACHE_VERSION });
-  if (cacheMap.size > 10) {
-    const oldest = [...cacheMap.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp)[0];
-    if (oldest) cacheMap.delete(oldest[0]);
-  }
-
   return results;
 }
 

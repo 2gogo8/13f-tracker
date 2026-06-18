@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { trackApiCall } from '@/lib/api-stats';
-import { withScanLock } from '@/lib/scan-lock';
+import { withCache } from '@/lib/redis-cache';
 
 const FMP_KEY = process.env.FMP_API_KEY || '3c03eZvjdPpKONYydbgoAT9chCaQDnsp';
 
@@ -21,20 +21,27 @@ interface TopPick {
   previousClose: number;
 }
 
-let cache: { data: TopPick[]; timestamp: number } | null = null;
-const CACHE_DURATION = 2 * 60 * 60 * 1000;
+const CACHE_KEY = 'top-picks:v1';
+const CACHE_TTL = 7200; // 2 hours
 
 export async function GET() {
   const startTime = Date.now();
-  
-  if (cache && Date.now() - cache.timestamp < CACHE_DURATION) {
-    const response = NextResponse.json(cache.data);
+
+  try {
+    const picks = await withCache<TopPick[]>(CACHE_KEY, CACHE_TTL, fetchTopPicks);
+    const response = NextResponse.json(picks);
     response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
     response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
     trackApiCall('/api/top-picks', Date.now() - startTime, false);
     return response;
+  } catch (error) {
+    console.error('Top picks error:', error);
+    trackApiCall('/api/top-picks', Date.now() - startTime, true);
+    return NextResponse.json([]);
   }
+}
 
+async function fetchTopPicks(): Promise<TopPick[]> {
   try {
     // Step 1: Get S&P 500 + NASDAQ-100 symbols (merged, deduplicated)
     const [sp500Res, nasdaqRes] = await Promise.all([
@@ -42,7 +49,7 @@ export async function GET() {
       fetch(`https://financialmodelingprep.com/stable/nasdaq-constituent?apikey=${FMP_KEY}`, { signal: AbortSignal.timeout(5000) }),
     ]);
     const [sp500, nasdaq] = await Promise.all([sp500Res.json(), nasdaqRes.json()]);
-    if (!Array.isArray(sp500)) return NextResponse.json([]);
+    if (!Array.isArray(sp500)) return [];
 
     const symbolSet = new Set<string>();
     for (const s of sp500) symbolSet.add(s.symbol);
@@ -105,19 +112,8 @@ export async function GET() {
     }
 
     picks.sort((a, b) => a.deviation - b.deviation);
-
-    cache = { data: picks, timestamp: Date.now() };
-    const response = NextResponse.json(picks);
-    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-    trackApiCall('/api/top-picks', Date.now() - startTime, false);
-    return response;
-  } catch (error) {
-    console.error('Top picks error:', error);
-    trackApiCall('/api/top-picks', Date.now() - startTime, true);
-    const response = NextResponse.json([]);
-    response.headers.set('Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-    response.headers.set('CDN-Cache-Control', 'public, s-maxage=7200, stale-while-revalidate=7200');
-    return response;
+    return picks;
+  } catch {
+    return [];
   }
 }
