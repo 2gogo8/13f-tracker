@@ -233,16 +233,23 @@ function AntiMarketPicksInner() {
 
   const displayed = showAll ? sorted : sorted.slice(0, INITIAL_COUNT);
 
-  // ── Sorting (custom/watchlist mode): allPass first, then pass count, then R40
+  // ── Sorting (custom/watchlist mode): respects sortField + sortAsc, allPass always first
   const sortedCustom = useMemo(() => {
     return [...watchlistResults].sort((a, b) => {
+      // allPass always floats to top
       if (a.allPass !== b.allPass) return a.allPass ? -1 : 1;
-      const pcA = [a.declinePass, a.sma130Pass, a.r40Pass].filter(Boolean).length;
-      const pcB = [b.declinePass, b.sma130Pass, b.r40Pass].filter(Boolean).length;
-      if (pcA !== pcB) return pcB - pcA;
-      return (b.rule40Score ?? 0) - (a.rule40Score ?? 0);
+      // then sort by selected field
+      let va: number, vb: number;
+      if (sortField === 'dropPct') {
+        va = a.dropPct ?? 0; vb = b.dropPct ?? 0;
+      } else if (sortField === 'sma130pct') {
+        va = a.sma130Pct ?? 0; vb = b.sma130Pct ?? 0;
+      } else {
+        va = a.rule40Score ?? 0; vb = b.rule40Score ?? 0;
+      }
+      return sortAsc ? va - vb : vb - va;
     });
-  }, [watchlistResults]);
+  }, [watchlistResults, sortField, sortAsc]);
 
   const passCount = watchlistResults.filter(r => r.allPass).length;
 

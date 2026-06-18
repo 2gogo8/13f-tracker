@@ -87,6 +87,8 @@ export default function SlopeScanner() {
   const [activeFilter, setActiveFilter] = useState<GroupFilter>('⚡爆賺');
   const [sortKey, setSortKey] = useState<SortKey>('slope');
   const [sortAsc, setSortAsc] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const INITIAL_COUNT = 15;
 
   async function handleScan() {
     setLoading(true);
@@ -362,7 +364,7 @@ export default function SlopeScanner() {
               </tr>
             </thead>
             <tbody>
-              {filteredResults.map((r, idx) => (
+              {(showAll ? filteredResults : filteredResults.slice(0, INITIAL_COUNT)).map((r, idx) => (
                 <tr
                   key={r.symbol}
                   className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
@@ -435,6 +437,14 @@ export default function SlopeScanner() {
               ))}
             </tbody>
           </table>
+          {filteredResults.length > INITIAL_COUNT && (
+            <button
+              onClick={() => setShowAll(v => !v)}
+              className="w-full mt-3 py-2 rounded-lg border border-gray-200 text-gray-400 text-xs hover:bg-gray-50 transition-colors"
+            >
+              {showAll ? '收合' : `查看更多（共 ${filteredResults.length} 檔）`}
+            </button>
+          )}
         </div>
       )}
 
