@@ -63,6 +63,20 @@ function AntiMarketPicksInner() {
   const urlAsc = searchParams.get('amAsc');
   const urlDate = searchParams.get('amDate');
 
+  // ── Admin mode (Secret Key gate) ────────────────────────────────────────
+  const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || '';
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    const urlKey = searchParams.get('admin');
+    if (ADMIN_KEY && urlKey === ADMIN_KEY) {
+      localStorage.setItem('amAdminKey', urlKey);
+      setIsAdmin(true);
+    } else {
+      const stored = localStorage.getItem('amAdminKey');
+      if (ADMIN_KEY && stored === ADMIN_KEY) setIsAdmin(true);
+    }
+  }, [searchParams, ADMIN_KEY]);
+
   // ── Mode ─────────────────────────────────────────────────────────────────
   const [mode, setMode] = useState<'auto' | 'custom'>('auto');
 
@@ -383,8 +397,8 @@ function AntiMarketPicksInner() {
                   );
                 })}
               </div>
-              {/* ── Date + Thresholds (above 查看更多, hidden in screenshots) ── */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-gray-100 px-1">
+              {/* ── Date + Thresholds (Admin only) ── */}
+              {isAdmin && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-gray-100 px-1">
                 {/* Date picker */}
                 <div className="flex items-center gap-2 w-full mb-1">
                   <span className="text-[10px] text-gray-400">起算日期</span>
@@ -454,7 +468,7 @@ function AntiMarketPicksInner() {
                     套用 ↺
                   </button>
                 )}
-              </div>
+              </div>}
 
               {!showAll && picks.length > INITIAL_COUNT && (
                 <button
