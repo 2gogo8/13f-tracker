@@ -1,5 +1,27 @@
 {
-  "symbols": ["NVDA", "AMD", "MSFT", "GOOG", "GOOGL", "ORCL", "AVGO", "MU", "INTC", "QCOM", "MRVL", "COHR", "SIMO", "AMBA", "CEG", "VST", "NEE", "OKLO", "LEU", "UUUU", "MP", "AMSC", "APLD", "PLTR", "NOW", "CDNS", "RBLX", "RKLB", "ASTS", "RDW", "RTX", "NOC", "LLY", "ARQT", "IBRX", "VRDN", "CRSP", "SANA", "RXRX", "ISRG", "VKTX", "TSLA", "IONQ", "DOW"],
-  "updatedAt": "2026-06-17",
-  "updatedBy": "JG"
+  "symbols": [
+    "NVDA", "AMD", "MSFT", "GOOG", "GOOGL", "ORCL", "AVGO", "MU", "INTC", "QCOM",
+    "MRVL", "COHR", "SIMO", "AMBA", "CEG", "VST", "NEE", "OKLO", "LEU", "UUUU",
+    "MP", "AMSC", "APLD", "PLTR", "NOW", "CDNS", "RBLX", "RKLB", "ASTS", "RDW",
+    "RTX", "NOC", "LLY", "ARQT", "IBRX", "VRDN", "CRSP", "SANA", "RXRX", "ISRG",
+    "VKTX", "TSLA", "IONQ", "DOW",
+    "RGTI", "QUBT", "QBTS",
+    "SMR", "CCJ", "UEC", "BWXT",
+    "ALLO",
+    "LNTH", "CATX", "ATNM",
+    "SRPT", "ALNY", "BMRN", "PTCT", "BEAM"
+  ],
+  "updatedAt": "2026-06-18",
+  "updatedBy": "JG",
+  "categories": {
+    "量子電腦": ["IONQ", "RGTI", "QUBT", "QBTS"],
+    "核能_SMR": ["OKLO", "SMR"],
+    "核能_鈾礦燃料": ["LEU", "UUUU", "CCJ", "UEC"],
+    "核能_電廠運營": ["CEG", "VST", "NEE", "BWXT"],
+    "生技_CAR_T細胞療法": ["ALLO", "ARQT", "IBRX"],
+    "生技_基因編輯": ["CRSP", "BEAM"],
+    "生技_放射性藥物RDC": ["LNTH", "CATX", "ATNM"],
+    "生技_罕見疾病": ["SRPT", "ALNY", "BMRN", "PTCT", "VRDN", "SANA"],
+    "生技_其他": ["RXRX", "ISRG", "VKTX", "LLY"]
+  }
 }
