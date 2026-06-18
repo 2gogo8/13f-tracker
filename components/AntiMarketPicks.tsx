@@ -48,15 +48,15 @@ function formatMktCap(n: number): string {
 const DEFAULT_DATE = '2026-01-20';
 const VALID_SORT_FIELDS: SortField[] = ['dropPct', 'rule40Score', 'sma130pct'];
 
-export default function AntiMarketPicks() {
+export default function AntiMarketPicks({ publicMode = false }: { publicMode?: boolean }) {
   return (
     <Suspense fallback={<div className="apple-card p-5 md:p-6 mb-8"><h2 className="font-serif text-lg font-bold text-primary glow-red">美股反市場精選</h2><p className="text-[10px] text-gray-600 mt-1">載入中...</p></div>}>
-      <AntiMarketPicksInner />
+      <AntiMarketPicksInner publicMode={publicMode} />
     </Suspense>
   );
 }
 
-function AntiMarketPicksInner() {
+function AntiMarketPicksInner({ publicMode = false }: { publicMode?: boolean }) {
   const searchParams = useSearchParams();
 
   const urlSort = searchParams.get('amSort') as SortField | null;
@@ -284,7 +284,7 @@ function AntiMarketPicksInner() {
       </div>
 
       {/* ── Mode Toggle ────────────────────────────────────────────────────── */}
-      <div className="flex gap-1.5 mb-4">
+      {!publicMode && <div className="flex gap-1.5 mb-4">
         <button
           onClick={() => { setMode('auto'); }}
           className={`text-[10px] px-3 py-1.5 rounded-full font-medium transition-colors ${
@@ -305,7 +305,7 @@ function AntiMarketPicksInner() {
         >
           自選名單
         </button>
-      </div>
+      </div>}
 
       {/* ── Custom Mode: date picker (admin only) ───────────────────────────── */}
       {mode === 'custom' && isAdmin && (
@@ -435,8 +435,8 @@ function AntiMarketPicksInner() {
                   );
                 })}
               </div>
-              {/* ── Date + Thresholds (Admin only) ── */}
-              {isAdmin && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-gray-100 px-1">
+              {/* ── Date + Thresholds (Admin only, hidden in public mode) ── */}
+              {isAdmin && !publicMode && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-3 border-t border-gray-100 px-1">
                 {/* Date picker */}
                 <div className="flex items-center gap-2 w-full mb-1">
                   <span className="text-[10px] text-gray-400">起算日期</span>
