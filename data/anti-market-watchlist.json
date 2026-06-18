@@ -9,7 +9,9 @@
     "SMR", "CCJ", "UEC", "BWXT",
     "ALLO",
     "LNTH", "CATX", "ATNM",
-    "SRPT", "ALNY", "BMRN", "PTCT", "BEAM"
+    "SRPT", "ALNY", "BMRN", "PTCT", "BEAM",
+    "LUNR", "PL",
+    "LMT", "GD", "KTOS", "LDOS", "AVAV", "HII", "LHX"
   ],
   "updatedAt": "2026-06-18",
   "updatedBy": "JG",
@@ -22,6 +24,8 @@
     "生技_基因編輯": ["CRSP", "BEAM"],
     "生技_放射性藥物RDC": ["LNTH", "CATX", "ATNM"],
     "生技_罕見疾病": ["SRPT", "ALNY", "BMRN", "PTCT", "VRDN", "SANA"],
-    "生技_其他": ["RXRX", "ISRG", "VKTX", "LLY"]
+    "生技_其他": ["RXRX", "ISRG", "VKTX", "LLY"],
+    "太空": ["RKLB", "ASTS", "RDW", "LUNR", "PL"],
+    "國防": ["RTX", "NOC", "LMT", "GD", "KTOS", "LDOS", "AVAV", "HII", "LHX"]
   }
 }
