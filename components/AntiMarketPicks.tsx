@@ -64,7 +64,7 @@ function AntiMarketPicksInner() {
   const urlDate = searchParams.get('amDate');
 
   // ── Admin mode (Secret Key gate) ────────────────────────────────────────
-  const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || '';
+  const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'jg2026admin';
   const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     const urlKey = searchParams.get('admin');
