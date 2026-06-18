@@ -78,7 +78,7 @@ function AntiMarketPicksInner() {
   }, [searchParams, ADMIN_KEY]);
 
   // ── Mode ─────────────────────────────────────────────────────────────────
-  const [mode, setMode] = useState<'auto' | 'custom'>('auto');
+  const [mode, setMode] = useState<'auto' | 'custom'>('custom');
 
   // ── Auto scan state ───────────────────────────────────────────────────────
   const [picks, setPicks] = useState<AntiMarketPick[]>([]);
