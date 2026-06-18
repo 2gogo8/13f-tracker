@@ -533,11 +533,11 @@ function AntiMarketPicksInner({ publicMode = false }: { publicMode?: boolean }) 
       {mode === 'custom' && !watchlistLoading && watchlistResults.length > 0 && (
         <div>
           {/* Header row */}
-          <div className="flex items-center px-2 pb-2 border-b border-gray-100">
+          <div className="flex items-center px-2 pb-2">
             <span className="flex-1 text-[9px] text-gray-600 uppercase tracking-wider">股票</span>
-            <span className="w-20 text-right text-[9px] text-gray-600 uppercase">跌幅</span>
-            <span className="w-16 text-right text-[9px] text-gray-600 uppercase">R40</span>
-            <span className="w-20 text-right text-[9px] text-gray-600 uppercase">SMA130</span>
+            <SortHeader field="dropPct" label="跨幅" width="w-20" />
+            <SortHeader field="rule40Score" label="R40" width="w-16" />
+            <SortHeader field="sma130pct" label="SMA130" width="w-20" />
             <span className="w-8 text-center text-[9px] text-gray-600 uppercase">全</span>
           </div>
           <div className="divide-y divide-accent/[0.15]">
