@@ -76,7 +76,7 @@ function AntiMarketPicksInner() {
   const [showAll, setShowAll] = useState(false);
   const [fromDate, setFromDate] = useState(urlDate || DEFAULT_DATE);
   const [pendingDate, setPendingDate] = useState(urlDate || DEFAULT_DATE);
-  const INITIAL_COUNT = 10;
+  const INITIAL_COUNT = 15;
 
   // ── Custom mode (watchlist) state ──────────────────────────────────────────
   const [watchlistResults, setWatchlistResults] = useState<AntiMarketCheck[]>([]);
