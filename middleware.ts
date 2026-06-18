@@ -4,7 +4,20 @@ import type { NextRequest } from 'next/server';
 const COOKIE_NAME = 'jg_auth';
 
 // Paths that don't require authentication
-const PUBLIC_PATHS = ['/auth', '/api/auth'];
+const PUBLIC_PATHS = [
+  '/auth',
+  '/api/auth',
+  // Public view page
+  '/view',
+  // API routes needed by the public view page
+  '/api/anti-market-picks',
+  '/api/slope-scanner',
+  '/api/tw-slope',
+  '/api/sector-performance',
+  '/api/trending-news',
+  '/api/market-sentiment',
+  '/api/analyst-overview',
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
