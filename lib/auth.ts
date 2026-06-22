@@ -1,64 +1,41 @@
-import NextAuth from "next-auth";
-import Discord from "next-auth/providers/discord";
+import NextAuth, { type NextAuthOptions } from "next-auth";
+import DiscordProvider from "next-auth/providers/discord";
 
 const DISCORD_GUILD_ID = "1470710752846417990";
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id?: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      discordId?: string | null;
-      isMember?: boolean;
-    };
-    accessToken?: string;
-  }
-}
-
-declare module "@auth/core/jwt" {
-  interface JWT {
-    accessToken?: string;
-    discordId?: string | null;
-    isMember?: boolean;
-  }
-}
-
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
-    Discord({
+    DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope: "identify guilds guilds.members.read",
+          scope: "identify guilds",
         },
       },
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, account, profile }) {
-      // On initial sign-in, persist the access token and check guild membership
+    async jwt({ token, account }) {
       if (account?.access_token) {
         token.accessToken = account.access_token;
-        token.discordId = (profile as { id?: string })?.id ?? null;
 
         // Check if user is in JG's Discord server
         try {
           const res = await fetch(
-            `https://discord.com/api/v10/users/@me/guilds/${DISCORD_GUILD_ID}/member`,
+            `https://discord.com/api/v10/users/@me/guilds`,
             {
               headers: { Authorization: `Bearer ${account.access_token}` },
             }
           );
           if (res.ok) {
-            token.isMember = true;
+            const guilds: { id: string }[] = await res.json();
+            token.isMember = guilds.some((g) => g.id === DISCORD_GUILD_ID);
           } else {
-            // 404 = not in server, any other error = deny
             token.isMember = false;
           }
         } catch {
@@ -68,10 +45,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken;
-      session.user.discordId = token.discordId;
-      session.user.isMember = token.isMember;
+      (session as any).accessToken = token.accessToken;
+      (session.user as any).isMember = token.isMember;
       return session;
     },
   },
-});
+};
+
+export default NextAuth(authOptions);

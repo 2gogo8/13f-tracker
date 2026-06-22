@@ -38,7 +38,7 @@ export default function Home() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/login');
-    } else if (status === 'authenticated' && session?.user?.isMember === false) {
+    } else if (status === 'authenticated' && (session?.user as any)?.isMember === false) {
       router.replace('/not-member');
     }
   }, [status, session, router]);

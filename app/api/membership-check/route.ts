@@ -1,21 +1,17 @@
-/**
- * GET /api/membership-check
- *
- * Returns the current user's Discord server membership status from session.
- */
-
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
   return NextResponse.json({
-    isMember: session.user.isMember ?? false,
-    discordId: session.user.discordId ?? null,
+    isMember: (session.user as any).isMember ?? false,
   });
 }
