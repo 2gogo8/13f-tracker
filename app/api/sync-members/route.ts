@@ -13,13 +13,15 @@ import { acquireLock, releaseLock } from "@/lib/redis";
  */
 
 function authorize(request: NextRequest): boolean {
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && request.headers.get("authorization") === `Bearer ${cronSecret}`) {
-    return true;
-  }
-  const secret = process.env.NEXTAUTH_SECRET;
-  if (secret && request.headers.get("authorization") === `Bearer ${secret}`) {
-    return true;
+  const authHeader = request.headers.get("authorization") ?? "";
+  const keys = [
+    process.env.CRON_SECRET,
+    process.env.NEXTAUTH_SECRET,
+    process.env.AUTH_SECRET,
+    process.env.ADMIN_KEY,
+  ].filter(Boolean);
+  for (const key of keys) {
+    if (authHeader === `Bearer ${key}`) return true;
   }
   return false;
 }
