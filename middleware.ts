@@ -7,6 +7,7 @@ const PUBLIC_PATHS = [
   "/not-member",
   "/api/auth",
   "/api/sync-members",
+  "/api/debug-env",
   "/view",
   "/api/anti-market-picks",
   "/api/slope-scanner",
