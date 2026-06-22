@@ -65,7 +65,6 @@ async function fetchAllMemberChannelIds(): Promise<string[]> {
     const url = new URL("https://www.googleapis.com/youtube/v3/members");
     url.searchParams.set("part", "snippet");
     url.searchParams.set("maxResults", "1000");
-    url.searchParams.set("mode", "listMembers");
     if (pageToken) url.searchParams.set("pageToken", pageToken);
 
     const res = await fetch(url.toString(), {
