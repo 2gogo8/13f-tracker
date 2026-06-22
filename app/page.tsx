@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SearchBar from '@/components/SearchBar';
 import SortSelect from '@/components/SortSelect';
@@ -30,6 +32,21 @@ const sortOptions: SortOption[] = [
 type ViewMode = 'dashboard' | 'list';
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/login');
+    } else if (status === 'authenticated' && session?.user?.isMember === false) {
+      router.replace('/not-member');
+    }
+  }, [status, session, router]);
+
+  if (status === 'loading' || status === 'unauthenticated') {
+    return <div className="min-h-screen bg-[#F5F3EF] flex items-center justify-center"><p className="text-gray-400">載入中...</p></div>;
+  }
+
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [stocks, setStocks] = useState<DashboardStock[]>([]);
   const [topMovers, setTopMovers] = useState<{
