@@ -1,0 +1,37 @@
+name: Warm Redis Cache
+
+on:
+  schedule:
+    # Every 25 min (slightly under 30-min cache TTL to ensure always fresh)
+    - cron: '*/25 * * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Warm anti-market scan (default params)
+        run: |
+          echo "Warming anti-market-picks cache..."
+          curl -sf --max-time 90 \
+            "${{ secrets.VERCEL_APP_URL }}/api/anti-market-picks?warmCache=1" \
+            -o /dev/null -w "Status: %{http_code}\n" || echo "Warning: warm request failed"
+
+      - name: Warm anti-market watchlist
+        run: |
+          echo "Warming watchlist cache..."
+          curl -sf --max-time 90 \
+            "${{ secrets.VERCEL_APP_URL }}/api/anti-market-picks?mode=watchlist&warmCache=1" \
+            -o /dev/null -w "Status: %{http_code}\n" || echo "Warning: watchlist warm failed"
+
+      - name: Warm top-picks
+        run: |
+          echo "Warming top-picks cache..."
+          curl -sf --max-time 60 \
+            "${{ secrets.VERCEL_APP_URL }}/api/top-picks?warmCache=1" \
+            -o /dev/null -w "Status: %{http_code}\n" || echo "Warning: top-picks warm failed"
+
+      - name: Done
+        run: echo "Cache warming complete at $(date -u)"

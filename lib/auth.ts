@@ -1,5 +1,7 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
+import Discord from "next-auth/providers/discord";
+
+const DISCORD_GUILD_ID = "1470710752846417990";
 
 declare module "next-auth" {
   interface Session {
@@ -8,7 +10,7 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
-      ytChannelId?: string | null;
+      discordId?: string | null;
       isMember?: boolean;
     };
     accessToken?: string;
@@ -18,22 +20,19 @@ declare module "next-auth" {
 declare module "@auth/core/jwt" {
   interface JWT {
     accessToken?: string;
-    ytChannelId?: string | null;
+    discordId?: string | null;
     isMember?: boolean;
   }
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    Discord({
+      clientId: process.env.DISCORD_CLIENT_ID!,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope:
-            "openid email profile https://www.googleapis.com/auth/youtube.readonly",
-          access_type: "offline",
-          prompt: "consent",
+          scope: "identify guilds guilds.members.read",
         },
       },
     }),
@@ -42,35 +41,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, account }) {
-      // On initial sign-in, persist the access token
+    async jwt({ token, account, profile }) {
+      // On initial sign-in, persist the access token and check guild membership
       if (account?.access_token) {
         token.accessToken = account.access_token;
+        token.discordId = (profile as { id?: string })?.id ?? null;
 
-        // Fetch the user's YouTube channel ID
+        // Check if user is in JG's Discord server
         try {
           const res = await fetch(
-            "https://www.googleapis.com/youtube/v3/channels?part=id&mine=true",
+            `https://discord.com/api/v10/users/@me/guilds/${DISCORD_GUILD_ID}/member`,
             {
               headers: { Authorization: `Bearer ${account.access_token}` },
             }
           );
           if (res.ok) {
-            const data = (await res.json()) as {
-              items?: { id: string }[];
-            };
-            token.ytChannelId = data.items?.[0]?.id ?? null;
+            token.isMember = true;
+          } else {
+            // 404 = not in server, any other error = deny
+            token.isMember = false;
           }
         } catch {
-          // Non-fatal; will be null
-          token.ytChannelId = null;
-        }
-
-        // Check membership against cached member list
-        if (token.ytChannelId) {
-          const { isMember } = await import("@/lib/youtube-members");
-          token.isMember = await isMember(token.ytChannelId);
-        } else {
           token.isMember = false;
         }
       }
@@ -78,7 +69,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     async session({ session, token }) {
       session.accessToken = token.accessToken;
-      session.user.ytChannelId = token.ytChannelId;
+      session.user.discordId = token.discordId;
       session.user.isMember = token.isMember;
       return session;
     },

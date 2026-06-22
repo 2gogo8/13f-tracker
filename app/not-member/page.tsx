@@ -16,30 +16,30 @@ export default function NotMemberPage() {
 
           <div className="my-6 p-4 bg-red-50 rounded-xl border border-red-100">
             <p className="text-sm text-red-800 font-medium mb-1">
-              ⚠️ 尚未偵測到會員資格
+              ⚠️ 尚未偵測到伺服器成員資格
             </p>
             <p className="text-xs text-red-600">
-              此網站僅限 JG YouTube 頻道付費會員使用
+              此網站僅限 JG Discord 伺服器成員使用
             </p>
           </div>
 
           <div className="space-y-3 text-left text-xs text-gray-500 mb-6">
             <p>可能的原因：</p>
             <ul className="list-disc list-inside space-y-1">
-              <li>您尚未訂閱 JG 頻道會員</li>
-              <li>您使用的 Google 帳號與訂閱會員的帳號不同</li>
-              <li>會員資料同步有延遲（最多 1 小時）</li>
+              <li>您尚未加入 JG 的 Discord 伺服器</li>
+              <li>您使用的 Discord 帳號與加入伺服器的帳號不同</li>
             </ul>
           </div>
 
           <div className="space-y-3">
             <a
-              href="https://www.youtube.com/@JGTrueStock/join"
+              href="https://discord.gg/jg-server"
               target="_blank"
               rel="noopener noreferrer"
-              className="block w-full py-3 rounded-xl bg-red-600 text-white font-medium text-sm hover:bg-red-700 transition-colors text-center"
+              className="block w-full py-3 rounded-xl text-white font-medium text-sm hover:opacity-90 transition-opacity text-center"
+              style={{ backgroundColor: "#5865F2" }}
             >
-              加入 JG 頻道會員
+              加入 JG Discord 伺服器
             </a>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}

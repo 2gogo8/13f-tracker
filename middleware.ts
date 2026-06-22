@@ -51,7 +51,7 @@ export default async function middleware(request: NextRequest) {
 
   if (!session.user.isMember) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "YouTube membership required" }, { status: 403 });
+      return NextResponse.json({ error: "Discord server membership required" }, { status: 403 });
     }
     return NextResponse.redirect(new URL("/not-member", request.url));
   }

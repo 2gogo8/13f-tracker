@@ -1,13 +1,11 @@
 /**
  * GET /api/membership-check
  *
- * Re-checks the current user's YouTube membership status.
- * Called client-side to refresh membership after login.
+ * Returns the current user's Discord server membership status from session.
  */
 
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { isMember } from "@/lib/youtube-members";
 
 export async function GET() {
   const session = await auth();
@@ -16,11 +14,8 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const ytChannelId = session.user.ytChannelId;
-  const memberStatus = ytChannelId ? await isMember(ytChannelId) : false;
-
   return NextResponse.json({
-    isMember: memberStatus,
-    ytChannelId: ytChannelId ?? null,
+    isMember: session.user.isMember ?? false,
+    discordId: session.user.discordId ?? null,
   });
 }
