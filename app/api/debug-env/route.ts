@@ -7,7 +7,8 @@ export async function GET() {
     hasAdminKey: !!process.env.ADMIN_KEY,
     hasAuthSecret: !!process.env.AUTH_SECRET,
     hasCronSecret: !!process.env.CRON_SECRET,
-    adminKeyLen: process.env.ADMIN_KEY?.length ?? 0,
-    adminKeyPrefix: process.env.ADMIN_KEY?.substring(0,6) ?? "none",
+    hasDiscordClientId: !!process.env.DISCORD_CLIENT_ID,
+    hasDiscordClientSecret: !!process.env.DISCORD_CLIENT_SECRET,
+    discordClientIdPrefix: process.env.DISCORD_CLIENT_ID?.substring(0,8) ?? "none",
   });
 }
