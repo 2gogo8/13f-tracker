@@ -1,61 +1,72 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
 
-const COOKIE_NAME = 'jg_auth';
-
-// Paths that don't require authentication
+/**
+ * Paths that are always accessible without authentication.
+ */
 const PUBLIC_PATHS = [
-  '/auth',
-  '/api/auth',
+  "/login",
+  "/not-member",
+  "/api/auth", // NextAuth routes
+  "/api/sync-members", // Cron endpoint (has its own auth)
   // Public view page
-  '/view',
-  // API routes needed by the public view page
-  '/api/anti-market-picks',
-  '/api/slope-scanner',
-  '/api/tw-slope',
-  '/api/sector-performance',
-  '/api/trending-news',
-  '/api/market-sentiment',
-  '/api/analyst-overview',
+  "/view",
+  // Public API routes
+  "/api/anti-market-picks",
+  "/api/slope-scanner",
+  "/api/tw-slope",
+  "/api/sector-performance",
+  "/api/trending-news",
+  "/api/market-sentiment",
+  "/api/analyst-overview",
 ];
 
-export function middleware(request: NextRequest) {
+export default auth((request) => {
   const { pathname } = request.nextUrl;
 
   // Allow public paths
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
   // Allow static assets and Next.js internals
   if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon') ||
-    pathname.endsWith('.ico') ||
-    pathname.endsWith('.png') ||
-    pathname.endsWith('.jpg') ||
-    pathname.endsWith('.svg')
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".svg") ||
+    pathname === "/manifest.json"
   ) {
     return NextResponse.next();
   }
 
-  // Check for auth cookie
-  const authCookie = request.cookies.get(COOKIE_NAME);
-  
-  if (!authCookie?.value) {
-    // Not authenticated — redirect to auth page
-    // For API routes, return 401 instead of redirect
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = request.auth;
+
+  // Not authenticated → redirect to login (or 401 for API)
+  if (!session?.user) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    const authUrl = new URL('/auth', request.url);
-    return NextResponse.redirect(authUrl);
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Authenticated — proceed
+  // Authenticated but not a member → redirect to not-member page
+  if (!session.user.isMember) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json(
+        { error: "YouTube membership required" },
+        { status: 403 }
+      );
+    }
+    return NextResponse.redirect(new URL("/not-member", request.url));
+  }
+
+  // Authenticated + member → proceed
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
@@ -65,6 +76,6 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
