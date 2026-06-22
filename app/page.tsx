@@ -43,10 +43,6 @@ export default function Home() {
     }
   }, [status, session, router]);
 
-  if (status === 'loading' || status === 'unauthenticated') {
-    return <div className="min-h-screen bg-[#F5F3EF] flex items-center justify-center"><p className="text-gray-400">載入中...</p></div>;
-  }
-
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [stocks, setStocks] = useState<DashboardStock[]>([]);
   const [topMovers, setTopMovers] = useState<{
@@ -263,6 +259,10 @@ export default function Home() {
 
     setFilteredStocks(filtered);
   }, [searchTerm, sortBy, stocks, activeScanner, topMovers, oversoldSymbols, oversoldData]);
+
+  if (status === 'loading' || status === 'unauthenticated') {
+    return <div className="min-h-screen bg-[#F5F3EF] flex items-center justify-center"><p className="text-gray-400">載入中...</p></div>;
+  }
 
   return (
     <div className="min-h-screen py-20 px-4 md:px-8">
