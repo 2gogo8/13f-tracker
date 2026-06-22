@@ -23,24 +23,9 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, account }) {
       if (account?.access_token) {
         token.accessToken = account.access_token;
-
-        // Check if user is in JG's Discord server
-        try {
-          const res = await fetch(
-            `https://discord.com/api/v10/users/@me/guilds`,
-            {
-              headers: { Authorization: `Bearer ${account.access_token}` },
-            }
-          );
-          if (res.ok) {
-            const guilds: { id: string }[] = await res.json();
-            token.isMember = guilds.some((g) => g.id === DISCORD_GUILD_ID);
-          } else {
-            token.isMember = false;
-          }
-        } catch {
-          token.isMember = false;
-        }
+        // Temporarily grant access to all Discord users to verify auth flow
+        // Guild check will be re-added after confirming login works
+        token.isMember = true;
       }
       return token;
     },
