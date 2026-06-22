@@ -18,10 +18,10 @@ const PUBLIC_PATHS = [
   "/api/analyst-overview",
 ];
 
-export default async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export default auth((request) => {
+  const { pathname } = (request as NextRequest).nextUrl;
 
-  // Always allow public paths — do NOT run NextAuth check on these
+  // Always allow public paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
@@ -39,25 +39,24 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For everything else, check session
-  const session = await auth();
+  const session = (request as any).auth;
 
   if (!session?.user) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", (request as NextRequest).url));
   }
 
   if (!session.user.isMember) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Discord server membership required" }, { status: 403 });
     }
-    return NextResponse.redirect(new URL("/not-member", request.url));
+    return NextResponse.redirect(new URL("/not-member", (request as NextRequest).url));
   }
 
   return NextResponse.next();
-}
+}) as any;
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
