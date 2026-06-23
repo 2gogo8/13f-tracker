@@ -118,7 +118,7 @@ export default function InsightsPage() {
   const [navPage, setNavPage] = useState(0);
   const NAV_PER_PAGE = 4;
   const [crashAlert, setCrashAlert] = useState<{ixicChange:number;date:string;composite1:string|null;composite2:string|null;marketLosers:{symbol:string;name:string;change:number}[]} | null>(null);
-  const [crashModal, setCrashModal] = useState<{stocks:{symbol:string;name:string;change:number}[];idx:number} | null>(null);
+  const [crashModal, setCrashModal] = useState<{stocks:{symbol:string;name:string;change:number}[];idx:number;group?:number} | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);  // default on
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -523,108 +523,103 @@ export default function InsightsPage() {
       {crashAlert && (
         <>
           {isMobile ? (
-            /* Mobile: bottom banner */
-            <div style={{ position: 'fixed', bottom: 'max(80px, calc(env(safe-area-inset-bottom,0px) + 72px))', left: '16px', right: '16px', zIndex: 9990 }}>
-              <a href="/crash" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: '#fff8f8', border: '1px solid #f0c0c0', borderRadius: '8px', borderLeft: '3px solid #c0202a', boxShadow: '0 2px 8px rgba(192,32,42,0.15)' }}>
-                <span style={{ fontSize: '16px' }}>⚠️</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>IXIC 大跌 {crashAlert.ixicChange.toFixed(2)}%</div>
-                  <div style={{ fontSize: '11px', color: '#8a8a8f' }}>點擊看跌幅前十名 K 線圖 →</div>
+            /* ── MOBILE: 2 stacked thumbnails below article ── */
+            <div style={{ maxWidth: '720px', margin: '16px auto 0', padding: '0 16px', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>⚠️ 大跌警報</span>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
+                <span style={{ fontSize: '11px', color: '#8a8a8f', marginLeft: 'auto' }}>{crashAlert.date}</span>
+              </div>
+              {/* Thumbnail 1: #1-5 */}
+              <div
+                onClick={() => setCrashModal({ stocks: [], idx: 0, group: 1 })}
+                style={{ marginBottom: '12px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid #e3ddd2', cursor: 'pointer', background: '#fff' }}>
+                <div style={{ padding: '6px 12px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#c0202a' }}>跌幅 #1-5 · 2年日線圖</span>
+                  <span style={{ fontSize: '11px', color: '#8a8a8f' }}>點擊放大 🔍</span>
                 </div>
-              </a>
+                <img src="/api/public/crash-alert/composite?group=1" alt="crash #1-5"
+                  style={{ width: '100%', display: 'block' }} />
+              </div>
+              {/* Thumbnail 2: #6-10 */}
+              <div
+                onClick={() => setCrashModal({ stocks: [], idx: 0, group: 2 })}
+                style={{ borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid #e3ddd2', cursor: 'pointer', background: '#fff' }}>
+                <div style={{ padding: '6px 12px', background: '#fafafa', borderBottom: '1px solid #e8e8e8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#8a8a8f' }}>跌幅 #6-10 · 2年日線圖</span>
+                  <span style={{ fontSize: '11px', color: '#8a8a8f' }}>點擊放大 🔍</span>
+                </div>
+                <img src="/api/public/crash-alert/composite?group=2" alt="crash #6-10"
+                  style={{ width: '100%', display: 'block' }} />
+              </div>
+              <div style={{ textAlign: 'right', marginTop: '6px' }}>
+                <a href="/crash" style={{ fontSize: '11px', color: '#c0202a', textDecoration: 'none' }}>查看完整資料 →</a>
+              </div>
             </div>
           ) : (
-            /* Desktop: fixed thumbnails in left/right gutters */
+            /* ── DESKTOP: fixed thumbnails in left/right gutters ── */
             <>
-              {/* Left gutter: stocks #1-5 */}
               <div
-                  className="crash-side-thumb"
-                  onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(0, 5), idx: 0})}
-                  style={{
-                    position: 'fixed',
-                    top: '50%', transform: 'translateY(-50%)',
-                    left: 'calc(50% - 360px - 228px - 16px)',
-                    width: '220px',
-                    cursor: 'pointer', zIndex: 100,
-                    background: '#fff',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-                    border: '1px solid #e3ddd2',
-                    overflow: 'hidden',
-                    transition: 'box-shadow 0.2s',
-                  }}>
-                  <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '10px', color: '#c0202a', fontWeight: 700 }}>⚠️ #1-5</span>
-                    <span style={{ fontSize: '11px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
-                    <span style={{ fontSize: '9px', color: '#aaa', marginLeft: 'auto' }}>🔍</span>
-                  </div>
-                  <img src="/api/public/crash-alert/composite?group=1" alt="crash #1-5"
-                    style={{ width: '100%', display: 'block' }} />
+                className="crash-side-thumb"
+                onClick={() => setCrashModal({ stocks: [], idx: 0, group: 1 })}
+                style={{
+                  position: 'fixed', top: '50%', transform: 'translateY(-50%)',
+                  left: 'calc(50% - 360px - 228px - 16px)',
+                  width: '220px', cursor: 'pointer', zIndex: 100,
+                  background: '#fff', borderRadius: '8px',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                  border: '1px solid #e3ddd2', overflow: 'hidden',
+                }}>
+                <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '10px', color: '#c0202a', fontWeight: 700 }}>⚠️ #1-5</span>
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
+                  <span style={{ fontSize: '9px', color: '#aaa', marginLeft: 'auto' }}>🔍</span>
                 </div>
-                            {/* Right gutter: stocks #6-10 */}
-              
-                <div
-                  className="crash-side-thumb-right"
-                  onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(5, 10), idx: 0})}
-                  style={{
-                    position: 'fixed',
-                    top: '50%', transform: 'translateY(-50%)',
-                    right: 'calc(50% - 360px - 228px - 16px)',
-                    width: '220px',
-                    cursor: 'pointer', zIndex: 100,
-                    background: '#fff',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
-                    border: '1px solid #e3ddd2',
-                    overflow: 'hidden',
-                  }}>
-                  <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '10px', color: '#8a8a8f', fontWeight: 700 }}>#6-10</span>
-                    <a href="/crash" onClick={e=>e.stopPropagation()} style={{ fontSize: '9px', color: '#c0202a', textDecoration: 'none', marginLeft: 'auto' }}>全部 →</a>
-                  </div>
-                  <img src="/api/public/crash-alert/composite?group=2" alt="crash #6-10"
-                    style={{ width: '100%', display: 'block' }} />
+                <img src="/api/public/crash-alert/composite?group=1" alt="crash #1-5"
+                  style={{ width: '100%', display: 'block' }} />
+              </div>
+              <div
+                className="crash-side-thumb-right"
+                onClick={() => setCrashModal({ stocks: [], idx: 0, group: 2 })}
+                style={{
+                  position: 'fixed', top: '50%', transform: 'translateY(-50%)',
+                  right: 'calc(50% - 360px - 228px - 16px)',
+                  width: '220px', cursor: 'pointer', zIndex: 100,
+                  background: '#fff', borderRadius: '8px',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                  border: '1px solid #e3ddd2', overflow: 'hidden',
+                }}>
+                <div style={{ padding: '6px 10px', background: '#fafafa', borderBottom: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '10px', color: '#8a8a8f', fontWeight: 700 }}>#6-10</span>
+                  <a href="/crash" onClick={e=>e.stopPropagation()} style={{ fontSize: '9px', color: '#c0202a', textDecoration: 'none', marginLeft: 'auto' }}>全部 →</a>
                 </div>
+                <img src="/api/public/crash-alert/composite?group=2" alt="crash #6-10"
+                  style={{ width: '100%', display: 'block' }} />
+              </div>
             </>
           )}
 
-          {/* Chart modal */}
+          {/* ── Modal: full-size composite image ── */}
           {crashModal && (
-            <div onClick={() => setCrashModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-              <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '8px', overflow: 'hidden', maxWidth: '95vw', maxHeight: '90vh', width: '680px', display: 'flex', flexDirection: 'column' }}>
-                {/* Modal header */}
-                <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #e3ddd2', background: '#fff' }}>
-                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a1a', flex: 1 }}>
-                    {crashModal.stocks[crashModal.idx]?.symbol} — 兩年日線圖 ({crashModal.idx+1}/{crashModal.stocks.length})
-                  </span>
-                  <button onClick={() => setCrashModal(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#8a8a8f', padding: '0 4px' }}>×</button>
-                </div>
-                {/* Chart */}
-                <div style={{ flex: 1, overflow: 'hidden', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {/* Show composite for the group, individual if available */}
-                  <img
-                    src={`/api/public/crash-alert/composite?group=${crashModal.idx < 5 ? 1 : 2}`}
-                    alt="crash chart"
-                    style={{ maxWidth: '100%', maxHeight: '60vh', display: 'block' }}
-                  />
-                  <div style={{ padding: '8px 16px', fontSize: '13px', color: '#8a8a8f', background: '#fafafa', borderTop: '1px solid #e3ddd2' }}>
-                    點擊縮圖可看全部10支股票的2年日線圖合成
-                  </div>
-                </div>
-                {/* Prev / Next */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '12px 16px', borderTop: '1px solid #e3ddd2' }}>
-                  <button
-                    onClick={() => setCrashModal(m => m && m.idx > 0 ? {...m, idx: m.idx-1} : m)}
-                    disabled={crashModal.idx === 0}
-                    style={{ padding: '8px 20px', borderRadius: '4px', border: '1px solid #e3ddd2', background: '#fff', color: crashModal.idx === 0 ? '#ccc' : '#2b2b2e', cursor: crashModal.idx === 0 ? 'default' : 'pointer', fontSize: '14px' }}>
-                    ◀ 上一支
-                  </button>
-                  <button
-                    onClick={() => setCrashModal(m => m && m.idx < m.stocks.length-1 ? {...m, idx: m.idx+1} : m)}
-                    disabled={crashModal.idx === crashModal.stocks.length-1}
-                    style={{ padding: '8px 20px', borderRadius: '4px', border: 'none', background: '#c0202a', color: '#fff', cursor: crashModal.idx === crashModal.stocks.length-1 ? 'default' : 'pointer', fontSize: '14px', opacity: crashModal.idx === crashModal.stocks.length-1 ? 0.4 : 1 }}>
-                    下一支 ▶
-                  </button>
+            <div onClick={() => setCrashModal(null)} style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+              zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px'
+            }}>
+              <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '100%', maxHeight: '90vh' }}>
+                <button onClick={() => setCrashModal(null)} style={{
+                  position: 'absolute', top: '-14px', right: '-14px',
+                  width: '32px', height: '32px', borderRadius: '50%',
+                  background: '#c0202a', color: '#fff', border: 'none',
+                  cursor: 'pointer', fontSize: '18px', fontWeight: 700,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1,
+                }}>×</button>
+                <img
+                  src={`/api/public/crash-alert/composite?group=${(crashModal as {group?: number}).group || 1}`}
+                  alt="crash chart fullsize"
+                  style={{ maxWidth: '100%', maxHeight: '85vh', display: 'block', borderRadius: '6px' }}
+                />
+                <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '11px', color: '#aaa' }}>
+                  {(crashModal as {group?: number}).group === 2 ? '跌幅 #6-10' : '跌幅 #1-5'} · 2年日線圖
                 </div>
               </div>
             </div>
