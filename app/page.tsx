@@ -275,6 +275,11 @@ export default function Home() {
         <p className="text-gray-400 font-light text-lg tracking-[0.2em] uppercase">
           美股機構持倉戰情儀表板
         </p>
+        <div className="mt-6">
+          <Link href="/experts" className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-primary hover:bg-primary/5 border border-gray-200 hover:border-primary/30 transition-all">
+            👤 專家庫
+          </Link>
+        </div>
       </header>
 
       <div className="max-w-7xl mx-auto">

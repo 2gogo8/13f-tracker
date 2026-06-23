@@ -1,0 +1,656 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+interface Interview {
+  date: string;
+  topic: string;
+  keyPoint: string;
+}
+
+interface Expert {
+  _id: string;
+  name: string;
+  title: string;
+  organization: string;
+  bio: string;
+  tags: string[];
+  interviews: Interview[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+type ModalMode = 'create' | 'edit';
+
+export default function ExpertsPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  const [experts, setExperts] = useState<Expert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>('create');
+  const [editingExpert, setEditingExpert] = useState<Expert | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Form state
+  const [formName, setFormName] = useState('');
+  const [formTitle, setFormTitle] = useState('');
+  const [formOrg, setFormOrg] = useState('');
+  const [formBio, setFormBio] = useState('');
+  const [formTags, setFormTags] = useState('');
+  const [formInterviews, setFormInterviews] = useState<Interview[]>([]);
+
+  // Interview add form
+  const [showInterviewForm, setShowInterviewForm] = useState(false);
+  const [intDate, setIntDate] = useState('');
+  const [intTopic, setIntTopic] = useState('');
+  const [intKeyPoint, setIntKeyPoint] = useState('');
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/login');
+    } else if (status === 'authenticated' && (session?.user as any)?.isMember === false) {
+      router.replace('/not-member');
+    }
+  }, [status, session, router]);
+
+  const fetchExperts = useCallback(async () => {
+    try {
+      const url = activeTag ? `/api/experts?tag=${encodeURIComponent(activeTag)}` : '/api/experts';
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setExperts(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch experts:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTag]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchExperts();
+    }
+  }, [status, fetchExperts]);
+
+  // Collect all tags
+  const allTags = Array.from(new Set(experts.flatMap((e) => e.tags))).sort();
+
+  // Filter by search
+  const filtered = experts.filter((e) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      e.name.toLowerCase().includes(term) ||
+      e.title.toLowerCase().includes(term) ||
+      e.organization.toLowerCase().includes(term) ||
+      e.bio.toLowerCase().includes(term) ||
+      e.tags.some((t) => t.toLowerCase().includes(term))
+    );
+  });
+
+  const resetForm = () => {
+    setFormName('');
+    setFormTitle('');
+    setFormOrg('');
+    setFormBio('');
+    setFormTags('');
+    setFormInterviews([]);
+    setEditingExpert(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setModalMode('create');
+    setShowModal(true);
+  };
+
+  const openEditModal = (expert: Expert) => {
+    setEditingExpert(expert);
+    setFormName(expert.name);
+    setFormTitle(expert.title);
+    setFormOrg(expert.organization);
+    setFormBio(expert.bio);
+    setFormTags(expert.tags.join(', '));
+    setFormInterviews([...expert.interviews]);
+    setModalMode('edit');
+    setShowModal(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!formName.trim() || !formTitle.trim() || !formOrg.trim()) return;
+    setSaving(true);
+
+    const payload = {
+      name: formName.trim(),
+      title: formTitle.trim(),
+      organization: formOrg.trim(),
+      bio: formBio.trim(),
+      tags: formTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+      interviews: formInterviews,
+    };
+
+    try {
+      if (modalMode === 'create') {
+        const res = await fetch('/api/experts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          setShowModal(false);
+          resetForm();
+          fetchExperts();
+        }
+      } else if (editingExpert) {
+        const res = await fetch(`/api/experts/${editingExpert._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          setShowModal(false);
+          resetForm();
+          fetchExperts();
+        }
+      }
+    } catch (err) {
+      console.error('Save failed:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('確定要刪除這位專家？')) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/experts/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchExperts();
+      }
+    } catch (err) {
+      console.error('Delete failed:', err);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const addInterview = () => {
+    if (!intDate || !intTopic.trim() || !intKeyPoint.trim()) return;
+    setFormInterviews([...formInterviews, { date: intDate, topic: intTopic.trim(), keyPoint: intKeyPoint.trim() }]);
+    setIntDate('');
+    setIntTopic('');
+    setIntKeyPoint('');
+    setShowInterviewForm(false);
+  };
+
+  const removeInterview = (index: number) => {
+    setFormInterviews(formInterviews.filter((_, i) => i !== index));
+  };
+
+  // Add interview directly to an expert (inline)
+  const addInterviewToExpert = async (expertId: string, interview: Interview) => {
+    const expert = experts.find((e) => e._id === expertId);
+    if (!expert) return;
+    const updated = [...expert.interviews, interview];
+    try {
+      const res = await fetch(`/api/experts/${expertId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interviews: updated }),
+      });
+      if (res.ok) fetchExperts();
+    } catch (err) {
+      console.error('Add interview failed:', err);
+    }
+  };
+
+  const removeInterviewFromExpert = async (expertId: string, index: number) => {
+    const expert = experts.find((e) => e._id === expertId);
+    if (!expert) return;
+    const updated = expert.interviews.filter((_, i) => i !== index);
+    try {
+      const res = await fetch(`/api/experts/${expertId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interviews: updated }),
+      });
+      if (res.ok) fetchExperts();
+    } catch (err) {
+      console.error('Remove interview failed:', err);
+    }
+  };
+
+  if (status === 'loading' || status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-[#F5F3EF] flex items-center justify-center">
+        <p className="text-gray-400">載入中...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen py-12 px-4 md:px-8">
+      {/* Back nav */}
+      <div className="max-w-5xl mx-auto mb-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-primary transition-colors"
+        >
+          ← 返回首頁
+        </Link>
+      </div>
+
+      {/* Header */}
+      <header className="mb-12 text-center">
+        <h1 className="font-serif text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+          <span className="gradient-text">專家資料庫</span>
+        </h1>
+        <div className="gradient-line mb-6"></div>
+        <p className="text-gray-400 font-light text-base tracking-[0.15em] uppercase">
+          Expert Database
+        </p>
+      </header>
+
+      <div className="max-w-5xl mx-auto">
+        {/* Search + Add button */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="搜尋專家姓名、機構、專業領域..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-white/80 backdrop-blur border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <button
+            onClick={openCreateModal}
+            className="px-6 py-3 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 shadow-[0_4px_20px_rgba(196,30,58,0.25)] transition-all whitespace-nowrap"
+          >
+            + 新增專家
+          </button>
+        </div>
+
+        {/* Tag filters */}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            <button
+              onClick={() => setActiveTag(null)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                !activeTag
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              全部
+            </button>
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  activeTag === tag
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Expert cards */}
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-accent"></div>
+            <p className="mt-4 text-gray-400 font-light">載入專家資料...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-400 text-sm">
+              {searchTerm ? `找不到符合「${searchTerm}」的專家` : '尚未建立專家資料'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filtered.map((expert) => (
+              <ExpertCard
+                key={expert._id}
+                expert={expert}
+                expanded={expandedId === expert._id}
+                onToggle={() => setExpandedId(expandedId === expert._id ? null : expert._id)}
+                onEdit={() => openEditModal(expert)}
+                onDelete={() => handleDelete(expert._id)}
+                deleting={deleting === expert._id}
+                onAddInterview={(interview) => addInterviewToExpert(expert._id, interview)}
+                onRemoveInterview={(index) => removeInterviewFromExpert(expert._id, index)}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="text-center mt-8 text-sm text-gray-400">
+          共 {filtered.length} 位專家
+        </div>
+      </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl p-6">
+            <h2 className="font-serif text-2xl font-bold mb-6 text-gray-900">
+              {modalMode === 'create' ? '新增專家' : '編輯專家'}
+            </h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">姓名 *</label>
+                <input
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="例：黃仁勳"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">現職職位 *</label>
+                <input
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="例：CEO"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">所屬機構 *</label>
+                <input
+                  value={formOrg}
+                  onChange={(e) => setFormOrg(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="例：NVIDIA"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">專長簡述</label>
+                <textarea
+                  value={formBio}
+                  onChange={(e) => setFormBio(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  placeholder="他最厲害的事（1-2句）"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">標籤（逗號分隔）</label>
+                <input
+                  value={formTags}
+                  onChange={(e) => setFormTags(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="例：AI, 半導體, GPU"
+                />
+              </div>
+
+              {/* Interviews in modal */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-gray-500">訪談紀錄</label>
+                  <button
+                    onClick={() => setShowInterviewForm(true)}
+                    className="text-xs text-primary hover:text-primary/80 font-medium"
+                  >
+                    + 新增訪談
+                  </button>
+                </div>
+                {formInterviews.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {formInterviews.map((int, i) => (
+                      <div key={i} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2.5 text-xs">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-700">{int.date} — {int.topic}</div>
+                          <div className="text-gray-500 mt-0.5">{int.keyPoint}</div>
+                        </div>
+                        <button onClick={() => removeInterview(i)} className="text-red-400 hover:text-red-600 flex-shrink-0 text-base leading-none">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showInterviewForm && (
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <input
+                      type="date"
+                      value={intDate}
+                      onChange={(e) => setIntDate(e.target.value)}
+                      className="w-full px-2 py-1.5 rounded border border-gray-200 text-gray-900 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                    <input
+                      value={intTopic}
+                      onChange={(e) => setIntTopic(e.target.value)}
+                      placeholder="訪談主題"
+                      className="w-full px-2 py-1.5 rounded border border-gray-200 text-gray-900 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                    <textarea
+                      value={intKeyPoint}
+                      onChange={(e) => setIntKeyPoint(e.target.value)}
+                      placeholder="關鍵觀點（1-3句）"
+                      rows={2}
+                      className="w-full px-2 py-1.5 rounded border border-gray-200 text-gray-900 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={addInterview} className="px-3 py-1 bg-primary text-white text-xs rounded-lg hover:bg-primary/90">加入</button>
+                      <button onClick={() => setShowInterviewForm(false)} className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-300">取消</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => { setShowModal(false); resetForm(); }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition-all"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={saving || !formName.trim() || !formTitle.trim() || !formOrg.trim()}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_16px_rgba(196,30,58,0.2)]"
+              >
+                {saving ? '儲存中...' : modalMode === 'create' ? '建立' : '更新'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ────── Expert Card Component ────── */
+
+function ExpertCard({
+  expert,
+  expanded,
+  onToggle,
+  onEdit,
+  onDelete,
+  deleting,
+  onAddInterview,
+  onRemoveInterview,
+}: {
+  expert: Expert;
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+  onAddInterview: (interview: Interview) => void;
+  onRemoveInterview: (index: number) => void;
+}) {
+  const [showInlineIntForm, setShowInlineIntForm] = useState(false);
+  const [iDate, setIDate] = useState('');
+  const [iTopic, setITopic] = useState('');
+  const [iKeyPoint, setIKeyPoint] = useState('');
+
+  const handleAdd = () => {
+    if (!iDate || !iTopic.trim() || !iKeyPoint.trim()) return;
+    onAddInterview({ date: iDate, topic: iTopic.trim(), keyPoint: iKeyPoint.trim() });
+    setIDate('');
+    setITopic('');
+    setIKeyPoint('');
+    setShowInlineIntForm(false);
+  };
+
+  return (
+    <div className="apple-card overflow-hidden">
+      {/* Card header - clickable */}
+      <div className="p-5 cursor-pointer" onClick={onToggle}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1">
+              <h3 className="font-serif text-lg font-bold text-gray-900">{expert.name}</h3>
+              <span className="text-xs text-gray-400">
+                {expanded ? '▲' : '▼'}
+              </span>
+            </div>
+            <p className="text-sm text-gray-600">
+              {expert.title}
+              <span className="text-gray-300 mx-1.5">·</span>
+              {expert.organization}
+            </p>
+            {expert.bio && (
+              <p className="text-xs text-gray-400 mt-1.5 line-clamp-2">{expert.bio}</p>
+            )}
+            {/* Tags */}
+            {expert.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {expert.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-0.5 rounded-full bg-primary/8 text-primary text-[11px] font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Action buttons */}
+          <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={onEdit}
+              className="p-2 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition-all text-xs"
+              title="編輯"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={onDelete}
+              disabled={deleting}
+              className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all text-xs disabled:opacity-50"
+              title="刪除"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded - Interviews */}
+      {expanded && (
+        <div className="border-t border-gray-100 px-5 py-4 bg-gray-50/50">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">訪談紀錄</h4>
+            <button
+              onClick={() => setShowInlineIntForm(true)}
+              className="text-xs text-primary hover:text-primary/80 font-medium"
+            >
+              + 新增訪談
+            </button>
+          </div>
+
+          {expert.interviews.length === 0 && !showInlineIntForm && (
+            <p className="text-xs text-gray-400 py-2">尚無訪談紀錄</p>
+          )}
+
+          {expert.interviews.length > 0 && (
+            <div className="space-y-2.5 mb-3">
+              {expert.interviews.map((int, i) => (
+                <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-3 border border-gray-100">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-xs mb-1">
+                      <span className="text-gray-400 font-mono">{int.date}</span>
+                      <span className="font-medium text-gray-700">{int.topic}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">{int.keyPoint}</p>
+                  </div>
+                  <button
+                    onClick={() => onRemoveInterview(i)}
+                    className="text-red-300 hover:text-red-500 flex-shrink-0 text-sm leading-none p-1"
+                    title="刪除訪談"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Inline interview form */}
+          {showInlineIntForm && (
+            <div className="bg-white rounded-lg p-3 border border-gray-200 space-y-2 mt-2">
+              <input
+                type="date"
+                value={iDate}
+                onChange={(e) => setIDate(e.target.value)}
+                className="w-full px-2 py-1.5 rounded border border-gray-200 text-gray-900 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+              <input
+                value={iTopic}
+                onChange={(e) => setITopic(e.target.value)}
+                placeholder="訪談主題"
+                className="w-full px-2 py-1.5 rounded border border-gray-200 text-gray-900 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+              <textarea
+                value={iKeyPoint}
+                onChange={(e) => setIKeyPoint(e.target.value)}
+                placeholder="關鍵觀點（1-3句）"
+                rows={2}
+                className="w-full px-2 py-1.5 rounded border border-gray-200 text-gray-900 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+              />
+              <div className="flex gap-2">
+                <button onClick={handleAdd} className="px-3 py-1 bg-primary text-white text-xs rounded-lg hover:bg-primary/90">加入</button>
+                <button onClick={() => setShowInlineIntForm(false)} className="px-3 py-1 bg-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-300">取消</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
