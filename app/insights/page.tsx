@@ -69,7 +69,7 @@ function renderMarkdown(raw: string) {
       return (
         <h3 key={i} style={{
           fontFamily: '"Noto Serif TC", Georgia, serif',
-          fontSize: '17px', fontWeight: 700, color: '#c0202a',
+          fontSize: 'clamp(18px, 5vw, 19px)', fontWeight: 700, color: '#c0202a',
           margin: '20px 0 10px', lineHeight: 1.4, letterSpacing: '0.01em',
         }}>
           {t.replace(/^#{1,3}\s+/, '')}
@@ -86,7 +86,7 @@ function renderMarkdown(raw: string) {
         </div>
       );
     return (
-      <p key={i} style={{ marginBottom: '18px', lineHeight: 1.85, fontSize: '16px', color: '#2b2b2e', fontFamily: '"Noto Sans TC","PingFang TC",-apple-system,sans-serif', letterSpacing: '0.01em' }}>
+      <p key={i} style={{ marginBottom: '18px', lineHeight: 1.95, fontSize: 'clamp(17px, 4.5vw, 18px)', color: '#2b2b2e', fontFamily: '"Noto Sans TC","PingFang TC",-apple-system,sans-serif', letterSpacing: '0.01em' }}>
         {t.split('\n').map((line, j, arr) => (
           <span key={j}>{renderInline(line)}{j < arr.length - 1 && <br />}</span>
         ))}
@@ -416,7 +416,7 @@ export default function InsightsPage() {
                 {active?.articleTitle && (
                   <h2 style={{
                     fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, "Times New Roman", serif',
-                    fontSize: 'clamp(18px, 3.5vw, 26px)', fontWeight: 700,
+                    fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 700,
                     color: '#1a1a1a', lineHeight: 1.35, margin: '0 0 12px',
                     letterSpacing: '-0.01em',
                   }}>
@@ -538,6 +538,7 @@ export default function InsightsPage() {
             <>
               {/* Left gutter: stocks #1-5 */}
               <div
+                  className="crash-side-thumb"
                   onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(0, 5), idx: 0})}
                   style={{
                     position: 'fixed',
@@ -563,6 +564,7 @@ export default function InsightsPage() {
                             {/* Right gutter: stocks #6-10 */}
               
                 <div
+                  className="crash-side-thumb-right"
                   onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(5, 10), idx: 0})}
                   style={{
                     position: 'fixed',
