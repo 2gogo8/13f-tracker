@@ -117,7 +117,7 @@ export default function InsightsPage() {
 
   const [navPage, setNavPage] = useState(0);
   const NAV_PER_PAGE = 4;
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);  // default on
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Taiwan date + countdown
@@ -129,6 +129,28 @@ export default function InsightsPage() {
       setCountdown(getCountdownTo6AM());
     }, 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Auto-play on mount
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    // Try to autoplay; browser may block until first user interaction
+    const tryPlay = () => {
+      audio.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          // Browser blocked autoplay — play on first interaction
+          const onInteract = () => {
+            audio.play().then(() => setIsPlaying(true)).catch(() => {});
+            document.removeEventListener('click', onInteract);
+            document.removeEventListener('touchstart', onInteract);
+          };
+          document.addEventListener('click', onInteract, { once: true });
+          document.addEventListener('touchstart', onInteract, { once: true });
+        });
+    };
+    tryPlay();
   }, []);
 
   const toggleMusic = () => {
@@ -483,7 +505,7 @@ export default function InsightsPage() {
       </div>
 
       {/* Hidden audio element */}
-      <audio ref={audioRef} loop preload="none" src="/audio/bg-music.mp3" />
+      <audio ref={audioRef} loop preload="auto" src="/audio/bg-music.mp3" />
 
       {/* Music toggle button — floating bottom-left */}
       <button
