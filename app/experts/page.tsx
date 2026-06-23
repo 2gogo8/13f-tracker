@@ -224,7 +224,7 @@ export default function ExpertsPage() {
   const addInterviewToExpert = async (expertId: string, interview: Interview) => {
     const expert = experts.find((e) => e._id === expertId);
     if (!expert) return;
-    const updated = [...expert.interviews, interview];
+    const updated = [...(expert.interviews || []), interview];
     try {
       const res = await fetch(`/api/experts/${expertId}`, {
         method: 'PUT',
@@ -240,7 +240,7 @@ export default function ExpertsPage() {
   const removeInterviewFromExpert = async (expertId: string, index: number) => {
     const expert = experts.find((e) => e._id === expertId);
     if (!expert) return;
-    const updated = expert.interviews.filter((_, i) => i !== index);
+    const updated = (expert.interviews || []).filter((_, i) => i !== index);
     try {
       const res = await fetch(`/api/experts/${expertId}`, {
         method: 'PUT',
@@ -702,9 +702,9 @@ function ExpertCard({
               <p className="text-xs text-gray-400 mt-1.5 line-clamp-2">{expert.bio}</p>
             )}
             {/* Tags */}
-            {expert.tags.length > 0 && (
+            {(expert.tags || []).length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
-                {expert.tags.map((tag) => (
+                {(expert.tags || []).map((tag) => (
                   <span
                     key={tag}
                     className="px-2 py-0.5 rounded-full bg-primary/8 text-primary text-[11px] font-medium"
@@ -749,13 +749,13 @@ function ExpertCard({
             </button>
           </div>
 
-          {expert.interviews.length === 0 && !showInlineIntForm && (
+          {(expert.interviews || []).length === 0 && !showInlineIntForm && (
             <p className="text-xs text-gray-400 py-2">尚無訪談紀錄</p>
           )}
 
-          {expert.interviews.length > 0 && (
+          {(expert.interviews || []).length > 0 && (
             <div className="space-y-2.5 mb-3">
-              {expert.interviews.map((int, i) => (
+              {(expert.interviews || []).map((int, i) => (
                 <div key={i} className="flex items-start gap-2 bg-white rounded-lg p-3 border border-gray-100">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs mb-1">
