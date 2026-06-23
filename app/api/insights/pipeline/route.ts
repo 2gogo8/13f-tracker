@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
   const results = [];
 
   // Process top 2 topics max per run
-  for (const topic of topics.slice(0, 2)) {
+  for (const topic of topics.slice(0, 4)) {
     const relevantTranscripts = transcripts.filter(t => t.topic === topic.label);
 
     try {
