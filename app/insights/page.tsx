@@ -131,16 +131,15 @@ export default function InsightsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-play on mount
+  // Auto-play after 5s delay (don't block initial page load)
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    // Try to autoplay; browser may block until first user interaction
-    const tryPlay = () => {
+    const timer = setTimeout(() => {
+      const audio = audioRef.current;
+      if (!audio) return;
       audio.play()
         .then(() => setIsPlaying(true))
         .catch(() => {
-          // Browser blocked autoplay — play on first interaction
+          // Browser blocked autoplay — play on first interaction after delay
           const onInteract = () => {
             audio.play().then(() => setIsPlaying(true)).catch(() => {});
             document.removeEventListener('click', onInteract);
@@ -149,8 +148,8 @@ export default function InsightsPage() {
           document.addEventListener('click', onInteract, { once: true });
           document.addEventListener('touchstart', onInteract, { once: true });
         });
-    };
-    tryPlay();
+    }, 5000); // 5 second delay — page loads first
+    return () => clearTimeout(timer);
   }, []);
 
   const toggleMusic = () => {
