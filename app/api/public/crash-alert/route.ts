@@ -16,6 +16,8 @@ export async function GET() {
       date: alert.date,
       triggeredAt: alert.triggeredAt,
       ixicChange: alert.ixicChange,
+      composite1: alert.composite1 || null,
+      composite2: alert.composite2 || null,
       marketLosers: (alert.marketLosers || []).map((s: {symbol:string;name:string;change:number;price:number;chartB64?:string}) => ({
         symbol: s.symbol, name: s.name, change: s.change, price: s.price,
         hasChart: !!s.chartB64,
@@ -25,7 +27,9 @@ export async function GET() {
         hasChart: !!s.chartB64,
       })),
     };
-    return NextResponse.json({ alert: meta });
+    const res = NextResponse.json({ alert: meta });
+    res.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=60');
+    return res;
   } catch {
     return NextResponse.json({ error: 'Failed' }, { status: 500 });
   }

@@ -117,6 +117,8 @@ export default function InsightsPage() {
 
   const [navPage, setNavPage] = useState(0);
   const NAV_PER_PAGE = 4;
+  const [crashAlert, setCrashAlert] = useState<{ixicChange:number;date:string;composite1:string|null;composite2:string|null;marketLosers:{symbol:string;name:string;change:number}[]} | null>(null);
+  const [crashModal, setCrashModal] = useState<{stocks:{symbol:string;name:string;change:number}[];idx:number} | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);  // default on
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -170,6 +172,11 @@ export default function InsightsPage() {
       .then(setSummaries)
       .catch(() => {})
       .finally(() => setLoading(false));
+    // Fetch crash alert in parallel (non-blocking)
+    fetch('/api/public/crash-alert')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d?.alert ? setCrashAlert(d.alert) : null)
+      .catch(() => {});
   }, []);
 
   const active = summaries[topicIdx];
@@ -502,6 +509,86 @@ export default function InsightsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Crash Alert Section (desktop: below article, mobile: banner) ── */}
+      {crashAlert && (
+        <>
+          {/* Desktop: 2 composite thumbnails side-by-side below article */}
+          <div style={{ display: 'none' }} className="crash-desktop">
+            <style>{`.crash-desktop { display: block !important; } @media (max-width: 768px) { .crash-desktop { display: none !important; } .crash-mobile { display: flex !important; } }`}</style>
+            <div style={{ maxWidth: '720px', margin: '16px auto 0', padding: '0 16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>⚠️ 大跌警報</span>
+                <span style={{ fontSize: '20px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
+                <span style={{ fontSize: '11px', color: '#8a8a8f' }}>{crashAlert.date}</span>
+                <a href="/crash" style={{ fontSize: '11px', color: '#c0202a', textDecoration: 'none', marginLeft: 'auto' }}>查看全部 →</a>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {[{img: crashAlert.composite1, label: '#1-5', offset: 0}, {img: crashAlert.composite2, label: '#6-10', offset: 5}].map(({img, label, offset}) =>
+                  img ? (
+                    <div key={label} onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(offset, offset+5), idx: 0})}
+                      style={{ cursor: 'pointer', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e3ddd2', background: '#fff' }}>
+                      <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', fontSize: '11px', color: '#c0202a', fontWeight: 600 }}>
+                        跌幅 {label} 🔍
+                      </div>
+                      <img src={`data:image/png;base64,${img}`} alt={`crash ${label}`} style={{ width: '100%', display: 'block' }} />
+                    </div>
+                  ) : null
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile: simple banner */}
+          <div className="crash-mobile" style={{ display: 'none', maxWidth: '720px', margin: '12px auto 0', padding: '0 16px' }}>
+            <a href="/crash" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: '#fff8f8', border: '1px solid #f0c0c0', borderRadius: '6px', borderLeft: '3px solid #c0202a' }}>
+              <span style={{ fontSize: '16px' }}>⚠️</span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>IXIC 大跌 {crashAlert.ixicChange.toFixed(2)}%</div>
+                <div style={{ fontSize: '11px', color: '#8a8a8f' }}>點擊查看跌幅前十名 K 線圖 →</div>
+              </div>
+            </a>
+          </div>
+
+          {/* Chart modal */}
+          {crashModal && (
+            <div onClick={() => setCrashModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 99999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+              <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '8px', overflow: 'hidden', maxWidth: '95vw', maxHeight: '90vh', width: '680px', display: 'flex', flexDirection: 'column' }}>
+                {/* Modal header */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #e3ddd2', background: '#fff' }}>
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a1a', flex: 1 }}>
+                    {crashModal.stocks[crashModal.idx]?.symbol} — 兩年日線圖 ({crashModal.idx+1}/{crashModal.stocks.length})
+                  </span>
+                  <button onClick={() => setCrashModal(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#8a8a8f', padding: '0 4px' }}>×</button>
+                </div>
+                {/* Chart */}
+                <div style={{ flex: 1, overflow: 'hidden', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img
+                    src={`/api/public/crash-alert/chart?symbol=${crashModal.stocks[crashModal.idx]?.symbol}&type=market`}
+                    alt={crashModal.stocks[crashModal.idx]?.symbol}
+                    style={{ maxWidth: '100%', maxHeight: '60vh', display: 'block' }}
+                  />
+                </div>
+                {/* Prev / Next */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '12px 16px', borderTop: '1px solid #e3ddd2' }}>
+                  <button
+                    onClick={() => setCrashModal(m => m && m.idx > 0 ? {...m, idx: m.idx-1} : m)}
+                    disabled={crashModal.idx === 0}
+                    style={{ padding: '8px 20px', borderRadius: '4px', border: '1px solid #e3ddd2', background: '#fff', color: crashModal.idx === 0 ? '#ccc' : '#2b2b2e', cursor: crashModal.idx === 0 ? 'default' : 'pointer', fontSize: '14px' }}>
+                    ◀ 上一支
+                  </button>
+                  <button
+                    onClick={() => setCrashModal(m => m && m.idx < m.stocks.length-1 ? {...m, idx: m.idx+1} : m)}
+                    disabled={crashModal.idx === crashModal.stocks.length-1}
+                    style={{ padding: '8px 20px', borderRadius: '4px', border: 'none', background: '#c0202a', color: '#fff', cursor: crashModal.idx === crashModal.stocks.length-1 ? 'default' : 'pointer', fontSize: '14px', opacity: crashModal.idx === crashModal.stocks.length-1 ? 0.4 : 1 }}>
+                    下一支 ▶
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Hidden audio element */}
       <audio ref={audioRef} loop preload="none" src="/audio/bg-music.mp3" />
