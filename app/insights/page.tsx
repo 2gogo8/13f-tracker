@@ -113,6 +113,9 @@ export default function InsightsPage() {
   const [charIdx, setCharIdx] = useState(0);
   const [pageDone, setPageDone] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const [navPage, setNavPage] = useState(0);
+  const NAV_PER_PAGE = 4; // tabs visible at once
 
   // Set Taiwan date on mount and refresh at midnight
   useEffect(() => {
@@ -166,6 +169,9 @@ export default function InsightsPage() {
   useEffect(() => {
     setPageIdx(0);
   }, [topicIdx]);
+
+  const totalNavPages = Math.ceil(summaries.length / NAV_PER_PAGE);
+  const visibleSummaries = summaries.slice(navPage * NAV_PER_PAGE, (navPage + 1) * NAV_PER_PAGE);
 
   useEffect(() => {
     if (pageDone || !pages[pageIdx]) return;
@@ -252,22 +258,95 @@ export default function InsightsPage() {
 
         {/* Topic Nav */}
         {!loading && summaries.length > 0 && (
-          <nav style={{ flexShrink: 0, backgroundColor: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', overflowX: 'auto', padding: '0 0.5rem' }}>
-            {summaries.map((s, idx) => {
-              const isSel = idx === topicIdx;
-              return (
-                <button key={s._id} onClick={() => setTopicIdx(idx)} style={{
-                  flex: 'none', padding: '0.55rem 1rem', background: 'none', border: 'none',
-                  borderBottom: isSel ? '2px solid #cc0000' : '2px solid transparent',
-                  color: isSel ? '#fff' : '#555', fontSize: '0.78rem',
-                  fontFamily: "'Courier New',monospace", fontWeight: isSel ? 700 : 400,
-                  cursor: 'pointer', whiteSpace: 'nowrap',
-                  borderRight: idx < summaries.length - 1 ? '1px solid #222' : 'none',
-                }}>
-                  {getLabel(s, idx)}
-                </button>
-              );
-            })}
+          <nav style={{ flexShrink: 0, backgroundColor: '#111', borderBottom: '1px solid #2a2a2a' }}>
+            {/* Nav tabs row */}
+            <div style={{ display: 'flex', alignItems: 'stretch' }}>
+              {/* Prev arrow */}
+              {totalNavPages > 1 && (
+                <button
+                  onClick={() => setNavPage(p => Math.max(0, p - 1))}
+                  disabled={navPage === 0}
+                  style={{
+                    flexShrink: 0, width: '32px', background: 'none', border: 'none',
+                    borderRight: '1px solid #2a2a2a',
+                    color: navPage === 0 ? '#2a2a2a' : '#c9a84c',
+                    fontSize: '16px', cursor: navPage === 0 ? 'default' : 'pointer',
+                    fontFamily: "'Courier New',monospace",
+                  }}
+                >‹</button>
+              )}
+
+              {/* Visible tabs */}
+              <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+                {visibleSummaries.map((s, relIdx) => {
+                  const idx = navPage * NAV_PER_PAGE + relIdx;
+                  const isSel = idx === topicIdx;
+                  return (
+                    <button
+                      key={s._id}
+                      onClick={() => setTopicIdx(idx)}
+                      style={{
+                        flex: 1, padding: '0.6rem 0.5rem', background: isSel ? '#1c1c1c' : 'none',
+                        border: 'none',
+                        borderBottom: isSel ? '2px solid #cc0000' : '2px solid transparent',
+                        borderRight: relIdx < visibleSummaries.length - 1 ? '1px solid #2a2a2a' : 'none',
+                        color: isSel ? '#ffffff' : '#666',
+                        fontSize: 'clamp(0.68rem, 2vw, 0.8rem)',
+                        fontFamily: "'Courier New',monospace",
+                        fontWeight: isSel ? 700 : 400,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        transition: 'color 0.2s, background 0.2s',
+                        letterSpacing: isSel ? '0.04em' : '0',
+                      }}
+                    >
+                      {isSel && <span style={{ color: '#cc0000', marginRight: '4px' }}>▌</span>}
+                      {getLabel(s, idx)}
+                    </button>
+                  );
+                })}
+                {/* Fill empty slots if last page has fewer tabs */}
+                {Array.from({ length: NAV_PER_PAGE - visibleSummaries.length }).map((_, i) => (
+                  <div key={`empty-${i}`} style={{ flex: 1 }} />
+                ))}
+              </div>
+
+              {/* Next arrow */}
+              {totalNavPages > 1 && (
+                <button
+                  onClick={() => setNavPage(p => Math.min(totalNavPages - 1, p + 1))}
+                  disabled={navPage >= totalNavPages - 1}
+                  style={{
+                    flexShrink: 0, width: '32px', background: 'none', border: 'none',
+                    borderLeft: '1px solid #2a2a2a',
+                    color: navPage >= totalNavPages - 1 ? '#2a2a2a' : '#c9a84c',
+                    fontSize: '16px', cursor: navPage >= totalNavPages - 1 ? 'default' : 'pointer',
+                    fontFamily: "'Courier New',monospace",
+                  }}
+                >›</button>
+              )}
+            </div>
+
+            {/* Dot indicators when multiple pages */}
+            {totalNavPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', padding: '4px 0' }}>
+                {Array.from({ length: totalNavPages }).map((_, i) => (
+                  <div
+                    key={i}
+                    onClick={() => setNavPage(i)}
+                    style={{
+                      width: i === navPage ? '14px' : '5px', height: '5px',
+                      borderRadius: '3px',
+                      background: i === navPage ? '#cc0000' : '#333',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </nav>
         )}
 
