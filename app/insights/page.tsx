@@ -170,11 +170,22 @@ export default function InsightsPage() {
     const current = pages[pageIdx];
     if (charIdx >= current.length) { setPageDone(true); return; }
     const c = current[charIdx];
-    timerRef.current = setTimeout(() => {
-      setDisplayed(d => d + c);
-      setCharIdx(i => i + 1);
-    }, charDelay(c));
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    const delay = charDelay(c);
+    // Use setTimeout for punctuation pauses, requestAnimationFrame for fast chars
+    // This prevents background-tab throttling for normal characters
+    if (delay <= 4) {
+      const raf = requestAnimationFrame(() => {
+        setDisplayed(d => d + c);
+        setCharIdx(i => i + 1);
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      timerRef.current = setTimeout(() => {
+        setDisplayed(d => d + c);
+        setCharIdx(i => i + 1);
+      }, delay);
+      return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    }
   }, [charIdx, pageDone, pageIdx, pages]);
 
   const skipPage = useCallback(() => {
