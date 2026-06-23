@@ -47,25 +47,28 @@ function renderMarkdown(raw: string) {
   return raw.split(/\n\n+/).map((block, i) => {
     const t = block.trim();
     if (!t) return null;
+    // Horizontal rule
     if (/^-{3,}$/.test(t))
-      return <hr key={i} style={{ border: 'none', borderTop: '1px solid #cc0000', margin: '1.5rem 0', opacity: 0.35 }} />;
-    if (t.startsWith('## '))
+      return <hr key={i} style={{ border: 'none', borderTop: '1px solid #333333', margin: '12px 0' }} />;
+    // ## heading — strip # from display
+    if (/^#{1,3}\s/.test(t)) {
+      const text = t.replace(/^#{1,3}\s+/, '');
       return (
-        <div key={i}>
-          <hr style={{ border: 'none', borderTop: '1px solid #2a2a2a', margin: '1.75rem 0 0.75rem' }} />
-          <h3 style={{ fontFamily: "'Courier New',monospace", fontSize: '1rem', fontWeight: 700, color: '#cc0000', marginBottom: '0.6rem' }}>
-            {t.replace(/^##\s+/, '')}
-          </h3>
-        </div>
+        <h3 key={i} style={{ fontFamily: "'Courier New',monospace", fontSize: '16px', fontWeight: 700, color: '#cc0000', margin: '16px 0 6px', lineHeight: 1.3 }}>
+          {text}
+        </h3>
       );
+    }
+    // Blockquote
     if (t.startsWith('> '))
       return (
-        <div key={i} style={{ borderLeft: '3px solid #cc0000', paddingLeft: '0.875rem', color: '#999', fontStyle: 'italic', fontSize: '0.88rem', margin: '0.75rem 0', lineHeight: 1.8 }}>
+        <div key={i} style={{ borderLeft: '2px solid #cc0000', paddingLeft: '10px', color: '#999', fontStyle: 'italic', fontSize: '15px', margin: '8px 0', lineHeight: 1.65 }}>
           {t.replace(/^>\s?/gm, '')}
         </div>
       );
+    // Paragraph
     return (
-      <p key={i} style={{ marginBottom: '0.9rem', lineHeight: 1.85 }}>
+      <p key={i} style={{ marginBottom: '10px', lineHeight: 1.65, fontSize: '16px' }}>
         {t.split('\n').map((line, j, arr) => (
           <span key={j}>{renderInline(line)}{j < arr.length - 1 && <br />}</span>
         ))}
@@ -76,9 +79,9 @@ function renderMarkdown(raw: string) {
 
 /* ── Typed page delay per char ── */
 function charDelay(c: string) {
-  if ([',', '，', '、'].includes(c)) return 150;
-  if (['.', '。', '?', '？', '!', '！'].includes(c)) return 280;
-  return 8;
+  if ([',', '，', '、'].includes(c)) return 80;
+  if (['.', '。', '?', '？', '!', '！'].includes(c)) return 150;
+  return 4;
 }
 
 /* ── Paged Typewriter Component ── */
@@ -129,15 +132,15 @@ function PagedView({ article, title, date }: { article: string; title?: string; 
 
   return (
     <>
-      <div style={{ flexShrink: 0, padding: '1.25rem 1.5rem 0.5rem' }}>
-        <div style={{ fontSize: '0.7rem', color: '#c9a84c', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>{date}</div>
+      <div style={{ flexShrink: 0, padding: '12px 16px 6px' }}>
+        <div style={{ fontSize: '13px', color: '#aaaaaa', letterSpacing: '0.06em', marginBottom: '6px' }}>{date}</div>
         {title && (
-          <h2 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1rem, 3vw, 1.35rem)', fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: '1rem' }}>
+          <h2 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 700, color: '#fff', lineHeight: 1.25, marginBottom: '10px' }}>
             {title}
           </h2>
         )}
         {pages.length > 1 && (
-          <div style={{ fontSize: '0.65rem', color: '#444', marginBottom: '0.25rem', fontFamily: "'Courier New',monospace" }}>
+          <div style={{ fontSize: '11px', color: '#444', marginBottom: '4px', fontFamily: "'Courier New',monospace" }}>
             {pageIdx + 1} / {pages.length}
           </div>
         )}
@@ -148,9 +151,9 @@ function PagedView({ article, title, date }: { article: string; title?: string; 
         onClick={!pageDone ? skipPage : undefined}
         style={{
           flex: 1,
-          padding: '0 1.5rem 1rem',
-          fontSize: '0.9rem',
-          lineHeight: 1.85,
+          padding: '0 16px 8px',
+          fontSize: '16px',
+          lineHeight: 1.65,
           color: '#e8e8e8',
           overflow: 'hidden',
           cursor: !pageDone ? 'pointer' : 'default',
@@ -247,7 +250,7 @@ export default function InsightsPage() {
 
   return (
     <div
-      style={{ height: '100dvh', overflow: 'hidden', backgroundColor: '#080808', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8' }}
+      style={{ height: '100dvh', overflow: 'hidden', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8' }}
     >
       <style>{`
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -256,7 +259,7 @@ export default function InsightsPage() {
       `}</style>
 
       {/* Header */}
-      <header style={{ flexShrink: 0, padding: '1.25rem 1rem 0.9rem', textAlign: 'center', borderBottom: '1px solid #222' }}>
+      <header style={{ flexShrink: 0, padding: '10px 1rem 8px', textAlign: 'center', borderBottom: '1px solid #222' }}>
         <div style={{ fontSize: '0.6rem', color: '#c9a84c', letterSpacing: '0.35em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Intelligence Briefing</div>
         <h1 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1.3rem,4vw,1.8rem)', fontWeight: 700, color: '#fff', margin: 0 }}>JG 說真的</h1>
         <div style={{ width: '44px', height: '2px', background: '#cc0000', margin: '0.6rem auto 0', borderRadius: '1px' }} />
@@ -295,7 +298,7 @@ export default function InsightsPage() {
       )}
 
       {/* Card */}
-      <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '0.75rem', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '8px 12px 8px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
         {loading ? (
           <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>載入情報中...</div>
         ) : summaries.length === 0 ? (
@@ -303,7 +306,7 @@ export default function InsightsPage() {
         ) : (
           <div
             key={`topic-${topicIdx}`}
-            style={{ flex: 1, overflow: 'hidden', background: '#1a1a1a', borderLeft: '3px solid #7a0000', borderRadius: '6px', display: 'flex', flexDirection: 'column' }}
+            style={{ flex: 1, overflow: 'hidden', background: '#1a1a1a', borderLeft: '3px solid #7a0000', borderRadius: '4px', padding: '0', display: 'flex', flexDirection: 'column' }}
           >
             <PagedView article={articleContent} title={active?.articleTitle} date={date} />
           </div>
