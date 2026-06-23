@@ -346,7 +346,7 @@ export default function TWSlopeScanner() {
                 </tr>
               </thead>
               <tbody>
-                {sortedType2.map((r, i) => {
+                {sortedType2.slice(0, 15).map((r, i) => {
                   const relStrength = r.taiexSlope !== 0 ? (r.twSlope / Math.abs(r.taiexSlope)).toFixed(2) : '—';
                   return (
                     <tr key={r.twSymbol}
@@ -388,7 +388,7 @@ export default function TWSlopeScanner() {
               </tbody>
             </table>
             <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400 text-right">
-              共 {sortedType2.length} 支 ｜ TAIEX 基準 {data.taiex_slope.toFixed(2)}%
+              顯示前 15 支 / 共 {sortedType2.length} 支 ｜ TAIEX 基準 {data.taiex_slope.toFixed(2)}%
             </div>
           </div>
         ) : (
