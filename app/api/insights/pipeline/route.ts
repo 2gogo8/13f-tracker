@@ -4,148 +4,200 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const ADMIN_KEY = process.env.ADMIN_KEY;
 
-interface PipelineRequest {
-  topics: Array<{
-    label: string;          // e.g. "半導體賣壓"
-    symbols: string[];      // e.g. ["MU","SNDK"]
-    headlines: string[];    // source headlines
-    score: number;          // mention count
-  }>;
-  transcripts?: Array<{
-    videoId: string;
-    title: string;
-    channel: string;
-    topic: string;
-    transcript: string;
-  }>;
+// ── Types ────────────────────────────────────────────────────────────────────
+interface TopicInput {
+  label: string;
+  symbols: string[];
+  headlines: string[];
+  score: number;
+}
+interface TranscriptInput {
+  videoId: string; title: string; channel: string; topic: string; transcript: string;
+}
+interface VideoSummaryInput {
+  videoId: string; title: string; channel: string; short: string;
+  published: string; transcript: string;
 }
 
-async function generateArticle(
-  topic: string,
-  symbols: string[],
-  headlines: string[],
-  transcripts: Array<{ title: string; channel: string; transcript: string }>
-): Promise<{ title: string; article: string }> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// ── Shared Claude client ─────────────────────────────────────────────────────
+function getClient() {
+  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+}
 
+// ── Hot-topic article generator ──────────────────────────────────────────────
+async function generateHotTopicArticle(
+  topic: string, symbols: string[], headlines: string[],
+  transcripts: TranscriptInput[]
+): Promise<{ title: string; article: string }> {
+  const client = getClient();
   const headlineText = headlines.slice(0, 8).map((h, i) => `${i + 1}. ${h}`).join('\n');
   const transcriptText = transcripts.length > 0
     ? transcripts.map(t => `【${t.channel} - ${t.title}】\n${t.transcript.slice(0, 3000)}`).join('\n\n---\n\n')
     : '（本次無專家逐字稿，依新聞標題分析）';
 
-  const prompt = `你是 JG，一位台灣財經 YouTuber，擅長用白話文解釋美股複雜話題。
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-4-5',
+    max_tokens: 2000,
+    messages: [{
+      role: 'user',
+      content: `你是 JG，台灣財經 YouTuber，用白話文解釋美股話題。
 
-今天的市場熱議話題：**${topic}**
-相關股票：${symbols.join('、')}
+今日熱議話題：**${topic}**
+相關股票：${symbols.join('、') || '（見文章）'}
 
-今天的主要新聞標題：
+今日新聞標題：
 ${headlineText}
 
-專家/媒體原始內容：
+專家內容：
 ${transcriptText}
 
-請用 JG 的口吻寫一篇繁體中文消費者文章，格式如下：
+請寫一篇繁體中文消費者文章：
 
-# 文章標題（吸引人，點出話題核心，30字以內）
+# 文章標題（吸引人，30字以內）
 
-（文章本文，約 800-1000 字）
+結構：
+1. Hook：今天發生什麼（數字開場）
+2. 這波在嗨什麼（背景原因）
+3. 現在還能買嗎（有根據的判斷）
+4. 買了要盯什麼（三個追蹤訊號）
 
-結構要包含：
-1. Hook：今天發生了什麼（用數字或衝突感開頭）
-2. 這波到底在嗨什麼？（解釋背景和原因）
-3. 現在還能買嗎？（給出有根據的判斷）
-4. 進場了要盯什麼？（三個具體追蹤訊號）
+語氣直接有觀點，**粗體**標關鍵數字，股票用$格式。`,
+    }],
+  });
 
-語氣：直接、有觀點、不廢話。不要用「首先」「其次」這種生硬詞。
-用 **粗體** 標出關鍵數字和結論。
-股票代碼保留英文（$MU、$IONQ 等格式）。`;
+  const text = (msg.content[0] as { text: string }).text.trim();
+  const lines = text.split('\n');
+  let title = topic; let bodyStart = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith('# ')) { title = lines[i].replace(/^# /, '').trim(); bodyStart = i + 1; break; }
+  }
+  return { title, article: lines.slice(bodyStart).join('\n').trim() };
+}
+
+// ── Channel video summary generator ─────────────────────────────────────────
+async function generateVideoSummary(
+  video: VideoSummaryInput
+): Promise<{ topic: string; title: string; article: string }> {
+  const client = getClient();
 
   const msg = await client.messages.create({
     model: 'claude-sonnet-4-5',
     max_tokens: 2000,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{
+      role: 'user',
+      content: `你是 JG，台灣財經 YouTuber。
+
+頂級財經頻道「${video.channel}」最新影片：
+標題：${video.title}
+日期：${video.published}
+
+逐字稿節錄：
+${video.transcript.slice(0, 6000)}
+
+請用 JG 口吻寫「每日好文」給台灣投資人：
+
+# 文章標題（吸引人，點出核心洞見，30字以內）
+
+## 這集在討論什麼
+一段話說清楚背景
+
+## 專家的核心論點
+**時間軸**：這個議題怎麼發展到今天（附具體時間點）
+**關鍵數字**：重要數據（用 **粗體** 標示）
+**核心邏輯**：為什麼這樣判斷
+
+## 對投資人的意義
+影響投資思維的關鍵點，具體追蹤信號
+
+語氣白話直接，股票用$格式。`,
+    }],
   });
 
-  const fullText = (msg.content[0] as { text: string }).text.trim();
-  
-  // Extract title (first # line) and body
-  const lines = fullText.split('\n');
-  let title = topic;
-  let bodyStart = 0;
+  const text = (msg.content[0] as { text: string }).text.trim();
+  const lines = text.split('\n');
+  let title = video.title; let bodyStart = 0;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('# ')) {
-      title = lines[i].replace(/^# /, '').trim();
-      bodyStart = i + 1;
-      break;
-    }
+    if (lines[i].startsWith('# ')) { title = lines[i].replace(/^# /, '').trim(); bodyStart = i + 1; break; }
   }
-  const article = lines.slice(bodyStart).join('\n').trim();
-
-  return { title, article };
+  const today = new Date().toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' });
+  const topic = `${video.short}·${today}`;
+  return { topic, title, article: lines.slice(bodyStart).join('\n').trim() };
 }
 
+// ── POST handler ──────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  // Auth
   const auth = req.headers.get('authorization') || '';
   if (!ADMIN_KEY || auth !== `Bearer ${ADMIN_KEY}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body: PipelineRequest = await req.json();
-  const { topics, transcripts = [] } = body;
+  const body: {
+    topics?: TopicInput[];
+    transcripts?: TranscriptInput[];
+    video_summaries?: VideoSummaryInput[];
+  } = await req.json();
 
-  if (!topics || topics.length === 0) {
-    return NextResponse.json({ error: 'No topics provided' }, { status: 400 });
-  }
-
+  const { topics = [], transcripts = [], video_summaries = [] } = body;
   const client = await getClientPromise();
   const db = client.db('13f-tracker');
   const col = db.collection('summaries');
 
-  const results = [];
+  const topicResults = [];
+  const videoResults = [];
 
-  // Process top 2 topics max per run
+  // ── Process hot topics ───────────────────────────────────────────────────
   for (const topic of topics.slice(0, 4)) {
-    const relevantTranscripts = transcripts.filter(t => t.topic === topic.label);
-
+    const relevantTx = transcripts.filter(t => t.topic === topic.label);
     try {
-      const { title, article } = await generateArticle(
-        topic.label,
-        topic.symbols,
-        topic.headlines,
-        relevantTranscripts
+      const { title, article } = await generateHotTopicArticle(
+        topic.label, topic.symbols, topic.headlines, relevantTx
       );
-
-      // Upsert: same topic label → replace
       const doc = {
         topic: topic.label,
         tags: [topic.label, ...topic.symbols.slice(0, 3)],
-        articleTitle: title,
-        article,
+        articleTitle: title, article,
         summary: { timelineAnalysis: '', keyNumbers: '', predictionVsReality: '' },
-        source: 'auto' as const,
-        expertCount: relevantTranscripts.length,
+        source: 'auto',
+        expertCount: relevantTx.length,
         publishedAt: new Date().toISOString(),
         createdAt: new Date().toISOString(),
-        pipeline: {
-          symbols: topic.symbols,
-          score: topic.score,
-          headlines: topic.headlines.slice(0, 5),
-          hasTranscripts: relevantTranscripts.length > 0,
-        },
+        articleType: 'hot_topic',
+        pipeline: { symbols: topic.symbols, score: topic.score, headlines: topic.headlines.slice(0, 5) },
       };
-
-      await col.updateOne(
-        { topic: topic.label },
-        { $set: doc },
-        { upsert: true }
-      );
-
-      results.push({ topic: topic.label, title, ok: true });
+      await col.updateOne({ topic: topic.label }, { $set: doc }, { upsert: true });
+      topicResults.push({ topic: topic.label, title, ok: true });
     } catch (err) {
-      results.push({ topic: topic.label, ok: false, error: String(err) });
+      topicResults.push({ topic: topic.label, ok: false, error: String(err) });
     }
   }
 
-  return NextResponse.json({ ok: true, results });
+  // ── Process video summaries ──────────────────────────────────────────────
+  for (const video of video_summaries.slice(0, 6)) {
+    try {
+      const { topic, title, article } = await generateVideoSummary(video);
+      const doc = {
+        topic,
+        tags: [video.short, video.channel],
+        articleTitle: title, article,
+        summary: { timelineAnalysis: '', keyNumbers: '', predictionVsReality: '' },
+        source: 'video',
+        expertCount: 1,
+        publishedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        articleType: 'channel_summary',
+        videoMeta: { videoId: video.videoId, channel: video.channel, originalTitle: video.title },
+      };
+      // Use videoId as unique key (one article per video)
+      await col.updateOne(
+        { 'videoMeta.videoId': video.videoId },
+        { $set: doc },
+        { upsert: true }
+      );
+      videoResults.push({ channel: video.channel, title, ok: true });
+    } catch (err) {
+      videoResults.push({ channel: video.channel, ok: false, error: String(err) });
+    }
+  }
+
+  return NextResponse.json({ ok: true, results: topicResults, video_results: videoResults });
 }
