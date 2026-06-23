@@ -165,11 +165,7 @@ function PagedView({ article, title, date }: { article: string; title?: string; 
         )}
       </div>
 
-      {!pageDone && (
-        <div style={{ textAlign: 'center', padding: '0 0 0.5rem', fontSize: '0.65rem', color: '#333', flexShrink: 0 }}>
-          點擊畫面跳過
-        </div>
-      )}
+
 
       {/* Continue button – teleported to portal-like fixed via sibling */}
       {pageDone && !isLastPage && (
@@ -188,33 +184,40 @@ function ContinueBtn({ onClick }: { onClick: () => void }) {
         bottom: 0,
         left: 0,
         right: 0,
-        display: 'flex',
-        justifyContent: 'center',
-        padding: '24px 0 32px',
-        background: 'linear-gradient(transparent, #080808 55%)',
         zIndex: 9999,
         pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        background: 'linear-gradient(transparent, #111111 45%)',
+        padding: '40px 0 28px',
       }}
     >
       <button
         onClick={onClick}
         style={{
           pointerEvents: 'auto',
-          background: '#cc0000',
-          border: 'none',
-          color: '#ffffff',
+          background: '#c9a84c',
+          border: '2px solid #c9a84c',
+          color: '#000000',
           fontFamily: "'Courier New',monospace",
-          fontSize: '15px',
-          fontWeight: 700,
-          padding: '13px 40px',
+          fontSize: '18px',
+          fontWeight: 900,
+          padding: '16px 56px',
           cursor: 'pointer',
-          letterSpacing: '0.1em',
-          animation: 'btn-blink 1.4s ease-in-out infinite',
-          borderRadius: '3px',
+          letterSpacing: '0.15em',
+          animation: 'btn-blink 1.2s ease-in-out infinite',
+          borderRadius: '2px',
+          textTransform: 'uppercase',
+          boxShadow: '0 0 32px rgba(201,168,76,0.5)',
+          minWidth: '220px',
         }}
       >
-        ▶ 下一頁
+        ▶▶ 繼續閱讀
       </button>
+      <div style={{ marginTop: '10px', fontSize: '11px', color: '#c9a84c', letterSpacing: '0.2em', opacity: 0.7 }}>
+        TAP TO CONTINUE
+      </div>
     </div>
   );
 }
