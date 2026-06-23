@@ -117,6 +117,8 @@ export default function InsightsPage() {
 
   const [navPage, setNavPage] = useState(0);
   const NAV_PER_PAGE = 4;
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // Taiwan date + countdown
   useEffect(() => {
@@ -128,6 +130,17 @@ export default function InsightsPage() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const toggleMusic = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play().then(() => setIsPlaying(true)).catch(() => {});
+    }
+  };
 
   // Fetch summaries
   useEffect(() => {
@@ -432,6 +445,32 @@ export default function InsightsPage() {
           </div>
         )}
       </div>
+
+      {/* Hidden audio element */}
+      <audio ref={audioRef} loop preload="none" src="/audio/bg-music.mp3" />
+
+      {/* Music toggle button — floating bottom-left */}
+      <button
+        onClick={toggleMusic}
+        title={isPlaying ? '關閉背景音樂' : '開啟背景音樂'}
+        style={{
+          position: 'fixed',
+          bottom: 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+          left: '16px',
+          width: '42px', height: '42px',
+          borderRadius: '50%',
+          background: isPlaying ? '#c0202a' : '#ffffff',
+          border: '1.5px solid #e3ddd2',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '18px',
+          zIndex: 9998,
+          transition: 'all 0.25s ease',
+        }}
+      >
+        {isPlaying ? '🔊' : '🎵'}
+      </button>
     </>
   );
 }
