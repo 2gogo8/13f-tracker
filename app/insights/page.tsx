@@ -16,7 +16,7 @@ interface Summary {
 }
 
 /* ── Split article into pages by char count ── */
-function splitIntoPages(text: string, limit = 900): string[] {
+function splitIntoPages(text: string, limit = 1400): string[] {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
   const pages: string[] = [];
   let cur = '';
@@ -76,14 +76,14 @@ function renderMarkdown(raw: string) {
 
 /* ── Typed page delay per char ── */
 function charDelay(c: string) {
-  if ([',', '，', '、'].includes(c)) return 350;
-  if (['.', '。', '?', '？', '!', '！'].includes(c)) return 600;
-  return 22;
+  if ([',', '，', '、'].includes(c)) return 150;
+  if (['.', '。', '?', '？', '!', '！'].includes(c)) return 280;
+  return 8;
 }
 
 /* ── Paged Typewriter Component ── */
 function PagedView({ article, title, date }: { article: string; title?: string; date: string }) {
-  const pages = splitIntoPages(article, 850);
+  const pages = splitIntoPages(article, 1400);
   const [pageIdx, setPageIdx] = useState(0);
   const [displayed, setDisplayed] = useState('');
   const [charIdx, setCharIdx] = useState(0);
@@ -179,26 +179,40 @@ function PagedView({ article, title, date }: { article: string; title?: string; 
 /* ── Continue button rendered at fixed position ── */
 function ContinueBtn({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
+    <div
       style={{
         position: 'fixed',
-        bottom: '28px',
-        right: '28px',
-        background: 'transparent',
-        border: '1px solid #cc0000',
-        color: '#cc0000',
-        fontFamily: "'Courier New',monospace",
-        fontSize: '13px',
-        padding: '9px 18px',
-        cursor: 'pointer',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '24px 0 32px',
+        background: 'linear-gradient(transparent, #080808 55%)',
         zIndex: 9999,
-        animation: 'btn-blink 1.2s ease-in-out infinite',
-        letterSpacing: '0.05em',
+        pointerEvents: 'none',
       }}
     >
-      ▶ 繼續
-    </button>
+      <button
+        onClick={onClick}
+        style={{
+          pointerEvents: 'auto',
+          background: '#cc0000',
+          border: 'none',
+          color: '#ffffff',
+          fontFamily: "'Courier New',monospace",
+          fontSize: '15px',
+          fontWeight: 700,
+          padding: '13px 40px',
+          cursor: 'pointer',
+          letterSpacing: '0.1em',
+          animation: 'btn-blink 1.4s ease-in-out infinite',
+          borderRadius: '3px',
+        }}
+      >
+        ▶ 下一頁
+      </button>
+    </div>
   );
 }
 
@@ -281,7 +295,7 @@ export default function InsightsPage() {
       )}
 
       {/* Card */}
-      <main style={{ flex: 1, overflow: 'hidden', maxWidth: '720px', width: '100%', margin: '0 auto', padding: '0.75rem', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '0.75rem', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
         {loading ? (
           <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>載入情報中...</div>
         ) : summaries.length === 0 ? (
