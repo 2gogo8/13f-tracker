@@ -217,7 +217,7 @@ export default function InsightsPage() {
         button:focus { outline: none; }
       `}</style>
 
-      <div style={{ height: '100dvh', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8', position: 'relative' }}>
+      <div style={{ height: '100svh', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8', position: 'relative' }}>
 
         {/* Header */}
         <header style={{ flexShrink: 0, padding: '8px 1rem 6px', textAlign: 'center', borderBottom: '1px solid #222', background: 'linear-gradient(180deg, #0d0d0d 0%, #111 100%)' }}>
@@ -376,12 +376,14 @@ export default function InsightsPage() {
               {/* Content */}
               <div
                 onClick={!pageDone ? skipPage : undefined}
-                style={{ flex: 1, padding: '0 16px', paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))', overflow: 'hidden', cursor: !pageDone ? 'pointer' : 'default' }}
+                style={{ flex: 1, padding: '0 16px', overflow: 'hidden', cursor: !pageDone ? 'pointer' : 'default', display: 'flex', flexDirection: 'column' }}
               >
                 {renderMarkdown(displayed)}
                 {!pageDone && (
                   <span style={{ display: 'inline-block', width: '9px', height: '1.1em', background: '#cc0000', animation: 'cursor-blink 1s step-end infinite', verticalAlign: 'text-bottom', marginLeft: '2px' }} />
                 )}
+                {/* Bottom spacer — keeps text away from browser toolbar */}
+                <div style={{ flexShrink: 0, height: '72px', minHeight: '72px' }} />
               </div>
             </div>
           )}
