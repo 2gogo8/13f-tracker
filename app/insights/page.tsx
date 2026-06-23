@@ -22,12 +22,8 @@ function splitIntoPages(text: string, limit = 600): string[] {
   let cur = '';
   for (const p of paragraphs) {
     const next = cur ? cur + '\n\n' + p : p;
-    if (cur && next.length > limit) {
-      pages.push(cur);
-      cur = p;
-    } else {
-      cur = next;
-    }
+    if (cur && next.length > limit) { pages.push(cur); cur = p; }
+    else { cur = next; }
   }
   if (cur) pages.push(cur);
   return pages.length ? pages : [text];
@@ -47,26 +43,20 @@ function renderMarkdown(raw: string) {
   return raw.split(/\n\n+/).map((block, i) => {
     const t = block.trim();
     if (!t) return null;
-    // Horizontal rule
     if (/^-{3,}$/.test(t))
       return <hr key={i} style={{ border: 'none', borderTop: '1px solid #333333', margin: '12px 0' }} />;
-    // ## heading — strip # from display
-    if (/^#{1,3}\s/.test(t)) {
-      const text = t.replace(/^#{1,3}\s+/, '');
+    if (/^#{1,3}\s/.test(t))
       return (
-        <h3 key={i} style={{ fontFamily: "'Courier New',monospace", fontSize: '16px', fontWeight: 700, color: '#cc0000', margin: '16px 0 6px', lineHeight: 1.3 }}>
-          {text}
+        <h3 key={i} style={{ fontFamily: "'Courier New',monospace", fontSize: '16px', fontWeight: 700, color: '#cc0000', margin: '14px 0 5px', lineHeight: 1.3 }}>
+          {t.replace(/^#{1,3}\s+/, '')}
         </h3>
       );
-    }
-    // Blockquote
     if (t.startsWith('> '))
       return (
         <div key={i} style={{ borderLeft: '2px solid #cc0000', paddingLeft: '10px', color: '#999', fontStyle: 'italic', fontSize: '15px', margin: '8px 0', lineHeight: 1.65 }}>
           {t.replace(/^>\s?/gm, '')}
         </div>
       );
-    // Paragraph
     return (
       <p key={i} style={{ marginBottom: '10px', lineHeight: 1.65, fontSize: '16px' }}>
         {t.split('\n').map((line, j, arr) => (
@@ -77,33 +67,57 @@ function renderMarkdown(raw: string) {
   });
 }
 
-/* ── Typed page delay per char ── */
 function charDelay(c: string) {
   if ([',', '，', '、'].includes(c)) return 80;
   if (['.', '。', '?', '？', '!', '！'].includes(c)) return 150;
   return 4;
 }
 
-/* ── Paged Typewriter Component ── */
-function PagedView({ article, title, date }: { article: string; title?: string; date: string }) {
-  const pages = splitIntoPages(article, 600);
+/* ── Main Page ── */
+export default function InsightsPage() {
+  const [summaries, setSummaries] = useState<Summary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [topicIdx, setTopicIdx] = useState(0);
+
+  // Pagination state at the top level so button renders OUTSIDE overflow:hidden
   const [pageIdx, setPageIdx] = useState(0);
   const [displayed, setDisplayed] = useState('');
   const [charIdx, setCharIdx] = useState(0);
   const [pageDone, setPageDone] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset on page change
   useEffect(() => {
+    fetch('/api/insights?limit=5')
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setSummaries)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const active = summaries[topicIdx];
+  const articleContent = active
+    ? (active.article || [active.summary.timelineAnalysis, active.summary.keyNumbers, active.summary.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
+    : '';
+  const pages = splitIntoPages(articleContent, 600);
+  const isLastPage = pageIdx >= pages.length - 1;
+
+  // Reset when topic or page changes
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
     setDisplayed('');
     setCharIdx(0);
     setPageDone(false);
-  }, [pageIdx]);
+  }, [topicIdx, pageIdx]);
+
+  // Reset page when topic changes
+  useEffect(() => {
+    setPageIdx(0);
+  }, [topicIdx]);
 
   // Typing tick
   useEffect(() => {
-    if (pageDone) return;
-    const current = pages[pageIdx] || '';
+    if (pageDone || !pages[pageIdx]) return;
+    const current = pages[pageIdx];
     if (charIdx >= current.length) {
       setPageDone(true);
       return;
@@ -118,203 +132,140 @@ function PagedView({ article, title, date }: { article: string; title?: string; 
 
   const skipPage = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setDisplayed(pages[pageIdx] || '');
-    setCharIdx((pages[pageIdx] || '').length);
+    const cur = pages[pageIdx] || '';
+    setDisplayed(cur);
+    setCharIdx(cur.length);
     setPageDone(true);
   }, [pageIdx, pages]);
 
   const nextPage = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
     if (pageIdx < pages.length - 1) setPageIdx((p) => p + 1);
   }, [pageIdx, pages.length]);
-
-  const isLastPage = pageIdx >= pages.length - 1;
-
-  return (
-    <>
-      <div style={{ flexShrink: 0, padding: '12px 16px 6px' }}>
-        <div style={{ fontSize: '13px', color: '#aaaaaa', letterSpacing: '0.06em', marginBottom: '6px' }}>{date}</div>
-        {title && (
-          <h2 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: 700, color: '#fff', lineHeight: 1.25, marginBottom: '10px' }}>
-            {title}
-          </h2>
-        )}
-        {pages.length > 1 && (
-          <div style={{ fontSize: '11px', color: '#444', marginBottom: '4px', fontFamily: "'Courier New',monospace" }}>
-            {pageIdx + 1} / {pages.length}
-          </div>
-        )}
-      </div>
-
-      {/* Page content – only current page */}
-      <div
-        onClick={!pageDone ? skipPage : undefined}
-        style={{
-          flex: 1,
-          padding: '0 16px 8px',
-          fontSize: '16px',
-          lineHeight: 1.65,
-          color: '#e8e8e8',
-          overflow: 'hidden',
-          cursor: !pageDone ? 'pointer' : 'default',
-        }}
-      >
-        {renderMarkdown(displayed)}
-        {!pageDone && (
-          <span style={{ display: 'inline-block', width: '9px', height: '1.1em', background: '#cc0000', animation: 'cursor-blink 1s step-end infinite', verticalAlign: 'text-bottom', marginLeft: '2px' }} />
-        )}
-      </div>
-
-
-
-      {/* Continue button – teleported to portal-like fixed via sibling */}
-      {pageDone && !isLastPage && (
-        <ContinueBtn onClick={nextPage} />
-      )}
-    </>
-  );
-}
-
-/* ── Continue button rendered at fixed position ── */
-function ContinueBtn({ onClick }: { onClick: () => void }) {
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
-        pointerEvents: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        background: 'linear-gradient(transparent, #111111 45%)',
-        padding: '40px 0 28px',
-      }}
-    >
-      <button
-        onClick={onClick}
-        style={{
-          pointerEvents: 'auto',
-          background: '#c9a84c',
-          border: '2px solid #c9a84c',
-          color: '#000000',
-          fontFamily: "'Courier New',monospace",
-          fontSize: '18px',
-          fontWeight: 900,
-          padding: '16px 56px',
-          cursor: 'pointer',
-          letterSpacing: '0.15em',
-          animation: 'btn-blink 1.2s ease-in-out infinite',
-          borderRadius: '2px',
-          textTransform: 'uppercase',
-          boxShadow: '0 0 32px rgba(201,168,76,0.5)',
-          minWidth: '220px',
-        }}
-      >
-        ▶▶ 繼續閱讀
-      </button>
-      <div style={{ marginTop: '10px', fontSize: '11px', color: '#c9a84c', letterSpacing: '0.2em', opacity: 0.7 }}>
-        TAP TO CONTINUE
-      </div>
-    </div>
-  );
-}
-
-/* ── Main Page ── */
-export default function InsightsPage() {
-  const [summaries, setSummaries] = useState<Summary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [topicIdx, setTopicIdx] = useState(0);
-
-  useEffect(() => {
-    fetch('/api/insights?limit=5')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => { setSummaries(data); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   const getLabel = (s: Summary, i: number) => {
     const raw = s.topic || s.tags[0] || `話題${i + 1}`;
     return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 7) || `話題${i + 1}`;
   };
 
-  const active = summaries[topicIdx];
   const date = active
     ? new Date(active.publishedAt).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
     : '';
-  const articleContent = active
-    ? (active.article ||
-        [active.summary.timelineAnalysis, active.summary.keyNumbers, active.summary.predictionVsReality]
-          .filter(Boolean).join('\n\n---\n\n'))
-    : '';
 
   return (
-    <div
-      style={{ height: '100dvh', overflow: 'hidden', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8' }}
-    >
+    <>
       <style>{`
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #111111; }
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
-        @keyframes btn-blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+        @keyframes gold-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(0.97)} }
         button:focus { outline: none; }
       `}</style>
 
-      {/* Header */}
-      <header style={{ flexShrink: 0, padding: '10px 1rem 8px', textAlign: 'center', borderBottom: '1px solid #222' }}>
-        <div style={{ fontSize: '0.6rem', color: '#c9a84c', letterSpacing: '0.35em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>Intelligence Briefing</div>
-        <h1 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1.3rem,4vw,1.8rem)', fontWeight: 700, color: '#fff', margin: 0 }}>JG 說真的</h1>
-        <div style={{ width: '44px', height: '2px', background: '#cc0000', margin: '0.6rem auto 0', borderRadius: '1px' }} />
-      </header>
+      {/* Outer wrapper: height 100dvh but NO overflow:hidden so fixed button works */}
+      <div style={{ height: '100dvh', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8', position: 'relative' }}>
 
-      {/* Topic Nav */}
-      {!loading && summaries.length > 0 && (
-        <nav style={{ flexShrink: 0, backgroundColor: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', overflowX: 'auto', padding: '0 0.5rem' }}>
-          {summaries.map((s, idx) => {
-            const active = idx === topicIdx;
-            return (
-              <button
-                key={s._id}
-                onClick={() => setTopicIdx(idx)}
-                style={{
-                  flex: 'none',
-                  padding: '0.55rem 1rem',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: active ? '2px solid #cc0000' : '2px solid transparent',
-                  color: active ? '#fff' : '#555',
-                  fontSize: '0.78rem',
-                  fontFamily: "'Courier New',monospace",
-                  fontWeight: active ? 700 : 400,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'color 0.15s',
+        {/* Header */}
+        <header style={{ flexShrink: 0, padding: '10px 1rem 8px', textAlign: 'center', borderBottom: '1px solid #222' }}>
+          <div style={{ fontSize: '0.6rem', color: '#c9a84c', letterSpacing: '0.35em', textTransform: 'uppercase', marginBottom: '3px' }}>Intelligence Briefing</div>
+          <h1 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1.3rem,4vw,1.8rem)', fontWeight: 700, color: '#fff', margin: 0 }}>JG 說真的</h1>
+          <div style={{ width: '44px', height: '2px', background: '#cc0000', margin: '6px auto 0' }} />
+        </header>
+
+        {/* Topic Nav */}
+        {!loading && summaries.length > 0 && (
+          <nav style={{ flexShrink: 0, backgroundColor: '#111', borderBottom: '1px solid #2a2a2a', display: 'flex', overflowX: 'auto', padding: '0 0.5rem' }}>
+            {summaries.map((s, idx) => {
+              const isSel = idx === topicIdx;
+              return (
+                <button key={s._id} onClick={() => setTopicIdx(idx)} style={{
+                  flex: 'none', padding: '0.55rem 1rem', background: 'none', border: 'none',
+                  borderBottom: isSel ? '2px solid #cc0000' : '2px solid transparent',
+                  color: isSel ? '#fff' : '#555', fontSize: '0.78rem',
+                  fontFamily: "'Courier New',monospace", fontWeight: isSel ? 700 : 400,
+                  cursor: 'pointer', whiteSpace: 'nowrap',
                   borderRight: idx < summaries.length - 1 ? '1px solid #222' : 'none',
-                }}
-              >
-                {getLabel(s, idx)}
-              </button>
-            );
-          })}
-        </nav>
-      )}
+                }}>
+                  {getLabel(s, idx)}
+                </button>
+              );
+            })}
+          </nav>
+        )}
 
-      {/* Card */}
-      <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '8px 12px 8px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>載入情報中...</div>
-        ) : summaries.length === 0 ? (
-          <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>尚無情報</div>
-        ) : (
+        {/* Article area — overflow hidden to clip content */}
+        <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '8px 12px', display: 'flex', flexDirection: 'column' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>載入情報中...</div>
+          ) : summaries.length === 0 ? (
+            <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>尚無情報</div>
+          ) : (
+            <div style={{ flex: 1, overflow: 'hidden', background: '#1a1a1a', borderLeft: '3px solid #7a0000', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
+              {/* Card header */}
+              <div style={{ flexShrink: 0, padding: '12px 16px 6px' }}>
+                <div style={{ fontSize: '13px', color: '#aaaaaa', marginBottom: '6px' }}>{date}</div>
+                {active?.articleTitle && (
+                  <h2 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700, color: '#fff', lineHeight: 1.25, marginBottom: '8px', margin: '0 0 8px' }}>
+                    {active.articleTitle}
+                  </h2>
+                )}
+                {pages.length > 1 && (
+                  <div style={{ fontSize: '11px', color: '#444', fontFamily: "'Courier New',monospace" }}>
+                    {pageIdx + 1} / {pages.length}
+                  </div>
+                )}
+              </div>
+
+              {/* Content */}
+              <div
+                onClick={!pageDone ? skipPage : undefined}
+                style={{ flex: 1, padding: '0 16px 8px', overflow: 'hidden', cursor: !pageDone ? 'pointer' : 'default' }}
+              >
+                {renderMarkdown(displayed)}
+                {!pageDone && (
+                  <span style={{ display: 'inline-block', width: '9px', height: '1.1em', background: '#cc0000', animation: 'cursor-blink 1s step-end infinite', verticalAlign: 'text-bottom', marginLeft: '2px' }} />
+                )}
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* ── GOLD CONTINUE BUTTON — rendered at page level, outside overflow:hidden ── */}
+        {pageDone && !isLastPage && !loading && summaries.length > 0 && (
           <div
-            key={`topic-${topicIdx}`}
-            style={{ flex: 1, overflow: 'hidden', background: '#1a1a1a', borderLeft: '3px solid #7a0000', borderRadius: '4px', padding: '0', display: 'flex', flexDirection: 'column' }}
+            onClick={nextPage}
+            style={{
+              position: 'fixed',
+              bottom: 0, left: 0, right: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              padding: '48px 0 32px',
+              background: 'linear-gradient(transparent, #111111 40%)',
+              zIndex: 9999,
+              cursor: 'pointer',
+            }}
           >
-            <PagedView article={articleContent} title={active?.articleTitle} date={date} />
+            <div
+              style={{
+                background: '#c9a84c',
+                color: '#000000',
+                fontFamily: "'Courier New',monospace",
+                fontSize: '18px',
+                fontWeight: 900,
+                padding: '15px 56px',
+                letterSpacing: '0.12em',
+                animation: 'gold-pulse 1.3s ease-in-out infinite',
+                minWidth: '240px',
+                textAlign: 'center',
+                userSelect: 'none',
+              }}
+            >
+              ▶▶ 下一頁
+            </div>
+            <div style={{ marginTop: '8px', fontSize: '11px', color: '#c9a84c', letterSpacing: '0.2em', opacity: 0.6 }}>
+              TAP TO CONTINUE
+            </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </>
   );
 }
