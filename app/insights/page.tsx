@@ -136,7 +136,7 @@ export default function InsightsPage() {
 
   // Detect mobile
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
+    const check = () => setIsMobile(window.innerWidth < 1100);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -537,8 +537,7 @@ export default function InsightsPage() {
             /* Desktop: fixed thumbnails in left/right gutters */
             <>
               {/* Left gutter: stocks #1-5 */}
-              {crashAlert.composite1 && (
-                <div
+              <div
                   onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(0, 5), idx: 0})}
                   style={{
                     position: 'fixed',
@@ -558,12 +557,11 @@ export default function InsightsPage() {
                     <span style={{ fontSize: '11px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
                     <span style={{ fontSize: '9px', color: '#aaa', marginLeft: 'auto' }}>🔍</span>
                   </div>
-                  <img src={`data:image/png;base64,${crashAlert.composite1}`} alt="crash #1-5"
+                  <img src="/api/public/crash-alert/composite?group=1" alt="crash #1-5"
                     style={{ width: '100%', display: 'block' }} />
                 </div>
-              )}
-              {/* Right gutter: stocks #6-10 */}
-              {crashAlert.composite2 && (
+                            {/* Right gutter: stocks #6-10 */}
+              
                 <div
                   onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(5, 10), idx: 0})}
                   style={{
@@ -582,10 +580,9 @@ export default function InsightsPage() {
                     <span style={{ fontSize: '10px', color: '#8a8a8f', fontWeight: 700 }}>#6-10</span>
                     <a href="/crash" onClick={e=>e.stopPropagation()} style={{ fontSize: '9px', color: '#c0202a', textDecoration: 'none', marginLeft: 'auto' }}>全部 →</a>
                   </div>
-                  <img src={`data:image/png;base64,${crashAlert.composite2}`} alt="crash #6-10"
+                  <img src="/api/public/crash-alert/composite?group=2" alt="crash #6-10"
                     style={{ width: '100%', display: 'block' }} />
                 </div>
-              )}
             </>
           )}
 
@@ -602,11 +599,15 @@ export default function InsightsPage() {
                 </div>
                 {/* Chart */}
                 <div style={{ flex: 1, overflow: 'hidden', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {/* Show composite for the group, individual if available */}
                   <img
-                    src={`/api/public/crash-alert/chart?symbol=${crashModal.stocks[crashModal.idx]?.symbol}&type=market`}
-                    alt={crashModal.stocks[crashModal.idx]?.symbol}
+                    src={`/api/public/crash-alert/composite?group=${crashModal.idx < 5 ? 1 : 2}`}
+                    alt="crash chart"
                     style={{ maxWidth: '100%', maxHeight: '60vh', display: 'block' }}
                   />
+                  <div style={{ padding: '8px 16px', fontSize: '13px', color: '#8a8a8f', background: '#fafafa', borderTop: '1px solid #e3ddd2' }}>
+                    點擊縮圖可看全部10支股票的2年日線圖合成
+                  </div>
                 </div>
                 {/* Prev / Next */}
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', padding: '12px 16px', borderTop: '1px solid #e3ddd2' }}>
