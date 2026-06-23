@@ -5,7 +5,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 interface Summary {
   _id: string;
   tags: string[];
-  source: 'manual' | 'auto';
+  source: 'manual' | 'auto' | 'video';
   topic?: string;
   summary: { timelineAnalysis: string; keyNumbers: string; predictionVsReality: string };
   article?: string;
@@ -15,19 +15,13 @@ interface Summary {
   createdAt: string;
 }
 
-/* ── Get Taiwan time date string ── */
+// ── Taiwan time ──────────────────────────────────────────────────────────────
 function getTaiwanDate() {
   return new Date().toLocaleDateString('zh-TW', {
-    timeZone: 'Asia/Taipei',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
+    timeZone: 'Asia/Taipei', year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
   });
 }
 
-
-/* ── Countdown to next 06:00 Taiwan update ── */
 function getCountdownTo6AM(): string {
   const now = new Date();
   const twNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
@@ -38,11 +32,11 @@ function getCountdownTo6AM(): string {
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   const s = Math.floor((diff % 60000) / 1000);
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/* ── Split article into pages by char count ── */
-function splitIntoPages(text: string, limit = 600): string[] {
+// ── Split pages ───────────────────────────────────────────────────────────────
+function splitIntoPages(text: string, limit = 700): string[] {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
   const pages: string[] = [];
   let cur = '';
@@ -55,11 +49,11 @@ function splitIntoPages(text: string, limit = 600): string[] {
   return pages.length ? pages : [text];
 }
 
-/* ── Inline markdown ── */
+// ── Markdown renderer ─────────────────────────────────────────────────────────
 function renderInline(line: string) {
   return line.split(/(\*\*[^*]+\*\*)/).map((part, k) =>
     part.startsWith('**') && part.endsWith('**')
-      ? <strong key={k} style={{ color: '#ffffff', fontWeight: 700 }}>{part.slice(2, -2)}</strong>
+      ? <strong key={k} style={{ color: '#1a1a1a', fontWeight: 700 }}>{part.slice(2, -2)}</strong>
       : <span key={k}>{part}</span>
   );
 }
@@ -70,21 +64,29 @@ function renderMarkdown(raw: string) {
     const t = block.trim();
     if (!t) return null;
     if (/^-{3,}$/.test(t))
-      return <hr key={i} style={{ border: 'none', borderTop: '1px solid #333333', margin: '12px 0' }} />;
+      return <hr key={i} style={{ border: 'none', borderTop: '1px solid #e3ddd2', margin: '18px 0' }} />;
     if (/^#{1,3}\s/.test(t))
       return (
-        <h3 key={i} style={{ fontFamily: "'Courier New',monospace", fontSize: '16px', fontWeight: 700, color: '#cc0000', margin: '14px 0 5px', lineHeight: 1.3 }}>
+        <h3 key={i} style={{
+          fontFamily: '"Noto Sans TC", -apple-system, "PingFang TC", sans-serif',
+          fontSize: '18px', fontWeight: 600, color: '#c0202a',
+          margin: '18px 0 10px', lineHeight: 1.4,
+        }}>
           {t.replace(/^#{1,3}\s+/, '')}
         </h3>
       );
     if (t.startsWith('> '))
       return (
-        <div key={i} style={{ borderLeft: '2px solid #cc0000', paddingLeft: '10px', color: '#999', fontStyle: 'italic', fontSize: '15px', margin: '8px 0', lineHeight: 1.65 }}>
+        <div key={i} style={{
+          borderLeft: '3px solid #c0202a', paddingLeft: '14px',
+          color: '#8a8a8f', fontStyle: 'italic', fontSize: '16px',
+          margin: '18px 0', lineHeight: 1.75,
+        }}>
           {t.replace(/^>\s?/gm, '')}
         </div>
       );
     return (
-      <p key={i} style={{ marginBottom: '10px', lineHeight: 1.65, fontSize: '16px' }}>
+      <p key={i} style={{ marginBottom: '18px', lineHeight: 1.75, fontSize: '17px', color: '#2b2b2e' }}>
         {t.split('\n').map((line, j, arr) => (
           <span key={j}>{renderInline(line)}{j < arr.length - 1 && <br />}</span>
         ))}
@@ -99,7 +101,7 @@ function charDelay(c: string) {
   return 4;
 }
 
-/* ── Main Page ── */
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function InsightsPage() {
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,46 +109,30 @@ export default function InsightsPage() {
   const [todayDate, setTodayDate] = useState('');
   const [countdown, setCountdown] = useState('');
 
-  // Pagination state
   const [pageIdx, setPageIdx] = useState(0);
   const [displayed, setDisplayed] = useState('');
   const [charIdx, setCharIdx] = useState(0);
   const [pageDone, setPageDone] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const navRef = useRef<HTMLDivElement>(null);
-  const [navPage, setNavPage] = useState(0);
-  const NAV_PER_PAGE = 4; // tabs visible at once
 
-  // Set Taiwan date on mount and refresh at midnight
+  const [navPage, setNavPage] = useState(0);
+  const NAV_PER_PAGE = 4;
+
+  // Taiwan date + countdown
   useEffect(() => {
     setTodayDate(getTaiwanDate());
-
-    // Calculate ms until next midnight Taiwan time
-    const now = new Date();
-    const twMidnight = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
-    twMidnight.setHours(24, 0, 0, 0);
-    const msUntilMidnight = twMidnight.getTime() - new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime();
-
-    const t = setTimeout(() => {
-      setTodayDate(getTaiwanDate());
-      // After first midnight, refresh every 24h
-      const interval = setInterval(() => setTodayDate(getTaiwanDate()), 24 * 60 * 60 * 1000);
-      return () => clearInterval(interval);
-    }, msUntilMidnight);
-
-    return () => clearTimeout(t);
-  }, []);
-
-  // Countdown to next 06:00 update
-  useEffect(() => {
     setCountdown(getCountdownTo6AM());
-    const interval = setInterval(() => setCountdown(getCountdownTo6AM()), 1000);
+    const interval = setInterval(() => {
+      setTodayDate(getTaiwanDate());
+      setCountdown(getCountdownTo6AM());
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch summaries
   useEffect(() => {
-    fetch('/api/insights?limit=5')
-      .then((r) => (r.ok ? r.json() : []))
+    fetch('/api/insights?limit=10')
+      .then(r => r.ok ? r.json() : [])
       .then(setSummaries)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -154,36 +140,26 @@ export default function InsightsPage() {
 
   const active = summaries[topicIdx];
   const articleContent = active
-    ? (active.article || [active.summary.timelineAnalysis, active.summary.keyNumbers, active.summary.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
+    ? (active.article || [active.summary?.timelineAnalysis, active.summary?.keyNumbers, active.summary?.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
     : '';
-  const pages = splitIntoPages(articleContent, 600);
+  const pages = splitIntoPages(articleContent, 700);
   const isLastPage = pageIdx >= pages.length - 1;
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setDisplayed('');
-    setCharIdx(0);
-    setPageDone(false);
+    setDisplayed(''); setCharIdx(0); setPageDone(false);
   }, [topicIdx, pageIdx]);
 
-  useEffect(() => {
-    setPageIdx(0);
-  }, [topicIdx]);
-
-  const totalNavPages = Math.ceil(summaries.length / NAV_PER_PAGE);
-  const visibleSummaries = summaries.slice(navPage * NAV_PER_PAGE, (navPage + 1) * NAV_PER_PAGE);
+  useEffect(() => { setPageIdx(0); }, [topicIdx]);
 
   useEffect(() => {
     if (pageDone || !pages[pageIdx]) return;
     const current = pages[pageIdx];
-    if (charIdx >= current.length) {
-      setPageDone(true);
-      return;
-    }
+    if (charIdx >= current.length) { setPageDone(true); return; }
     const c = current[charIdx];
     timerRef.current = setTimeout(() => {
-      setDisplayed((d) => d + c);
-      setCharIdx((i) => i + 1);
+      setDisplayed(d => d + c);
+      setCharIdx(i => i + 1);
     }, charDelay(c));
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [charIdx, pageDone, pageIdx, pages]);
@@ -191,235 +167,266 @@ export default function InsightsPage() {
   const skipPage = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     const cur = pages[pageIdx] || '';
-    setDisplayed(cur);
-    setCharIdx(cur.length);
-    setPageDone(true);
+    setDisplayed(cur); setCharIdx(cur.length); setPageDone(true);
   }, [pageIdx, pages]);
 
   const nextPage = useCallback(() => {
-    if (pageIdx < pages.length - 1) setPageIdx((p) => p + 1);
+    if (pageIdx < pages.length - 1) setPageIdx(p => p + 1);
   }, [pageIdx, pages.length]);
 
   const getLabel = (s: Summary, i: number) => {
     const raw = s.topic || s.tags[0] || `話題${i + 1}`;
-    return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 7) || `話題${i + 1}`;
+    return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 8) || `話題${i + 1}`;
   };
+
+  const totalNavPages = Math.ceil(summaries.length / NAV_PER_PAGE);
+  const visibleSummaries = summaries.slice(navPage * NAV_PER_PAGE, (navPage + 1) * NAV_PER_PAGE);
 
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;600&display=swap');
         * { box-sizing: border-box; }
-        html, body { margin: 0; background: #111111; height: 100%; }
-        body { padding-bottom: env(safe-area-inset-bottom, 0px); }
+        html, body { margin: 0; background: #f5f2ec; }
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
-        @keyframes gold-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(0.97)} }
-        @keyframes live-dot { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        @keyframes live-dot { 0%,100%{opacity:1} 50%{opacity:0.25} }
+        @keyframes cta-pulse { 0%,100%{box-shadow:0 2px 12px rgba(192,32,42,0.35)} 50%{box-shadow:0 4px 20px rgba(192,32,42,0.6)} }
         button:focus { outline: none; }
+        ::-webkit-scrollbar { display: none; }
       `}</style>
 
-      <div style={{ height: '100svh', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8', position: 'relative' }}>
+      <div style={{
+        height: '100svh', backgroundColor: '#f5f2ec',
+        display: 'flex', flexDirection: 'column',
+        fontFamily: '"Noto Sans TC", -apple-system, "PingFang TC", sans-serif',
+        color: '#2b2b2e',
+      }}>
 
-        {/* Header */}
-        <header style={{ flexShrink: 0, padding: '8px 1rem 6px', textAlign: 'center', borderBottom: '1px solid #222', background: 'linear-gradient(180deg, #0d0d0d 0%, #111 100%)' }}>
+        {/* ── Header ── */}
+        <header style={{
+          flexShrink: 0,
+          background: '#ffffff',
+          borderBottom: '1px solid #e3ddd2',
+          padding: '14px 20px 12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}>
           {/* Brand row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '2px' }}>
-            <div style={{ width: '28px', height: '2px', background: '#cc0000' }} />
-            <span style={{ fontSize: '0.55rem', color: '#c9a84c', letterSpacing: '0.4em', textTransform: 'uppercase' }}>Intelligence Briefing</span>
-            <div style={{ width: '28px', height: '2px', background: '#cc0000' }} />
-          </div>
-          <h1 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1.5rem,5vw,2.2rem)', fontWeight: 700, color: '#fff', margin: '0 0 4px', letterSpacing: '0.06em' }}>JG 說真的</h1>
-
-          {/* LIVE + Date row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '6px' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#cc0000', animation: 'live-dot 1.5s ease-in-out infinite', flexShrink: 0 }} />
-            <span style={{ fontSize: '11px', color: '#cc0000', fontFamily: "'Courier New',monospace", fontWeight: 700, letterSpacing: '0.15em' }}>LIVE</span>
-            <span style={{ fontSize: '11px', color: '#aaa', fontFamily: "'Courier New',monospace" }}>{todayDate}</span>
-            <span style={{ fontSize: '10px', color: '#555', fontFamily: "'Courier New',monospace" }}>· 每日更新</span>
-          </div>
-
-          {/* Countdown box — most prominent element */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: '8px',
-            background: '#1a1a1a', border: '1px solid #333',
-            borderTop: '2px solid #c9a84c',
-            padding: '5px 16px', borderRadius: '2px',
-          }}>
-            <span style={{ fontSize: '10px', color: '#c9a84c', fontFamily: "'Courier New',monospace", letterSpacing: '0.12em', textTransform: 'uppercase' }}>下次更新</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', justifyContent: 'center', marginBottom: '2px' }}>
+            <h1 style={{
+              fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, serif',
+              fontSize: '32px', fontWeight: 700, color: '#1a1a1a',
+              margin: 0, lineHeight: 1.2, letterSpacing: '0.02em',
+            }}>影子 JG</h1>
             <span style={{
-              fontFamily: "'Courier New',monospace",
-              fontSize: 'clamp(1.1rem,3.5vw,1.6rem)',
-              fontWeight: 900,
-              color: '#fff',
-              letterSpacing: '0.08em',
-              fontVariantNumeric: 'tabular-nums',
-            }}>{countdown}</span>
-            <span style={{ fontSize: '10px', color: '#555', fontFamily: "'Courier New',monospace" }}>06:00 TST</span>
+              fontSize: '11px', color: '#8a8a8f', letterSpacing: '0.1em',
+              fontStyle: 'italic',
+            }}>Shadow JG</span>
+          </div>
+          <div style={{ textAlign: 'center', fontSize: '12px', color: '#8a8a8f', marginBottom: '10px', letterSpacing: '0.05em' }}>
+            市場背後的反向觀察者
+          </div>
+
+          {/* LIVE + Date */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
+            <span style={{
+              display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%',
+              background: '#c0202a', animation: 'live-dot 1.5s ease-in-out infinite', flexShrink: 0,
+            }} />
+            <span style={{ fontSize: '12px', color: '#c0202a', fontWeight: 700, letterSpacing: '0.12em' }}>LIVE</span>
+            <span style={{ fontSize: '12px', color: '#8a8a8f' }}>{todayDate}</span>
+            <span style={{ fontSize: '11px', color: '#8a8a8f' }}>· 每日更新</span>
+          </div>
+
+          {/* Countdown */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '10px',
+              background: '#f5f2ec', border: '1px solid #e3ddd2',
+              borderTop: '2px solid #c0202a',
+              padding: '6px 18px', borderRadius: '2px',
+            }}>
+              <span style={{ fontSize: '11px', color: '#8a8a8f', letterSpacing: '0.1em' }}>下次更新</span>
+              <span style={{
+                fontFamily: '"Noto Serif TC", Georgia, serif',
+                fontSize: '22px', fontWeight: 700, color: '#1a1a1a',
+                letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums',
+              }}>{countdown}</span>
+              <span style={{ fontSize: '11px', color: '#8a8a8f' }}>06:00 TST</span>
+            </div>
           </div>
         </header>
 
-        {/* Topic Nav */}
+        {/* ── Topic Nav ── */}
         {!loading && summaries.length > 0 && (
-          <nav style={{ flexShrink: 0, backgroundColor: '#111', borderBottom: '1px solid #2a2a2a' }}>
-            {/* Nav tabs row */}
-            <div style={{ display: 'flex', alignItems: 'stretch' }}>
-              {/* Prev arrow */}
+          <nav style={{
+            flexShrink: 0,
+            background: '#ffffff',
+            borderBottom: '1px solid #e3ddd2',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'stretch', maxWidth: '720px', margin: '0 auto' }}>
               {totalNavPages > 1 && (
-                <button
-                  onClick={() => setNavPage(p => Math.max(0, p - 1))}
-                  disabled={navPage === 0}
+                <button onClick={() => setNavPage(p => Math.max(0, p - 1))} disabled={navPage === 0}
                   style={{
                     flexShrink: 0, width: '32px', background: 'none', border: 'none',
-                    borderRight: '1px solid #2a2a2a',
-                    color: navPage === 0 ? '#2a2a2a' : '#c9a84c',
+                    borderRight: '1px solid #e3ddd2',
+                    color: navPage === 0 ? '#e3ddd2' : '#c0202a',
                     fontSize: '16px', cursor: navPage === 0 ? 'default' : 'pointer',
-                    fontFamily: "'Courier New',monospace",
-                  }}
-                >‹</button>
+                  }}>‹</button>
               )}
-
-              {/* Visible tabs */}
               <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                 {visibleSummaries.map((s, relIdx) => {
                   const idx = navPage * NAV_PER_PAGE + relIdx;
                   const isSel = idx === topicIdx;
                   return (
-                    <button
-                      key={s._id}
-                      onClick={() => setTopicIdx(idx)}
-                      style={{
-                        flex: 1, padding: '0.6rem 0.5rem', background: isSel ? '#1c1c1c' : 'none',
-                        border: 'none',
-                        borderBottom: isSel ? '2px solid #cc0000' : '2px solid transparent',
-                        borderRight: relIdx < visibleSummaries.length - 1 ? '1px solid #2a2a2a' : 'none',
-                        color: isSel ? '#ffffff' : '#666',
-                        fontSize: 'clamp(0.68rem, 2vw, 0.8rem)',
-                        fontFamily: "'Courier New',monospace",
-                        fontWeight: isSel ? 700 : 400,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        transition: 'color 0.2s, background 0.2s',
-                        letterSpacing: isSel ? '0.04em' : '0',
-                      }}
-                    >
-                      {isSel && <span style={{ color: '#cc0000', marginRight: '4px' }}>▌</span>}
+                    <button key={s._id} onClick={() => setTopicIdx(idx)} style={{
+                      flex: 1, padding: '10px 6px', background: 'none', border: 'none',
+                      borderBottom: isSel ? '2px solid #c0202a' : '2px solid transparent',
+                      borderRight: relIdx < visibleSummaries.length - 1 ? '1px solid #e3ddd2' : 'none',
+                      color: isSel ? '#1a1a1a' : '#8a8a8f',
+                      fontSize: 'clamp(11px,2.5vw,13px)',
+                      fontFamily: '"Noto Sans TC", sans-serif',
+                      fontWeight: isSel ? 600 : 400,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      overflow: 'hidden', textOverflow: 'ellipsis',
+                      transition: 'all 0.2s',
+                    }}>
                       {getLabel(s, idx)}
                     </button>
                   );
                 })}
-                {/* Fill empty slots if last page has fewer tabs */}
                 {Array.from({ length: NAV_PER_PAGE - visibleSummaries.length }).map((_, i) => (
                   <div key={`empty-${i}`} style={{ flex: 1 }} />
                 ))}
               </div>
-
-              {/* Next arrow */}
               {totalNavPages > 1 && (
-                <button
-                  onClick={() => setNavPage(p => Math.min(totalNavPages - 1, p + 1))}
+                <button onClick={() => setNavPage(p => Math.min(totalNavPages - 1, p + 1))}
                   disabled={navPage >= totalNavPages - 1}
                   style={{
                     flexShrink: 0, width: '32px', background: 'none', border: 'none',
-                    borderLeft: '1px solid #2a2a2a',
-                    color: navPage >= totalNavPages - 1 ? '#2a2a2a' : '#c9a84c',
+                    borderLeft: '1px solid #e3ddd2',
+                    color: navPage >= totalNavPages - 1 ? '#e3ddd2' : '#c0202a',
                     fontSize: '16px', cursor: navPage >= totalNavPages - 1 ? 'default' : 'pointer',
-                    fontFamily: "'Courier New',monospace",
-                  }}
-                >›</button>
+                  }}>›</button>
               )}
             </div>
-
-            {/* Dot indicators when multiple pages */}
             {totalNavPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', padding: '4px 0' }}>
                 {Array.from({ length: totalNavPages }).map((_, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setNavPage(i)}
-                    style={{
-                      width: i === navPage ? '14px' : '5px', height: '5px',
-                      borderRadius: '3px',
-                      background: i === navPage ? '#cc0000' : '#333',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s ease',
-                    }}
-                  />
+                  <div key={i} onClick={() => setNavPage(i)} style={{
+                    width: i === navPage ? '14px' : '5px', height: '4px', borderRadius: '2px',
+                    background: i === navPage ? '#c0202a' : '#e3ddd2',
+                    cursor: 'pointer', transition: 'all 0.3s',
+                  }} />
                 ))}
               </div>
             )}
           </nav>
         )}
 
-        {/* Article area */}
-        <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '8px 12px 0', display: 'flex', flexDirection: 'column' }}>
+        {/* ── Article area ── */}
+        <main style={{
+          flex: 1, overflow: 'hidden',
+          padding: '20px 16px 0',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center',
+        }}>
           {loading ? (
-            <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>載入情報中...</div>
+            <div style={{ paddingTop: '4rem', color: '#8a8a8f', fontSize: '15px' }}>載入中...</div>
           ) : summaries.length === 0 ? (
-            <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>尚無情報</div>
+            <div style={{ paddingTop: '4rem', color: '#8a8a8f', fontSize: '15px' }}>尚無文章</div>
           ) : (
-            <div style={{ flex: 1, overflow: 'hidden', background: '#1a1a1a', borderLeft: '3px solid #7a0000', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{
+              width: '100%', maxWidth: '720px',
+              flex: 1, overflow: 'hidden',
+              background: '#ffffff',
+              borderLeft: '3px solid #c0202a',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+              borderRadius: '0 4px 4px 0',
+              display: 'flex', flexDirection: 'column',
+            }}>
               {/* Card header */}
-              <div style={{ flexShrink: 0, padding: '12px 16px 6px' }}>
+              <div style={{ flexShrink: 0, padding: '24px 32px 0' }}>
                 {active?.articleTitle && (
-                  <h2 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700, color: '#fff', lineHeight: 1.25, margin: '0 0 8px' }}>
+                  <h2 style={{
+                    fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, serif',
+                    fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700,
+                    color: '#1a1a1a', lineHeight: 1.3, margin: '0 0 12px',
+                  }}>
                     {active.articleTitle}
                   </h2>
                 )}
-                {pages.length > 1 && (
-                  <div style={{ fontSize: '11px', color: '#444', fontFamily: "'Courier New',monospace" }}>
-                    {pageIdx + 1} / {pages.length}
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  {active?.topic && (
+                    <span style={{
+                      fontSize: '12px', color: '#c0202a', fontWeight: 600,
+                      background: 'rgba(192,32,42,0.08)', padding: '2px 8px', borderRadius: '2px',
+                    }}>
+                      {active.topic.split('·')[0]}
+                    </span>
+                  )}
+                  <span style={{ fontSize: '13px', color: '#8a8a8f' }}>
+                    {new Date(active?.publishedAt || '').toLocaleDateString('zh-TW', {
+                      timeZone: 'Asia/Taipei', year: 'numeric', month: 'short', day: 'numeric',
+                    })}
+                  </span>
+                  {pages.length > 1 && (
+                    <span style={{ fontSize: '13px', color: '#8a8a8f', marginLeft: 'auto' }}>
+                      {pageIdx + 1} / {pages.length}
+                    </span>
+                  )}
+                </div>
+                <div style={{ height: '1px', background: '#e3ddd2', marginBottom: '0' }} />
               </div>
 
               {/* Content */}
               <div
                 onClick={!pageDone ? skipPage : undefined}
-                style={{ flex: 1, padding: '0 16px', overflow: 'hidden', cursor: !pageDone ? 'pointer' : 'default', display: 'flex', flexDirection: 'column' }}
+                style={{
+                  flex: 1, padding: '20px 32px', overflow: 'hidden',
+                  cursor: !pageDone ? 'pointer' : 'default',
+                  display: 'flex', flexDirection: 'column',
+                }}
               >
-                {renderMarkdown(displayed)}
-                {!pageDone && (
-                  <span style={{ display: 'inline-block', width: '9px', height: '1.1em', background: '#cc0000', animation: 'cursor-blink 1s step-end infinite', verticalAlign: 'text-bottom', marginLeft: '2px' }} />
-                )}
-                {/* Bottom spacer — keeps text away from browser toolbar */}
-                <div style={{ flexShrink: 0, height: '72px', minHeight: '72px' }} />
+                <div style={{ flex: 1 }}>
+                  {renderMarkdown(displayed)}
+                  {!pageDone && (
+                    <span style={{
+                      display: 'inline-block', width: '2px', height: '18px',
+                      background: '#c0202a', animation: 'cursor-blink 0.8s step-end infinite',
+                      verticalAlign: 'text-bottom', marginLeft: '2px',
+                    }} />
+                  )}
+                </div>
+                {/* Bottom spacer */}
+                <div style={{ flexShrink: 0, height: '80px' }} />
               </div>
             </div>
           )}
         </main>
 
-        {/* GOLD CONTINUE BUTTON */}
+        {/* ── Continue button ── */}
         {pageDone && !isLastPage && !loading && summaries.length > 0 && (
-          <div
-            onClick={nextPage}
-            style={{
-              position: 'fixed',
-              bottom: 0, left: 0, right: 0,
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              paddingTop: '48px',
-              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
-              background: 'linear-gradient(transparent, #111111 40%)',
-              zIndex: 9999,
+          <div onClick={nextPage} style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            paddingTop: '40px',
+            paddingBottom: 'max(28px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
+            background: 'linear-gradient(transparent, #f5f2ec 50%)',
+            zIndex: 9999, cursor: 'pointer',
+          }}>
+            <button style={{
+              background: '#c0202a', color: '#ffffff',
+              border: 'none', borderRadius: '4px',
+              padding: '13px 40px',
+              fontFamily: '"Noto Sans TC", sans-serif',
+              fontSize: '15px', fontWeight: 600,
+              letterSpacing: '0.06em',
               cursor: 'pointer',
-            }}
-          >
-            <div style={{
-              background: '#c9a84c',
-              color: '#000000',
-              fontFamily: "'Courier New',monospace",
-              fontSize: '18px',
-              fontWeight: 900,
-              padding: '15px 56px',
-              letterSpacing: '0.12em',
-              animation: 'gold-pulse 1.3s ease-in-out infinite',
-              minWidth: '240px',
-              textAlign: 'center',
-              userSelect: 'none',
+              animation: 'cta-pulse 1.4s ease-in-out infinite',
             }}>
-              ▶▶ 下一頁
-            </div>
-            <div style={{ marginTop: '8px', fontSize: '11px', color: '#c9a84c', letterSpacing: '0.2em', opacity: 0.6 }}>
+              繼續閱讀 ▶
+            </button>
+            <div style={{ marginTop: '6px', fontSize: '11px', color: '#8a8a8f', letterSpacing: '0.15em' }}>
               TAP TO CONTINUE
             </div>
           </div>
