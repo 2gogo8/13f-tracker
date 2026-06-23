@@ -27,7 +27,9 @@ export async function GET(request: Request) {
       })
       .toArray();
 
-    return NextResponse.json(summaries);
+    const res = NextResponse.json(summaries);
+    res.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
+    return res;
   } catch (error) {
     console.error('GET /api/insights error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

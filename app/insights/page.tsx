@@ -235,7 +235,7 @@ export default function InsightsPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap&subset=chinese-traditional');
+        /* Fonts loaded via <link> in layout.tsx */
         * { box-sizing: border-box; }
         html, body { margin: 0; background: #f5f2ec; }
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -505,7 +505,7 @@ export default function InsightsPage() {
       </div>
 
       {/* Hidden audio element */}
-      <audio ref={audioRef} loop preload="auto" src="/audio/bg-music.mp3" />
+      <audio ref={audioRef} loop preload="none" src="/audio/bg-music.mp3" />
 
       {/* Music toggle button — floating bottom-left */}
       <button
