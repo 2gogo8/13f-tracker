@@ -119,6 +119,7 @@ export default function InsightsPage() {
   const NAV_PER_PAGE = 4;
   const [crashAlert, setCrashAlert] = useState<{ixicChange:number;date:string;composite1:string|null;composite2:string|null;marketLosers:{symbol:string;name:string;change:number}[]} | null>(null);
   const [crashModal, setCrashModal] = useState<{stocks:{symbol:string;name:string;change:number}[];idx:number} | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);  // default on
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -131,6 +132,14 @@ export default function InsightsPage() {
       setCountdown(getCountdownTo6AM());
     }, 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Detect mobile
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
   // Auto-play after 5s delay (don't block initial page load)
@@ -510,13 +519,23 @@ export default function InsightsPage() {
         )}
       </div>
 
-      {/* ── Crash Alert Section (desktop: below article, mobile: banner) ── */}
+      {/* ── Crash Alert Section ── */}
       {crashAlert && (
         <>
-          {/* Desktop: 2 composite thumbnails side-by-side below article */}
-          <div style={{ display: 'none' }} className="crash-desktop">
-            <style>{`.crash-desktop { display: block !important; } @media (max-width: 768px) { .crash-desktop { display: none !important; } .crash-mobile { display: flex !important; } }`}</style>
-            <div style={{ maxWidth: '720px', margin: '16px auto 0', padding: '0 16px' }}>
+          {isMobile ? (
+            /* Mobile: banner link */
+            <div style={{ maxWidth: '720px', margin: '12px auto 0', padding: '0 16px', width: '100%' }}>
+              <a href="/crash" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: '#fff8f8', border: '1px solid #f0c0c0', borderRadius: '6px', borderLeft: '3px solid #c0202a' }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>IXIC 大跌 {crashAlert.ixicChange.toFixed(2)}%</div>
+                  <div style={{ fontSize: '11px', color: '#8a8a8f' }}>點擊查看跌幅前十名 K 線圖 →</div>
+                </div>
+              </a>
+            </div>
+          ) : (
+            /* Desktop: 2 composite thumbnails */
+            <div style={{ maxWidth: '720px', margin: '16px auto 0', padding: '0 16px', width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>⚠️ 大跌警報</span>
                 <span style={{ fontSize: '20px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
@@ -524,12 +543,12 @@ export default function InsightsPage() {
                 <a href="/crash" style={{ fontSize: '11px', color: '#c0202a', textDecoration: 'none', marginLeft: 'auto' }}>查看全部 →</a>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {[{img: crashAlert.composite1, label: '#1-5', offset: 0}, {img: crashAlert.composite2, label: '#6-10', offset: 5}].map(({img, label, offset}) =>
+                {([{img: crashAlert.composite1, label: '#1-5', offset: 0}, {img: crashAlert.composite2, label: '#6-10', offset: 5}] as Array<{img:string|null;label:string;offset:number}>).map(({img, label, offset}) =>
                   img ? (
                     <div key={label} onClick={() => setCrashModal({stocks: crashAlert.marketLosers.slice(offset, offset+5), idx: 0})}
                       style={{ cursor: 'pointer', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', border: '1px solid #e3ddd2', background: '#fff' }}>
                       <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', fontSize: '11px', color: '#c0202a', fontWeight: 600 }}>
-                        跌幅 {label} 🔍
+                        跌幅 {label} 🔍 點擊看大圖
                       </div>
                       <img src={`data:image/png;base64,${img}`} alt={`crash ${label}`} style={{ width: '100%', display: 'block' }} />
                     </div>
@@ -537,18 +556,7 @@ export default function InsightsPage() {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Mobile: simple banner */}
-          <div className="crash-mobile" style={{ display: 'none', maxWidth: '720px', margin: '12px auto 0', padding: '0 16px' }}>
-            <a href="/crash" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: '#fff8f8', border: '1px solid #f0c0c0', borderRadius: '6px', borderLeft: '3px solid #c0202a' }}>
-              <span style={{ fontSize: '16px' }}>⚠️</span>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>IXIC 大跌 {crashAlert.ixicChange.toFixed(2)}%</div>
-                <div style={{ fontSize: '11px', color: '#8a8a8f' }}>點擊查看跌幅前十名 K 線圖 →</div>
-              </div>
-            </a>
-          </div>
+          )}
 
           {/* Chart modal */}
           {crashModal && (
