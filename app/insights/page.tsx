@@ -15,6 +15,17 @@ interface Summary {
   createdAt: string;
 }
 
+/* ── Get Taiwan time date string ── */
+function getTaiwanDate() {
+  return new Date().toLocaleDateString('zh-TW', {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  });
+}
+
 /* ── Split article into pages by char count ── */
 function splitIntoPages(text: string, limit = 600): string[] {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
@@ -78,13 +89,34 @@ export default function InsightsPage() {
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(true);
   const [topicIdx, setTopicIdx] = useState(0);
+  const [todayDate, setTodayDate] = useState('');
 
-  // Pagination state at the top level so button renders OUTSIDE overflow:hidden
+  // Pagination state
   const [pageIdx, setPageIdx] = useState(0);
   const [displayed, setDisplayed] = useState('');
   const [charIdx, setCharIdx] = useState(0);
   const [pageDone, setPageDone] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Set Taiwan date on mount and refresh at midnight
+  useEffect(() => {
+    setTodayDate(getTaiwanDate());
+
+    // Calculate ms until next midnight Taiwan time
+    const now = new Date();
+    const twMidnight = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+    twMidnight.setHours(24, 0, 0, 0);
+    const msUntilMidnight = twMidnight.getTime() - new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' })).getTime();
+
+    const t = setTimeout(() => {
+      setTodayDate(getTaiwanDate());
+      // After first midnight, refresh every 24h
+      const interval = setInterval(() => setTodayDate(getTaiwanDate()), 24 * 60 * 60 * 1000);
+      return () => clearInterval(interval);
+    }, msUntilMidnight);
+
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     fetch('/api/insights?limit=5')
@@ -101,7 +133,6 @@ export default function InsightsPage() {
   const pages = splitIntoPages(articleContent, 600);
   const isLastPage = pageIdx >= pages.length - 1;
 
-  // Reset when topic or page changes
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setDisplayed('');
@@ -109,12 +140,10 @@ export default function InsightsPage() {
     setPageDone(false);
   }, [topicIdx, pageIdx]);
 
-  // Reset page when topic changes
   useEffect(() => {
     setPageIdx(0);
   }, [topicIdx]);
 
-  // Typing tick
   useEffect(() => {
     if (pageDone || !pages[pageIdx]) return;
     const current = pages[pageIdx];
@@ -147,10 +176,6 @@ export default function InsightsPage() {
     return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 7) || `話題${i + 1}`;
   };
 
-  const date = active
-    ? new Date(active.publishedAt).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })
-    : '';
-
   return (
     <>
       <style>{`
@@ -158,17 +183,36 @@ export default function InsightsPage() {
         body { margin: 0; background: #111111; }
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes gold-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(0.97)} }
+        @keyframes live-dot { 0%,100%{opacity:1} 50%{opacity:0.2} }
         button:focus { outline: none; }
       `}</style>
 
-      {/* Outer wrapper: height 100dvh but NO overflow:hidden so fixed button works */}
       <div style={{ height: '100dvh', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8', position: 'relative' }}>
 
         {/* Header */}
         <header style={{ flexShrink: 0, padding: '10px 1rem 8px', textAlign: 'center', borderBottom: '1px solid #222' }}>
           <div style={{ fontSize: '0.6rem', color: '#c9a84c', letterSpacing: '0.35em', textTransform: 'uppercase', marginBottom: '3px' }}>Intelligence Briefing</div>
           <h1 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1.3rem,4vw,1.8rem)', fontWeight: 700, color: '#fff', margin: 0 }}>JG 說真的</h1>
-          <div style={{ width: '44px', height: '2px', background: '#cc0000', margin: '6px auto 0' }} />
+          <div style={{ width: '44px', height: '2px', background: '#cc0000', margin: '6px auto 6px' }} />
+
+          {/* Date bar — Taiwan time, updates at midnight */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            {/* LIVE dot */}
+            <span style={{
+              display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%',
+              background: '#cc0000', animation: 'live-dot 1.5s ease-in-out infinite',
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: '12px', color: '#cc0000', fontFamily: "'Courier New',monospace", fontWeight: 700, letterSpacing: '0.12em' }}>
+              LIVE
+            </span>
+            <span style={{ fontSize: '12px', color: '#888', fontFamily: "'Courier New',monospace" }}>
+              {todayDate}
+            </span>
+            <span style={{ fontSize: '11px', color: '#555', fontFamily: "'Courier New',monospace", letterSpacing: '0.08em' }}>
+              · 每日更新
+            </span>
+          </div>
         </header>
 
         {/* Topic Nav */}
@@ -192,7 +236,7 @@ export default function InsightsPage() {
           </nav>
         )}
 
-        {/* Article area — overflow hidden to clip content */}
+        {/* Article area */}
         <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '8px 12px', display: 'flex', flexDirection: 'column' }}>
           {loading ? (
             <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>載入情報中...</div>
@@ -202,9 +246,8 @@ export default function InsightsPage() {
             <div style={{ flex: 1, overflow: 'hidden', background: '#1a1a1a', borderLeft: '3px solid #7a0000', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
               {/* Card header */}
               <div style={{ flexShrink: 0, padding: '12px 16px 6px' }}>
-                <div style={{ fontSize: '13px', color: '#aaaaaa', marginBottom: '6px' }}>{date}</div>
                 {active?.articleTitle && (
-                  <h2 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700, color: '#fff', lineHeight: 1.25, marginBottom: '8px', margin: '0 0 8px' }}>
+                  <h2 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700, color: '#fff', lineHeight: 1.25, margin: '0 0 8px' }}>
                     {active.articleTitle}
                   </h2>
                 )}
@@ -229,7 +272,7 @@ export default function InsightsPage() {
           )}
         </main>
 
-        {/* ── GOLD CONTINUE BUTTON — rendered at page level, outside overflow:hidden ── */}
+        {/* GOLD CONTINUE BUTTON */}
         {pageDone && !isLastPage && !loading && summaries.length > 0 && (
           <div
             onClick={nextPage}
@@ -243,21 +286,19 @@ export default function InsightsPage() {
               cursor: 'pointer',
             }}
           >
-            <div
-              style={{
-                background: '#c9a84c',
-                color: '#000000',
-                fontFamily: "'Courier New',monospace",
-                fontSize: '18px',
-                fontWeight: 900,
-                padding: '15px 56px',
-                letterSpacing: '0.12em',
-                animation: 'gold-pulse 1.3s ease-in-out infinite',
-                minWidth: '240px',
-                textAlign: 'center',
-                userSelect: 'none',
-              }}
-            >
+            <div style={{
+              background: '#c9a84c',
+              color: '#000000',
+              fontFamily: "'Courier New',monospace",
+              fontSize: '18px',
+              fontWeight: 900,
+              padding: '15px 56px',
+              letterSpacing: '0.12em',
+              animation: 'gold-pulse 1.3s ease-in-out infinite',
+              minWidth: '240px',
+              textAlign: 'center',
+              userSelect: 'none',
+            }}>
               ▶▶ 下一頁
             </div>
             <div style={{ marginTop: '8px', fontSize: '11px', color: '#c9a84c', letterSpacing: '0.2em', opacity: 0.6 }}>
