@@ -26,6 +26,21 @@ function getTaiwanDate() {
   });
 }
 
+
+/* ── Countdown to next 06:00 Taiwan update ── */
+function getCountdownTo6AM(): string {
+  const now = new Date();
+  const twNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+  const next6 = new Date(twNow);
+  next6.setHours(6, 0, 0, 0);
+  if (twNow.getHours() >= 6) next6.setDate(next6.getDate() + 1);
+  const diff = next6.getTime() - twNow.getTime();
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
 /* ── Split article into pages by char count ── */
 function splitIntoPages(text: string, limit = 600): string[] {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
@@ -90,6 +105,7 @@ export default function InsightsPage() {
   const [loading, setLoading] = useState(true);
   const [topicIdx, setTopicIdx] = useState(0);
   const [todayDate, setTodayDate] = useState('');
+  const [countdown, setCountdown] = useState('');
 
   // Pagination state
   const [pageIdx, setPageIdx] = useState(0);
@@ -116,6 +132,13 @@ export default function InsightsPage() {
     }, msUntilMidnight);
 
     return () => clearTimeout(t);
+  }, []);
+
+  // Countdown to next 06:00 update
+  useEffect(() => {
+    setCountdown(getCountdownTo6AM());
+    const interval = setInterval(() => setCountdown(getCountdownTo6AM()), 1000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -190,28 +213,40 @@ export default function InsightsPage() {
       <div style={{ height: '100dvh', backgroundColor: '#111111', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', color: '#e8e8e8', position: 'relative' }}>
 
         {/* Header */}
-        <header style={{ flexShrink: 0, padding: '10px 1rem 8px', textAlign: 'center', borderBottom: '1px solid #222' }}>
-          <div style={{ fontSize: '0.6rem', color: '#c9a84c', letterSpacing: '0.35em', textTransform: 'uppercase', marginBottom: '3px' }}>Intelligence Briefing</div>
-          <h1 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1.3rem,4vw,1.8rem)', fontWeight: 700, color: '#fff', margin: 0 }}>JG 說真的</h1>
-          <div style={{ width: '44px', height: '2px', background: '#cc0000', margin: '6px auto 6px' }} />
+        <header style={{ flexShrink: 0, padding: '8px 1rem 6px', textAlign: 'center', borderBottom: '1px solid #222', background: 'linear-gradient(180deg, #0d0d0d 0%, #111 100%)' }}>
+          {/* Brand row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '2px' }}>
+            <div style={{ width: '28px', height: '2px', background: '#cc0000' }} />
+            <span style={{ fontSize: '0.55rem', color: '#c9a84c', letterSpacing: '0.4em', textTransform: 'uppercase' }}>Intelligence Briefing</span>
+            <div style={{ width: '28px', height: '2px', background: '#cc0000' }} />
+          </div>
+          <h1 style={{ fontFamily: "'Courier New',monospace", fontSize: 'clamp(1.5rem,5vw,2.2rem)', fontWeight: 700, color: '#fff', margin: '0 0 4px', letterSpacing: '0.06em' }}>JG 說真的</h1>
 
-          {/* Date bar — Taiwan time, updates at midnight */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            {/* LIVE dot */}
+          {/* LIVE + Date row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '6px' }}>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#cc0000', animation: 'live-dot 1.5s ease-in-out infinite', flexShrink: 0 }} />
+            <span style={{ fontSize: '11px', color: '#cc0000', fontFamily: "'Courier New',monospace", fontWeight: 700, letterSpacing: '0.15em' }}>LIVE</span>
+            <span style={{ fontSize: '11px', color: '#aaa', fontFamily: "'Courier New',monospace" }}>{todayDate}</span>
+            <span style={{ fontSize: '10px', color: '#555', fontFamily: "'Courier New',monospace" }}>· 每日更新</span>
+          </div>
+
+          {/* Countdown box — most prominent element */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '8px',
+            background: '#1a1a1a', border: '1px solid #333',
+            borderTop: '2px solid #c9a84c',
+            padding: '5px 16px', borderRadius: '2px',
+          }}>
+            <span style={{ fontSize: '10px', color: '#c9a84c', fontFamily: "'Courier New',monospace", letterSpacing: '0.12em', textTransform: 'uppercase' }}>下次更新</span>
             <span style={{
-              display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%',
-              background: '#cc0000', animation: 'live-dot 1.5s ease-in-out infinite',
-              flexShrink: 0,
-            }} />
-            <span style={{ fontSize: '12px', color: '#cc0000', fontFamily: "'Courier New',monospace", fontWeight: 700, letterSpacing: '0.12em' }}>
-              LIVE
-            </span>
-            <span style={{ fontSize: '12px', color: '#888', fontFamily: "'Courier New',monospace" }}>
-              {todayDate}
-            </span>
-            <span style={{ fontSize: '11px', color: '#555', fontFamily: "'Courier New',monospace", letterSpacing: '0.08em' }}>
-              · 每日更新
-            </span>
+              fontFamily: "'Courier New',monospace",
+              fontSize: 'clamp(1.1rem,3.5vw,1.6rem)',
+              fontWeight: 900,
+              color: '#fff',
+              letterSpacing: '0.08em',
+              fontVariantNumeric: 'tabular-nums',
+            }}>{countdown}</span>
+            <span style={{ fontSize: '10px', color: '#555', fontFamily: "'Courier New',monospace" }}>06:00 TST</span>
           </div>
         </header>
 
