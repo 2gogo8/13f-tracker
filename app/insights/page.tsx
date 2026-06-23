@@ -176,7 +176,7 @@ export default function InsightsPage() {
 
   const getLabel = (s: Summary, i: number) => {
     const raw = s.topic || s.tags[0] || `話題${i + 1}`;
-    return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 8) || `話題${i + 1}`;
+    return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 10) || `話題${i + 1}`;
   };
 
   const totalNavPages = Math.ceil(summaries.length / NAV_PER_PAGE);
