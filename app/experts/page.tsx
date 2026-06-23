@@ -23,6 +23,18 @@ interface Expert {
   updatedAt: string;
 }
 
+interface InsightSummary {
+  _id: string;
+  tags: string[];
+  summary: {
+    timelineAnalysis: string;
+    keyNumbers: string;
+    predictionVsReality: string;
+  };
+  expertCount: number;
+  publishedAt: string;
+}
+
 type ModalMode = 'create' | 'edit';
 
 export default function ExpertsPage() {
@@ -39,6 +51,13 @@ export default function ExpertsPage() {
   const [editingExpert, setEditingExpert] = useState<Expert | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Insight generation state
+  const [insightTags, setInsightTags] = useState<string[]>([]);
+  const [insightInput, setInsightInput] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generatedInsight, setGeneratedInsight] = useState<InsightSummary | null>(null);
+  const [insightError, setInsightError] = useState<string | null>(null);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -354,6 +373,142 @@ export default function ExpertsPage() {
 
         <div className="text-center mt-8 text-sm text-gray-400">
           共 {filtered.length} 位專家
+        </div>
+
+        {/* ── Insight Generation Section ── */}
+        <div className="mt-16 pt-12 border-t border-gray-200">
+          <h2 className="font-serif text-2xl md:text-3xl font-bold mb-2 text-center">
+            <span className="gradient-text">關鍵字分析</span>
+          </h2>
+          <p className="text-center text-gray-400 text-sm mb-8">輸入關鍵字，AI 將從專家訪談中生成結構化摘要</p>
+
+          {/* Tag input */}
+          <div className="apple-card p-6">
+            <label className="block text-xs font-medium text-gray-500 mb-2">關鍵字標籤</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {insightTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium"
+                >
+                  {tag}
+                  <button
+                    onClick={() => setInsightTags(insightTags.filter((t) => t !== tag))}
+                    className="ml-0.5 text-primary/60 hover:text-primary text-base leading-none"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="輸入關鍵字後按 Enter..."
+                value={insightInput}
+                onChange={(e) => setInsightInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && insightInput.trim()) {
+                    e.preventDefault();
+                    const tag = insightInput.trim();
+                    if (!insightTags.includes(tag)) {
+                      setInsightTags([...insightTags, tag]);
+                    }
+                    setInsightInput('');
+                  }
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-900 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+              />
+              <button
+                onClick={async () => {
+                  if (insightTags.length === 0) return;
+                  setGenerating(true);
+                  setInsightError(null);
+                  setGeneratedInsight(null);
+                  try {
+                    const res = await fetch('/api/insights/generate', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tags: insightTags, source: 'manual' }),
+                    });
+                    if (!res.ok) {
+                      const err = await res.json();
+                      throw new Error(err.error || '生成失敗');
+                    }
+                    const data = await res.json();
+                    setGeneratedInsight(data);
+                  } catch (err) {
+                    setInsightError(err instanceof Error ? err.message : '生成失敗');
+                  } finally {
+                    setGenerating(false);
+                  }
+                }}
+                disabled={generating || insightTags.length === 0}
+                className="px-6 py-2.5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 shadow-[0_4px_20px_rgba(196,30,58,0.25)] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {generating ? '生成中...' : '🔍 生成摘要'}
+              </button>
+            </div>
+
+            {insightError && (
+              <div className="mt-4 p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+                {insightError}
+              </div>
+            )}
+          </div>
+
+          {/* Generated result */}
+          {generatedInsight && (
+            <div className="mt-6 apple-card p-6 space-y-6">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                {generatedInsight.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2.5 py-0.5 rounded-full bg-primary/8 text-primary text-xs font-medium"
+                  >
+                    {tag}
+                  </span>
+                ))}
+                <span className="text-xs text-gray-400 ml-auto">
+                  {generatedInsight.expertCount} 位專家 · {new Date(generatedInsight.publishedAt).toLocaleDateString('zh-TW')}
+                </span>
+              </div>
+
+              <div>
+                <h4 className="font-serif text-lg font-bold text-gray-900 mb-2">⏱ 時間推論</h4>
+                <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+                  {generatedInsight.summary.timelineAnalysis}
+                </div>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              <div>
+                <h4 className="font-serif text-lg font-bold text-gray-900 mb-2">📊 關鍵數字</h4>
+                <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+                  {generatedInsight.summary.keyNumbers}
+                </div>
+              </div>
+
+              <hr className="border-gray-100" />
+
+              <div className="border-l-3 border-primary pl-4" style={{ borderLeft: '3px solid #C41E3A' }}>
+                <h4 className="font-serif text-lg font-bold text-gray-900 mb-2">🎯 預測 vs 現實</h4>
+                <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+                  {generatedInsight.summary.predictionVsReality}
+                </div>
+              </div>
+
+              <div className="text-center pt-2">
+                <a
+                  href="/insights"
+                  className="text-sm text-primary hover:text-primary/80 font-medium"
+                >
+                  查看所有公開摘要 →
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
