@@ -29,7 +29,8 @@ export async function POST(request: Request) {
     const result = await db.collection('experts').insertMany(docs);
     return NextResponse.json({ inserted: result.insertedCount });
   } catch (error) {
-    console.error('POST /api/admin/experts error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('POST /api/admin/experts error:', msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
