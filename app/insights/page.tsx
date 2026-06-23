@@ -68,9 +68,9 @@ function renderMarkdown(raw: string) {
     if (/^#{1,3}\s/.test(t))
       return (
         <h3 key={i} style={{
-          fontFamily: '"Noto Sans TC", -apple-system, "PingFang TC", sans-serif',
-          fontSize: '18px', fontWeight: 600, color: '#c0202a',
-          margin: '18px 0 10px', lineHeight: 1.4,
+          fontFamily: '"Noto Serif TC", Georgia, serif',
+          fontSize: '17px', fontWeight: 700, color: '#c0202a',
+          margin: '20px 0 10px', lineHeight: 1.4, letterSpacing: '0.01em',
         }}>
           {t.replace(/^#{1,3}\s+/, '')}
         </h3>
@@ -86,7 +86,7 @@ function renderMarkdown(raw: string) {
         </div>
       );
     return (
-      <p key={i} style={{ marginBottom: '18px', lineHeight: 1.75, fontSize: '17px', color: '#2b2b2e' }}>
+      <p key={i} style={{ marginBottom: '18px', lineHeight: 1.85, fontSize: '16px', color: '#2b2b2e', fontFamily: '"Noto Sans TC","PingFang TC",-apple-system,sans-serif', letterSpacing: '0.01em' }}>
         {t.split('\n').map((line, j, arr) => (
           <span key={j}>{renderInline(line)}{j < arr.length - 1 && <br />}</span>
         ))}
@@ -187,6 +187,10 @@ export default function InsightsPage() {
     if (pageIdx < pages.length - 1) setPageIdx(p => p + 1);
   }, [pageIdx, pages.length]);
 
+  const prevPage = useCallback(() => {
+    if (pageIdx > 0) setPageIdx(p => p - 1);
+  }, [pageIdx]);
+
   const getLabel = (s: Summary, i: number) => {
     const raw = s.topic || s.tags[0] || `話題${i + 1}`;
     return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 12) || `話題${i + 1}`;
@@ -198,7 +202,7 @@ export default function InsightsPage() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500;600;700&display=swap&subset=chinese-traditional');
         * { box-sizing: border-box; }
         html, body { margin: 0; background: #f5f2ec; }
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -292,16 +296,18 @@ export default function InsightsPage() {
                   const isSel = idx === topicIdx;
                   return (
                     <button key={s._id} onClick={() => setTopicIdx(idx)} style={{
-                      flex: 1, padding: '10px 6px', background: 'none', border: 'none',
-                      borderBottom: isSel ? '2px solid #c0202a' : '2px solid transparent',
+                      flex: 1, padding: '11px 8px', background: isSel ? '#fdfbf8' : 'none', border: 'none',
+                      borderBottom: isSel ? '2.5px solid #c0202a' : '2.5px solid transparent',
                       borderRight: relIdx < visibleSummaries.length - 1 ? '1px solid #e3ddd2' : 'none',
-                      color: isSel ? '#1a1a1a' : '#8a8a8f',
-                      fontSize: 'clamp(11px,2.5vw,13px)',
-                      fontFamily: '"Noto Sans TC", sans-serif',
+                      color: isSel ? '#c0202a' : '#8a8a8f',
+                      fontSize: '13px',
+                      fontFamily: '"Noto Sans TC", "PingFang TC", -apple-system, sans-serif',
                       fontWeight: isSel ? 600 : 400,
+                      letterSpacing: '0.02em',
                       cursor: 'pointer', whiteSpace: 'nowrap',
                       overflow: 'hidden', textOverflow: 'ellipsis',
-                      transition: 'all 0.2s',
+                      transition: 'color 0.2s, background 0.2s',
+                      lineHeight: 1.4,
                     }}>
                       {getLabel(s, idx)}
                     </button>
@@ -361,9 +367,10 @@ export default function InsightsPage() {
               <div style={{ flexShrink: 0, padding: '24px 32px 0' }}>
                 {active?.articleTitle && (
                   <h2 style={{
-                    fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, serif',
-                    fontSize: 'clamp(20px, 4vw, 28px)', fontWeight: 700,
-                    color: '#1a1a1a', lineHeight: 1.3, margin: '0 0 12px',
+                    fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, "Times New Roman", serif',
+                    fontSize: 'clamp(18px, 3.5vw, 26px)', fontWeight: 700,
+                    color: '#1a1a1a', lineHeight: 1.35, margin: '0 0 12px',
+                    letterSpacing: '-0.01em',
                   }}>
                     {active.articleTitle}
                   </h2>
@@ -417,30 +424,48 @@ export default function InsightsPage() {
           )}
         </main>
 
-        {/* ── Continue button ── */}
-        {pageDone && !isLastPage && !loading && summaries.length > 0 && (
-          <div onClick={nextPage} style={{
+        {/* ── Prev / Next page buttons ── */}
+        {pageDone && !loading && summaries.length > 0 && (pageIdx > 0 || !isLastPage) && (
+          <div style={{
             position: 'fixed', bottom: 0, left: 0, right: 0,
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '12px',
             paddingTop: '40px',
-            paddingBottom: 'max(28px, calc(env(safe-area-inset-bottom, 0px) + 16px))',
-            background: 'linear-gradient(transparent, #f5f2ec 50%)',
-            zIndex: 9999, cursor: 'pointer',
+            paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 12px))',
+            background: 'linear-gradient(transparent, #f5f2ec 55%)',
+            zIndex: 9999,
           }}>
-            <button style={{
-              background: '#c0202a', color: '#ffffff',
-              border: 'none', borderRadius: '4px',
-              padding: '13px 40px',
-              fontFamily: '"Noto Sans TC", sans-serif',
-              fontSize: '15px', fontWeight: 600,
-              letterSpacing: '0.06em',
-              cursor: 'pointer',
-              animation: 'cta-pulse 1.4s ease-in-out infinite',
-            }}>
-              繼續閱讀 ▶
-            </button>
-            <div style={{ marginTop: '6px', fontSize: '11px', color: '#8a8a8f', letterSpacing: '0.15em' }}>
-              TAP TO CONTINUE
+            {/* Prev page */}
+            {pageIdx > 0 && (
+              <button onClick={prevPage} style={{
+                background: '#ffffff', color: '#2b2b2e',
+                border: '1.5px solid #e3ddd2', borderRadius: '4px',
+                padding: '11px 24px',
+                fontFamily: '"Noto Sans TC", sans-serif',
+                fontSize: '14px', fontWeight: 500,
+                letterSpacing: '0.04em', cursor: 'pointer',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                transition: 'border-color 0.2s',
+              }}>
+                ◀ 上一頁
+              </button>
+            )}
+            {/* Next page */}
+            {!isLastPage && (
+              <button onClick={nextPage} style={{
+                background: '#c0202a', color: '#ffffff',
+                border: 'none', borderRadius: '4px',
+                padding: '12px 32px',
+                fontFamily: '"Noto Sans TC", sans-serif',
+                fontSize: '15px', fontWeight: 600,
+                letterSpacing: '0.06em', cursor: 'pointer',
+                animation: 'cta-pulse 1.4s ease-in-out infinite',
+                boxShadow: '0 2px 8px rgba(192,32,42,0.25)',
+              }}>
+                繼續閱讀 ▶
+              </button>
+            )}
+            <div style={{ position: 'absolute', bottom: '6px', left: 0, right: 0, textAlign: 'center', fontSize: '10px', color: '#c0c0c0', letterSpacing: '0.15em' }}>
+              {pageIdx + 1} / {pages.length}
             </div>
           </div>
         )}
