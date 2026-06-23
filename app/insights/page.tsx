@@ -209,7 +209,8 @@ export default function InsightsPage() {
     <>
       <style>{`
         * { box-sizing: border-box; }
-        body { margin: 0; background: #111111; }
+        html, body { margin: 0; background: #111111; height: 100%; }
+        body { padding-bottom: env(safe-area-inset-bottom, 0px); }
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes gold-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(0.97)} }
         @keyframes live-dot { 0%,100%{opacity:1} 50%{opacity:0.2} }
@@ -351,7 +352,7 @@ export default function InsightsPage() {
         )}
 
         {/* Article area */}
-        <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '8px 12px', display: 'flex', flexDirection: 'column' }}>
+        <main style={{ flex: 1, overflow: 'hidden', maxWidth: '980px', width: '100%', margin: '0 auto', padding: '8px 12px 0', display: 'flex', flexDirection: 'column' }}>
           {loading ? (
             <div style={{ textAlign: 'center', paddingTop: '4rem', color: '#555' }}>載入情報中...</div>
           ) : summaries.length === 0 ? (
@@ -375,7 +376,7 @@ export default function InsightsPage() {
               {/* Content */}
               <div
                 onClick={!pageDone ? skipPage : undefined}
-                style={{ flex: 1, padding: '0 16px 8px', overflow: 'hidden', cursor: !pageDone ? 'pointer' : 'default' }}
+                style={{ flex: 1, padding: '0 16px', paddingBottom: 'max(80px, calc(env(safe-area-inset-bottom, 0px) + 80px))', overflow: 'hidden', cursor: !pageDone ? 'pointer' : 'default' }}
               >
                 {renderMarkdown(displayed)}
                 {!pageDone && (
@@ -394,7 +395,8 @@ export default function InsightsPage() {
               position: 'fixed',
               bottom: 0, left: 0, right: 0,
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              padding: '48px 0 32px',
+              paddingTop: '48px',
+              paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 20px))',
               background: 'linear-gradient(transparent, #111111 40%)',
               zIndex: 9999,
               cursor: 'pointer',
