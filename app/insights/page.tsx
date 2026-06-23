@@ -12,6 +12,8 @@ interface Summary {
     keyNumbers: string;
     predictionVsReality: string;
   };
+  article?: string;
+  articleTitle?: string;
   expertCount: number;
   publishedAt: string;
   createdAt: string;
@@ -122,6 +124,8 @@ function SummaryCard({ summary }: { summary: Summary }) {
     day: 'numeric',
   });
 
+  const hasArticle = !!summary.article;
+
   return (
     <article
       style={{
@@ -170,31 +174,58 @@ function SummaryCard({ summary }: { summary: Summary }) {
         </span>
       </div>
 
-      {/* Timeline Analysis */}
-      <SummarySection
-        icon="⏱"
-        title="時間推論"
-        content={summary.summary.timelineAnalysis}
-      />
-
-      <Divider />
-
-      {/* Key Numbers */}
-      <SummarySection
-        icon="📊"
-        title="關鍵數字"
-        content={summary.summary.keyNumbers}
-      />
-
-      <Divider />
-
-      {/* Prediction vs Reality */}
-      <SummarySection
-        icon="🎯"
-        title="預測 vs 現實"
-        content={summary.summary.predictionVsReality}
-        highlight
-      />
+      {hasArticle ? (
+        /* Article format */
+        <div>
+          {summary.articleTitle && (
+            <h2
+              style={{
+                fontFamily: 'Georgia, "Playfair Display", serif',
+                fontSize: '1.75rem',
+                fontWeight: 700,
+                color: '#1A1A1A',
+                lineHeight: 1.3,
+                letterSpacing: '-0.01em',
+                marginBottom: '1.5rem',
+              }}
+            >
+              {summary.articleTitle}
+            </h2>
+          )}
+          <div
+            className="article-content"
+            style={{
+              fontSize: '0.95rem',
+              lineHeight: 1.9,
+              color: '#333',
+            }}
+          >
+            {renderArticleMarkdown(summary.article!)}
+          </div>
+        </div>
+      ) : (
+        /* Legacy 3-section format */
+        <>
+          <SummarySection
+            icon="⏱"
+            title="時間推論"
+            content={summary.summary.timelineAnalysis}
+          />
+          <Divider />
+          <SummarySection
+            icon="📊"
+            title="關鍵數字"
+            content={summary.summary.keyNumbers}
+          />
+          <Divider />
+          <SummarySection
+            icon="🎯"
+            title="預測 vs 現實"
+            content={summary.summary.predictionVsReality}
+            highlight
+          />
+        </>
+      )}
     </article>
   );
 }
@@ -261,6 +292,122 @@ function Divider() {
       }}
     />
   );
+}
+
+/** Render article-format markdown with headings, bold, hr, paragraphs */
+function renderArticleMarkdown(text: string) {
+  if (!text) return null;
+
+  // Split into blocks by double newline or --- separator
+  const blocks = text.split(/\n\n+/);
+
+  return blocks.map((block, i) => {
+    const trimmed = block.trim();
+    if (!trimmed) return null;
+
+    // Horizontal rule
+    if (/^-{3,}$/.test(trimmed)) {
+      return (
+        <hr
+          key={i}
+          style={{
+            border: 'none',
+            borderTop: '1px solid #E0DDD8',
+            margin: '1.75rem 0',
+          }}
+        />
+      );
+    }
+
+    // ## Heading → h3 style with subtle separator
+    if (trimmed.startsWith('## ')) {
+      return (
+        <div key={i}>
+          <hr
+            style={{
+              border: 'none',
+              borderTop: '1px solid #F0EEE9',
+              margin: '1.75rem 0 1rem',
+            }}
+          />
+          <h3
+            style={{
+              fontFamily: 'Georgia, "Playfair Display", serif',
+              fontSize: '1.2rem',
+              fontWeight: 700,
+              color: '#1A1A1A',
+              marginBottom: '0.75rem',
+            }}
+          >
+            {trimmed.replace(/^##\s+/, '')}
+          </h3>
+        </div>
+      );
+    }
+
+    // # Heading → h2 style
+    if (trimmed.startsWith('# ')) {
+      return (
+        <h3
+          key={i}
+          style={{
+            fontFamily: 'Georgia, "Playfair Display", serif',
+            fontSize: '1.3rem',
+            fontWeight: 700,
+            color: '#1A1A1A',
+            marginBottom: '0.75rem',
+            marginTop: '1.5rem',
+          }}
+        >
+          {trimmed.replace(/^#\s+/, '')}
+        </h3>
+      );
+    }
+
+    // ### Heading
+    if (trimmed.startsWith('### ')) {
+      return (
+        <h4
+          key={i}
+          style={{
+            fontFamily: 'Georgia, "Playfair Display", serif',
+            fontSize: '1.05rem',
+            fontWeight: 700,
+            color: '#1A1A1A',
+            marginBottom: '0.5rem',
+            marginTop: '1.25rem',
+          }}
+        >
+          {trimmed.replace(/^###\s+/, '')}
+        </h4>
+      );
+    }
+
+    // Paragraph: handle inline bold and line breaks
+    const lines = trimmed.split('\n');
+    return (
+      <p key={i} style={{ marginBottom: '1rem' }}>
+        {lines.map((line, j) => {
+          const parts = line.split(/(\*\*[^*]+\*\*)/).map((part, k) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return (
+                <strong key={k} style={{ color: '#1A1A1A', fontWeight: 600 }}>
+                  {part.slice(2, -2)}
+                </strong>
+              );
+            }
+            return part;
+          });
+          return (
+            <span key={j}>
+              {parts}
+              {j < lines.length - 1 && <br />}
+            </span>
+          );
+        })}
+      </p>
+    );
+  });
 }
 
 /** Minimal markdown-like rendering for bold and list items */
