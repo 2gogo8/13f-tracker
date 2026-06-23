@@ -16,7 +16,7 @@ interface Summary {
 }
 
 /* ── Split article into pages by char count ── */
-function splitIntoPages(text: string, limit = 1400): string[] {
+function splitIntoPages(text: string, limit = 600): string[] {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
   const pages: string[] = [];
   let cur = '';
@@ -86,7 +86,7 @@ function charDelay(c: string) {
 
 /* ── Paged Typewriter Component ── */
 function PagedView({ article, title, date }: { article: string; title?: string; date: string }) {
-  const pages = splitIntoPages(article, 1400);
+  const pages = splitIntoPages(article, 600);
   const [pageIdx, setPageIdx] = useState(0);
   const [displayed, setDisplayed] = useState('');
   const [charIdx, setCharIdx] = useState(0);
