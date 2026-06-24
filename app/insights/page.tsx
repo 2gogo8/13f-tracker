@@ -193,7 +193,7 @@ export default function InsightsPage() {
   const articleContent = active
     ? (active.article || [active.summary?.timelineAnalysis, active.summary?.keyNumbers, active.summary?.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
     : '';
-  const pages = splitIntoPages(articleContent, isMobile ? 130 : 700);
+  const pages = splitIntoPages(articleContent, isMobile ? 240 : 700);
   const isLastPage = pageIdx >= pages.length - 1;
 
   useEffect(() => {
@@ -259,6 +259,10 @@ export default function InsightsPage() {
         @keyframes cta-pulse { 0%,100%{box-shadow:0 2px 12px rgba(192,32,42,0.35)} 50%{box-shadow:0 4px 20px rgba(192,32,42,0.6)} }
         button:focus { outline: none; }
         ::-webkit-scrollbar { display: none; }
+        @media (max-width: 1099px) {
+          .mobile-reader p { font-size: 16px !important; line-height: 1.7 !important; margin-bottom: 12px !important; }
+          .mobile-reader h3 { font-size: 17px !important; margin: 10px 0 6px !important; }
+        }
       `}</style>
 
       <div style={{
@@ -450,6 +454,7 @@ export default function InsightsPage() {
               {/* Content */}
               <div
                 onClick={!pageDone ? skipPage : undefined}
+                className={isMobile ? 'mobile-reader' : ''}
                 style={{
                   flex: isMobile ? undefined : 1, padding: isMobile ? '12px 14px' : '20px 32px', overflow: isMobile ? 'visible' : 'hidden',
                   cursor: !pageDone ? 'pointer' : 'default',
@@ -484,7 +489,7 @@ export default function InsightsPage() {
             justifyContent: 'center',
             alignItems: isMobile ? 'center' : 'flex-end',
             gap: '12px',
-            padding: isMobile ? '16px 16px 24px' : undefined,
+            padding: isMobile ? '10px 16px 16px' : undefined,
             paddingTop: isMobile ? undefined : '40px',
             paddingBottom: isMobile ? undefined : 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 12px))',
             background: isMobile ? 'none' : 'linear-gradient(transparent, #f5f2ec 55%)',
