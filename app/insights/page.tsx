@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import JGPicksSidebar from '@/components/JGPicksSidebar';
+import { getTopicLabel, getJgTitle, getSourceLabel } from '@/lib/topic-mapping';
 
 const BUILD_TIME = "2026-06-24T23:00:00+08:00";
 
@@ -407,7 +408,9 @@ export default function InsightsPage() {
 
   const getLabel = (s: Summary, i: number) => {
     const raw = s.topic || s.tags[0] || `話題${i + 1}`;
-    return raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 12) || `話題${i + 1}`;
+    const fallback = raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 12) || `話題${i + 1}`;
+    // Use topicLabel from mapping (e.g. '私募市場破牆') instead of source name
+    return getTopicLabel(s.topic || '', fallback);
   };
 
   const totalNavPages = Math.ceil(summaries.length / NAV_PER_PAGE);
@@ -436,7 +439,7 @@ export default function InsightsPage() {
             maxHeight: isMobile ? '130px' : undefined,
             overflow: isMobile ? 'hidden' : undefined,
           }}>
-            {active?.articleTitle && (
+            {(active?.articleTitle || active?.topic) && (
               <h2 style={{
                 fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, "Times New Roman", serif',
                 fontSize: isMobile ? '18px' : 'clamp(20px, 5vw, 26px)', fontWeight: 700,
@@ -449,10 +452,12 @@ export default function InsightsPage() {
                   overflow: 'hidden',
                 } : {}),
               }}>
-                {active.articleTitle}
+                {/* jgTitle takes priority; fallback to original articleTitle */}
+                {getJgTitle(active?.topic || '', active?.articleTitle || '')}
               </h2>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              {/* topicLabel badge (replaces source name as primary nav label) */}
               {active?.topic && (
                 <span style={{
                   fontSize: '12px', color: '#c0202a', fontWeight: 600,
@@ -465,7 +470,17 @@ export default function InsightsPage() {
                     display: 'inline-block',
                   } : {}),
                 }}>
-                  {active.topic.split('·')[0]}
+                  {getTopicLabel(active.topic, active.topic.split('·')[0])}
+                </span>
+              )}
+              {/* source metadata badge — demoted, small, grey */}
+              {active?.topic && getSourceLabel(active.topic) && (
+                <span style={{
+                  fontSize: '11px', color: '#8a8a8f', fontWeight: 400,
+                  background: 'rgba(138,138,143,0.08)', padding: '2px 7px', borderRadius: '2px',
+                  border: '1px solid rgba(138,138,143,0.18)',
+                }}>
+                  來源：{getSourceLabel(active.topic)}
                 </span>
               )}
               <span style={{ fontSize: '13px', color: '#8a8a8f' }}>
