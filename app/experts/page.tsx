@@ -48,6 +48,10 @@ export default function ExpertsPage() {
   const [channelsLoading, setChannelsLoading] = useState(false);
   const [newChannelUrl, setNewChannelUrl] = useState('');
   const [addingChannel, setAddingChannel] = useState(false);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkInput, setBulkInput] = useState('');
+  const [bulkAdding, setBulkAdding] = useState(false);
 
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +105,56 @@ export default function ExpertsPage() {
       setChannelsLoading(false);
     }
   }, []);
+
+  const bulkAddChannels = async () => {
+    const urls = bulkInput.split('\n').map(u => u.trim()).filter(Boolean);
+    if (urls.length === 0) return;
+    setBulkAdding(true);
+    try {
+      const results = await Promise.allSettled(
+        urls.map(url =>
+          fetch('/api/channels', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          }).then(r => r.json())
+        )
+      );
+      let success = 0, duplicate = 0, failed = 0;
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          if (r.value.duplicate) duplicate++;
+          else if (r.value.ok) success++;
+          else failed++;
+        } else {
+          failed++;
+        }
+      }
+      setBulkInput('');
+      fetchChannels();
+      alert(`✅ 成功新增 ${success} 個 / ⚠️ ${duplicate} 個重複 / ❌ ${failed} 個失敗`);
+    } catch (err) {
+      console.error('Bulk add failed:', err);
+    } finally {
+      setBulkAdding(false);
+    }
+  };
+
+  const bulkDeleteChannels = async () => {
+    if (selectedUrls.size === 0) return;
+    if (!confirm(`確定要刪除 ${selectedUrls.size} 個頻道嗎？`)) return;
+    try {
+      await Promise.allSettled(
+        [...selectedUrls].map(url =>
+          fetch(`/api/channels?url=${encodeURIComponent(url)}`, { method: 'DELETE' })
+        )
+      );
+      setSelectedUrls(new Set());
+      fetchChannels();
+    } catch (err) {
+      console.error('Bulk delete failed:', err);
+    }
+  };
 
   const addChannel = async () => {
     if (!newChannelUrl.trim()) return;
@@ -352,27 +406,107 @@ export default function ExpertsPage() {
 
         {activeTab === 'channels' && (
           <div>
-            {/* URL input */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-              <input
-                value={newChannelUrl}
-                onChange={e => setNewChannelUrl(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addChannel()}
-                placeholder="貼上 YouTube 頻道或 Podcast URL..."
-                style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid #e3ddd2', fontSize: '14px' }}
-              />
+            {/* Mode toggle */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
               <button
-                onClick={addChannel}
-                disabled={addingChannel || !newChannelUrl.trim()}
+                onClick={() => setBulkMode(false)}
                 style={{
-                  padding: '10px 20px', background: '#c0202a', color: '#fff',
-                  border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
-                  opacity: addingChannel ? 0.6 : 1,
+                  padding: '6px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                  background: !bulkMode ? '#c0202a' : '#f0ede8',
+                  color: !bulkMode ? '#fff' : '#555',
+                  fontWeight: 600, fontSize: '13px',
                 }}
-              >
-                {addingChannel ? '新增中...' : '+ 新增頻道'}
-              </button>
+              >單一新增</button>
+              <button
+                onClick={() => setBulkMode(true)}
+                style={{
+                  padding: '6px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+                  background: bulkMode ? '#c0202a' : '#f0ede8',
+                  color: bulkMode ? '#fff' : '#555',
+                  fontWeight: 600, fontSize: '13px',
+                }}
+              >批量新增</button>
             </div>
+
+            {/* Single add */}
+            {!bulkMode && (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                <input
+                  value={newChannelUrl}
+                  onChange={e => setNewChannelUrl(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addChannel()}
+                  placeholder="貼上 YouTube 頻道或 Podcast URL..."
+                  style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid #e3ddd2', fontSize: '14px' }}
+                />
+                <button
+                  onClick={addChannel}
+                  disabled={addingChannel || !newChannelUrl.trim()}
+                  style={{
+                    padding: '10px 20px', background: '#c0202a', color: '#fff',
+                    border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
+                    opacity: addingChannel ? 0.6 : 1,
+                  }}
+                >
+                  {addingChannel ? '新增中...' : '+ 新增頻道'}
+                </button>
+              </div>
+            )}
+
+            {/* Bulk add */}
+            {bulkMode && (
+              <div style={{ marginBottom: '24px' }}>
+                <textarea
+                  value={bulkInput}
+                  onChange={e => setBulkInput(e.target.value)}
+                  placeholder={'每行一個 URL，例如：\nhttps://www.youtube.com/@example\nhttps://feeds.example.com/podcast'}
+                  rows={5}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #e3ddd2', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box' }}
+                />
+                <button
+                  onClick={bulkAddChannels}
+                  disabled={bulkAdding || !bulkInput.trim()}
+                  style={{
+                    marginTop: '8px', padding: '10px 20px', background: '#c0202a', color: '#fff',
+                    border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
+                    opacity: bulkAdding ? 0.6 : 1,
+                  }}
+                >
+                  {bulkAdding ? '新增中...' : '批量新增'}
+                </button>
+              </div>
+            )}
+
+            {/* Bulk delete header */}
+            {channels.filter(c => c.active !== false).length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: '#555' }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedUrls.size > 0 && selectedUrls.size === channels.filter(c => c.active !== false).length}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedUrls(new Set(channels.filter(c => c.active !== false).map(c => c.url)));
+                      } else {
+                        setSelectedUrls(new Set());
+                      }
+                    }}
+                  />
+                  全選
+                </label>
+                <button
+                  onClick={bulkDeleteChannels}
+                  disabled={selectedUrls.size === 0}
+                  style={{
+                    padding: '6px 14px', background: '#dc2626', color: '#fff',
+                    border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
+                    fontSize: '13px',
+                    opacity: selectedUrls.size === 0 ? 0.4 : 1,
+                  }}
+                >
+                  刪除選取 ({selectedUrls.size})
+                </button>
+              </div>
+            )}
 
             {/* Channel list */}
             {channelsLoading ? (
@@ -384,6 +518,17 @@ export default function ExpertsPage() {
                     background: '#fff', border: '1px solid #e3ddd2', borderRadius: '8px',
                     padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px',
                   }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedUrls.has(ch.url)}
+                      onChange={e => {
+                        const next = new Set(selectedUrls);
+                        if (e.target.checked) next.add(ch.url);
+                        else next.delete(ch.url);
+                        setSelectedUrls(next);
+                      }}
+                      style={{ flexShrink: 0 }}
+                    />
                     <span style={{ fontSize: '20px' }}>{ch.type === 'youtube' ? '▶️' : '🎙'}</span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 700, fontSize: '14px' }}>{ch.name !== ch.url ? ch.name : (ch.short || ch.url)}</div>
