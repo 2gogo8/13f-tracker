@@ -56,8 +56,8 @@ export default function JGPicksSidebar() {
         position: 'fixed',
         top: '50%',
         transform: 'translateY(-50%)',
-        left: 'calc(50% - 360px - 236px - 12px)',
-        width: '228px',
+        left: '8px',
+        width: 'calc(50% - 360px - 16px)',
         zIndex: 100,
         background: '#ffffff',
         borderRadius: '8px',
@@ -177,7 +177,7 @@ export default function JGPicksSidebar() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
+                  gap: '6px',
                   padding: '7px 10px',
                   cursor: 'pointer',
                   transition: 'background 0.15s',
@@ -185,7 +185,7 @@ export default function JGPicksSidebar() {
                 onMouseEnter={e => (e.currentTarget.style.background = '#f8f6f2')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                <div>
+                <div style={{ flexShrink: 0 }}>
                   <div
                     style={{
                       fontSize: '13px',
@@ -197,12 +197,16 @@ export default function JGPicksSidebar() {
                   >
                     {pick.symbol}
                   </div>
-                  <div style={{ fontSize: '10px', color: '#999', marginTop: '1px' }}>
+                  <div style={{ fontSize: '9px', color: '#999', marginTop: '1px' }}>
                     {formatDate(pick.first_date)}
                   </div>
                 </div>
+                <div style={{ flex: 1, fontSize: '10px', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: '4px' }}>
+                  {pick.name || ''}
+                </div>
                 <div
                   style={{
+                    flexShrink: 0,
                     fontSize: '12px',
                     fontWeight: 700,
                     color: pctColor,

@@ -561,7 +561,8 @@ export default function InsightsPage() {
             /* ── DESKTOP: both thumbnails stacked on RIGHT gutter ── */
             <div style={{
               position: 'fixed', top: '50%', transform: 'translateY(-50%)',
-              right: 'calc(50% - 360px - 236px - 12px)',
+              right: '8px',
+              width: 'calc(50% - 360px - 16px)',
               display: 'flex', flexDirection: 'column', gap: '10px',
               zIndex: 100,
             }}>
@@ -569,7 +570,7 @@ export default function InsightsPage() {
                 className="crash-side-thumb"
                 onClick={() => setCrashModal({ stocks: [], idx: 0, group: 1 })}
                 style={{
-                  width: '228px', cursor: 'pointer',
+                  width: '100%', cursor: 'pointer',
                   background: '#fff', borderRadius: '8px',
                   boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
                   border: '1px solid #e3ddd2', overflow: 'hidden',
@@ -586,7 +587,7 @@ export default function InsightsPage() {
                 className="crash-side-thumb-right"
                 onClick={() => setCrashModal({ stocks: [], idx: 0, group: 2 })}
                 style={{
-                  width: '228px', cursor: 'pointer',
+                  width: '100%', cursor: 'pointer',
                   background: '#fff', borderRadius: '8px',
                   boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
                   border: '1px solid #e3ddd2', overflow: 'hidden',
