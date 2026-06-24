@@ -193,7 +193,7 @@ export default function InsightsPage() {
   const articleContent = active
     ? (active.article || [active.summary?.timelineAnalysis, active.summary?.keyNumbers, active.summary?.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
     : '';
-  const pages = splitIntoPages(articleContent, 700);
+  const pages = splitIntoPages(articleContent, isMobile ? 300 : 700);
   const isLastPage = pageIdx >= pages.length - 1;
 
   useEffect(() => {
@@ -273,27 +273,27 @@ export default function InsightsPage() {
           flexShrink: 0,
           background: '#ffffff',
           borderBottom: '1px solid #e3ddd2',
-          padding: '14px 20px 12px',
+          padding: isMobile ? '8px 16px 6px' : '14px 20px 12px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         }}>
           {/* Brand row */}
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', justifyContent: 'center', marginBottom: '2px' }}>
             <h1 style={{
               fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, serif',
-              fontSize: '32px', fontWeight: 700, color: '#1a1a1a',
+              fontSize: isMobile ? '20px' : '32px', fontWeight: 700, color: '#1a1a1a',
               margin: 0, lineHeight: 1.2, letterSpacing: '0.02em',
             }}>影子 JG</h1>
-            <span style={{
+            {!isMobile && <span style={{
               fontSize: '11px', color: '#8a8a8f', letterSpacing: '0.1em',
               fontStyle: 'italic',
-            }}>Shadow JG</span>
+            }}>Shadow JG</span>}
           </div>
-          <div style={{ textAlign: 'center', fontSize: '12px', color: '#8a8a8f', marginBottom: '10px', letterSpacing: '0.05em' }}>
+          {!isMobile && <div style={{ textAlign: 'center', fontSize: '12px', color: '#8a8a8f', marginBottom: '10px', letterSpacing: '0.05em' }}>
             市場背後的反向觀察者
-          </div>
+          </div>}
 
           {/* LIVE + Date */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: isMobile ? '4px' : '10px' }}>
             <span style={{
               display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%',
               background: '#c0202a', animation: 'live-dot 1.5s ease-in-out infinite', flexShrink: 0,
@@ -309,15 +309,15 @@ export default function InsightsPage() {
               display: 'inline-flex', alignItems: 'center', gap: '10px',
               background: '#f5f2ec', border: '1px solid #e3ddd2',
               borderTop: '2px solid #c0202a',
-              padding: '6px 18px', borderRadius: '2px',
+              padding: isMobile ? '4px 10px' : '6px 18px', borderRadius: '2px',
             }}>
-              <span style={{ fontSize: '11px', color: '#8a8a8f', letterSpacing: '0.1em' }}>下次更新</span>
+              <span style={{ fontSize: isMobile ? '9px' : '11px', color: '#8a8a8f', letterSpacing: '0.1em' }}>下次更新</span>
               <span style={{
                 fontFamily: '"Noto Serif TC", Georgia, serif',
-                fontSize: '22px', fontWeight: 700, color: '#1a1a1a',
+                fontSize: isMobile ? '14px' : '22px', fontWeight: 700, color: '#1a1a1a',
                 letterSpacing: '0.05em', fontVariantNumeric: 'tabular-nums',
               }}>{countdown}</span>
-              <span style={{ fontSize: '11px', color: '#8a8a8f' }}>06:00 TST</span>
+              <span style={{ fontSize: isMobile ? '9px' : '11px', color: '#8a8a8f' }}>06:00 TST</span>
             </div>
           </div>
         </header>
@@ -413,11 +413,11 @@ export default function InsightsPage() {
               display: 'flex', flexDirection: 'column',
             }}>
               {/* Card header */}
-              <div style={{ flexShrink: 0, padding: '24px 32px 0' }}>
+              <div style={{ flexShrink: 0, padding: isMobile ? '12px 14px 0' : '24px 32px 0' }}>
                 {active?.articleTitle && (
                   <h2 style={{
                     fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, "Times New Roman", serif',
-                    fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 700,
+                    fontSize: isMobile ? '18px' : 'clamp(20px, 5vw, 26px)', fontWeight: 700,
                     color: '#1a1a1a', lineHeight: 1.35, margin: '0 0 12px',
                     letterSpacing: '-0.01em',
                   }}>
@@ -451,7 +451,7 @@ export default function InsightsPage() {
               <div
                 onClick={!pageDone ? skipPage : undefined}
                 style={{
-                  flex: 1, padding: '20px 32px', overflow: 'hidden',
+                  flex: 1, padding: isMobile ? '12px 14px' : '20px 32px', overflow: 'hidden',
                   cursor: !pageDone ? 'pointer' : 'default',
                   display: 'flex', flexDirection: 'column',
                 }}
@@ -467,7 +467,7 @@ export default function InsightsPage() {
                   )}
                 </div>
                 {/* Bottom spacer */}
-                <div style={{ flexShrink: 0, height: '80px' }} />
+                <div style={{ flexShrink: 0, height: isMobile ? '60px' : '80px' }} />
               </div>
             </div>
           )}
