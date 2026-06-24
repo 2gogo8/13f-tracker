@@ -474,7 +474,7 @@ export default function InsightsPage() {
         </main>
 
         {/* ── Prev / Next page buttons ── */}
-        {pageDone && !loading && summaries.length > 0 && (pageIdx > 0 || !isLastPage) && (
+        {pageDone && !loading && summaries.length > 0 && (pageIdx > 0 || !isLastPage || (isLastPage && isMobile)) && (
           <div style={{
             position: isMobile ? 'relative' : 'fixed',
             bottom: isMobile ? 'auto' : 0,
