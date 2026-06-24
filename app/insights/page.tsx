@@ -76,35 +76,69 @@ function splitAtSentences(text: string, maxLen: number): string[] {
   return results.length ? results : [text];
 }
 
+function estimateChunkHeight(chunk: string): number {
+  const isH3 = /^#{1,3}\s/.test(chunk);
+  if (isH3) return MOBILE_H3_EXTRA + MOBILE_PARA_MARGIN;
+  const lines = Math.ceil(chunk.length / MOBILE_CHARS_PER_LINE);
+  return lines * MOBILE_LINE_HEIGHT_PX + MOBILE_PARA_MARGIN;
+}
+
 function splitIntoPagesByHeight(text: string, targetHeight: number): string[] {
   if (targetHeight <= 0) return splitIntoPages(text, 280, 180); // fallback
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
-  const pages: string[] = [];
+
+  // Flatten into chunks
+  const allChunks: string[] = [];
+  for (const para of paragraphs) {
+    const chunks = para.length > 100 ? splitAtSentences(para, 100) : [para];
+    for (const chunk of chunks) allChunks.push(chunk);
+  }
+
+  // Initial split
+  const pageChunks: string[][] = [];
   let currentChunks: string[] = [];
   let currentHeight = 0;
 
-  const estimateHeight = (chunk: string): number => {
-    const isH3 = /^#{1,3}\s/.test(chunk);
-    if (isH3) return MOBILE_H3_EXTRA + MOBILE_PARA_MARGIN;
-    const lines = Math.ceil(chunk.length / MOBILE_CHARS_PER_LINE);
-    return lines * MOBILE_LINE_HEIGHT_PX + MOBILE_PARA_MARGIN;
-  };
+  for (const chunk of allChunks) {
+    const h = estimateChunkHeight(chunk);
+    if (currentHeight + h > targetHeight && currentChunks.length > 0) {
+      pageChunks.push(currentChunks);
+      currentChunks = [chunk];
+      currentHeight = h;
+    } else {
+      currentChunks.push(chunk);
+      currentHeight += h;
+    }
+  }
+  if (currentChunks.length > 0) pageChunks.push(currentChunks);
 
-  for (const para of paragraphs) {
-    const chunks = para.length > 100 ? splitAtSentences(para, 100) : [para];
-    for (const chunk of chunks) {
-      const h = estimateHeight(chunk);
-      if (currentHeight + h > targetHeight && currentChunks.length > 0) {
-        pages.push(currentChunks.join('\n\n'));
-        currentChunks = [chunk];
-        currentHeight = h;
-      } else {
-        currentChunks.push(chunk);
-        currentHeight += h;
+  // Post-process: H3 orphan prevention
+  // If a page ends with an h3 heading, move it to the next page
+  for (let i = 0; i < pageChunks.length - 1; i++) {
+    const chunks = pageChunks[i];
+    if (chunks.length > 1 && /^#{1,3}\s/.test(chunks[chunks.length - 1])) {
+      const orphan = chunks.pop()!;
+      pageChunks[i + 1].unshift(orphan);
+    }
+  }
+
+  // Post-process: Backfill underfilled pages
+  for (let i = 0; i < pageChunks.length - 1; i++) {
+    const chunks = pageChunks[i];
+    const pageH = chunks.reduce((sum, c) => sum + estimateChunkHeight(c), 0);
+    const fillRatio = pageH / targetHeight;
+    if (fillRatio < 0.72 && pageChunks[i + 1].length > 1) {
+      const candidate = pageChunks[i + 1][0];
+      const candidateH = estimateChunkHeight(candidate);
+      // Don't pull if it would leave an orphaned h3 at start of next page
+      const wouldOrphanH3 = pageChunks[i + 1].length === 2 && /^#{1,3}\s/.test(pageChunks[i + 1][1]);
+      if (pageH + candidateH <= targetHeight * 0.95 && !wouldOrphanH3) {
+        chunks.push(pageChunks[i + 1].shift()!);
       }
     }
   }
-  if (currentChunks.length > 0) pages.push(currentChunks.join('\n\n'));
+
+  const pages = pageChunks.map(chunks => chunks.join('\n\n'));
   return pages.length ? pages : [text];
 }
 
@@ -509,6 +543,13 @@ export default function InsightsPage() {
                     <span style={{
                       fontSize: '12px', color: '#c0202a', fontWeight: 600,
                       background: 'rgba(192,32,42,0.08)', padding: '2px 8px', borderRadius: '2px',
+                      ...(isMobile ? {
+                        maxWidth: '120px',
+                        overflow: 'hidden' as const,
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap' as const,
+                        display: 'inline-block',
+                      } : {}),
                     }}>
                       {active.topic.split('·')[0]}
                     </span>
