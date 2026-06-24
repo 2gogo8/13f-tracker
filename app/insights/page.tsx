@@ -37,13 +37,14 @@ function getCountdownTo6AM(): string {
 }
 
 // ── Split pages ───────────────────────────────────────────────────────────────
-function splitIntoPages(text: string, limit = 700): string[] {
+function splitIntoPages(text: string, limit = 700, firstPageLimit?: number): string[] {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
   const pages: string[] = [];
   let cur = '';
   for (const p of paragraphs) {
+    const currentLimit = pages.length === 0 && firstPageLimit ? firstPageLimit : limit;
     const next = cur ? cur + '\n\n' + p : p;
-    if (cur && next.length > limit) { pages.push(cur); cur = p; }
+    if (cur && next.length > currentLimit) { pages.push(cur); cur = p; }
     else { cur = next; }
   }
   if (cur) pages.push(cur);
@@ -193,7 +194,11 @@ export default function InsightsPage() {
   const articleContent = active
     ? (active.article || [active.summary?.timelineAnalysis, active.summary?.keyNumbers, active.summary?.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
     : '';
-  const pages = splitIntoPages(articleContent, isMobile ? 240 : 700);
+  const pages = splitIntoPages(
+    articleContent,
+    isMobile ? 280 : 700,
+    isMobile ? 180 : undefined
+  );
   const isLastPage = pageIdx >= pages.length - 1;
 
   useEffect(() => {
@@ -424,6 +429,12 @@ export default function InsightsPage() {
                     fontSize: isMobile ? '18px' : 'clamp(20px, 5vw, 26px)', fontWeight: 700,
                     color: '#1a1a1a', lineHeight: 1.35, margin: '0 0 12px',
                     letterSpacing: '-0.01em',
+                    ...(isMobile ? {
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical' as const,
+                      overflow: 'hidden',
+                    } : {}),
                   }}>
                     {active.articleTitle}
                   </h2>
