@@ -262,7 +262,7 @@ export default function InsightsPage() {
       `}</style>
 
       <div style={{
-        height: '100svh', backgroundColor: '#f5f2ec',
+        height: isMobile ? 'auto' : '100svh', minHeight: '100svh', backgroundColor: '#f5f2ec',
         display: 'flex', flexDirection: 'column',
         fontFamily: '"Noto Sans TC", -apple-system, "PingFang TC", sans-serif',
         color: '#2b2b2e',
@@ -393,7 +393,7 @@ export default function InsightsPage() {
 
         {/* ── Article area ── */}
         <main style={{
-          flex: 1, overflow: 'hidden',
+          flex: 1, overflow: isMobile ? 'visible' : 'hidden',
           padding: '20px 16px 0',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center',
@@ -405,7 +405,7 @@ export default function InsightsPage() {
           ) : (
             <div style={{
               width: '100%', maxWidth: '720px',
-              flex: 1, overflow: 'hidden',
+              flex: isMobile ? undefined : 1, overflow: isMobile ? 'visible' : 'hidden',
               background: '#ffffff',
               borderLeft: '3px solid #c0202a',
               boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
@@ -451,7 +451,7 @@ export default function InsightsPage() {
               <div
                 onClick={!pageDone ? skipPage : undefined}
                 style={{
-                  flex: 1, padding: isMobile ? '12px 14px' : '20px 32px', overflow: 'hidden',
+                  flex: isMobile ? undefined : 1, padding: isMobile ? '12px 14px' : '20px 32px', overflow: isMobile ? 'visible' : 'hidden',
                   cursor: !pageDone ? 'pointer' : 'default',
                   display: 'flex', flexDirection: 'column',
                 }}
@@ -467,7 +467,7 @@ export default function InsightsPage() {
                   )}
                 </div>
                 {/* Bottom spacer */}
-                <div style={{ flexShrink: 0, height: isMobile ? '60px' : '80px' }} />
+                {!isMobile && <div style={{ flexShrink: 0, height: '80px' }} />}
               </div>
             </div>
           )}
@@ -476,12 +476,19 @@ export default function InsightsPage() {
         {/* ── Prev / Next page buttons ── */}
         {pageDone && !loading && summaries.length > 0 && (pageIdx > 0 || !isLastPage) && (
           <div style={{
-            position: 'fixed', bottom: 0, left: 0, right: 0,
-            display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: '12px',
-            paddingTop: '40px',
-            paddingBottom: 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 12px))',
-            background: 'linear-gradient(transparent, #f5f2ec 55%)',
-            zIndex: 9999,
+            position: isMobile ? 'relative' : 'fixed',
+            bottom: isMobile ? 'auto' : 0,
+            left: isMobile ? 'auto' : 0,
+            right: isMobile ? 'auto' : 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: isMobile ? 'center' : 'flex-end',
+            gap: '12px',
+            padding: isMobile ? '16px 16px 24px' : undefined,
+            paddingTop: isMobile ? undefined : '40px',
+            paddingBottom: isMobile ? undefined : 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 12px))',
+            background: isMobile ? 'none' : 'linear-gradient(transparent, #f5f2ec 55%)',
+            zIndex: isMobile ? 1 : 9999,
           }}>
             {/* Prev page */}
             {pageIdx > 0 && (
@@ -513,9 +520,27 @@ export default function InsightsPage() {
                 繼續閱讀 ▶
               </button>
             )}
-            <div style={{ position: 'absolute', bottom: '6px', left: 0, right: 0, textAlign: 'center', fontSize: '10px', color: '#c0c0c0', letterSpacing: '0.15em' }}>
+            {!isMobile && <div style={{ position: 'absolute', bottom: '6px', left: 0, right: 0, textAlign: 'center', fontSize: '10px', color: '#c0c0c0', letterSpacing: '0.15em' }}>
               {pageIdx + 1} / {pages.length}
-            </div>
+            </div>}
+            {isLastPage && isMobile && (
+              <button
+                onClick={() => {
+                  const el = document.getElementById('chart-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                style={{
+                  background: '#1a1a1a', color: '#fff',
+                  border: 'none', borderRadius: '4px',
+                  padding: '12px 28px',
+                  fontFamily: '"Noto Sans TC", sans-serif',
+                  fontSize: '14px', fontWeight: 600,
+                  letterSpacing: '0.04em', cursor: 'pointer',
+                }}
+              >
+                看線圖 ↓
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -525,7 +550,7 @@ export default function InsightsPage() {
         <>
           {isMobile ? (
             /* ── MOBILE: 2 stacked thumbnails below article ── */
-            <div style={{ maxWidth: '720px', margin: '16px auto 0', padding: '0 16px', width: '100%' }}>
+            <div id="chart-section" style={{ maxWidth: '720px', margin: '16px auto 0', padding: '0 16px', width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: '#c0202a' }}>⚠️ 大跌警報</span>
                 <span style={{ fontSize: '18px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
