@@ -122,19 +122,25 @@ function splitIntoPagesByHeight(text: string, targetHeight: number): string[] {
     }
   }
 
-  // Post-process: Backfill underfilled pages
+  // Post-process: Backfill underfilled pages (loop until filled or no more to pull)
   for (let i = 0; i < pageChunks.length - 1; i++) {
-    const chunks = pageChunks[i];
-    const pageH = chunks.reduce((sum, c) => sum + estimateChunkHeight(c), 0);
-    const fillRatio = pageH / targetHeight;
-    if (fillRatio < 0.72 && pageChunks[i + 1].length > 1) {
+    let pageH = pageChunks[i].reduce((sum, c) => sum + estimateChunkHeight(c), 0);
+    while (pageH / targetHeight < 0.72 && pageChunks[i + 1] && pageChunks[i + 1].length > 1) {
       const candidate = pageChunks[i + 1][0];
       const candidateH = estimateChunkHeight(candidate);
       // Don't pull if it would leave an orphaned h3 at start of next page
       const wouldOrphanH3 = pageChunks[i + 1].length === 2 && /^#{1,3}\s/.test(pageChunks[i + 1][1]);
       if (pageH + candidateH <= targetHeight * 0.95 && !wouldOrphanH3) {
-        chunks.push(pageChunks[i + 1].shift()!);
+        pageChunks[i].push(pageChunks[i + 1].shift()!);
+        pageH += candidateH;
+      } else {
+        break;
       }
+    }
+    // Remove empty pages left by pulling all chunks
+    if (pageChunks[i + 1] && pageChunks[i + 1].length === 0) {
+      pageChunks.splice(i + 1, 1);
+      i--; // re-check current page in case next page also needs backfill
     }
   }
 
