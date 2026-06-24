@@ -41,7 +41,7 @@ const MOBILE_CHARS_PER_LINE = 22;
 const MOBILE_LINE_HEIGHT_PX = 27.2; // 16px * 1.7
 const MOBILE_PARA_MARGIN = 12;
 const MOBILE_H3_EXTRA = 35;
-const MOBILE_LAYOUT_OVERHEAD = 250; // header(80) + nav(44) + cardHeader(110) + action(56) + padding(~60px buffer)
+const MOBILE_LAYOUT_OVERHEAD = 370; // header(100) + nav(56) + mainPad(20) + cardHeader(130) + action(50) + buffer(14)
 
 // ── Split pages ───────────────────────────────────────────────────────────────
 function splitIntoPages(text: string, limit = 700, firstPageLimit?: number): string[] {
