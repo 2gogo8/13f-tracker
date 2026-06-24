@@ -557,17 +557,20 @@ export default function InsightsPage() {
               </div>
             </div>
           ) : (
-            /* ── DESKTOP: fixed thumbnails in left/right gutters ── */
-            <>
+            /* ── DESKTOP: both thumbnails stacked on RIGHT gutter ── */
+            <div style={{
+              position: 'fixed', top: '50%', transform: 'translateY(-50%)',
+              right: 'calc(50% - 360px - 236px - 12px)',
+              display: 'flex', flexDirection: 'column', gap: '10px',
+              zIndex: 100,
+            }}>
               <div
                 className="crash-side-thumb"
                 onClick={() => setCrashModal({ stocks: [], idx: 0, group: 1 })}
                 style={{
-                  position: 'fixed', top: '50%', transform: 'translateY(-50%)',
-                  left: 'calc(50% - 360px - 228px - 16px)',
-                  width: '220px', cursor: 'pointer', zIndex: 100,
+                  width: '228px', cursor: 'pointer',
                   background: '#fff', borderRadius: '8px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                  boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
                   border: '1px solid #e3ddd2', overflow: 'hidden',
                 }}>
                 <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -582,11 +585,9 @@ export default function InsightsPage() {
                 className="crash-side-thumb-right"
                 onClick={() => setCrashModal({ stocks: [], idx: 0, group: 2 })}
                 style={{
-                  position: 'fixed', top: '50%', transform: 'translateY(-50%)',
-                  right: 'calc(50% - 360px - 228px - 16px)',
-                  width: '220px', cursor: 'pointer', zIndex: 100,
+                  width: '228px', cursor: 'pointer',
                   background: '#fff', borderRadius: '8px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+                  boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
                   border: '1px solid #e3ddd2', overflow: 'hidden',
                 }}>
                 <div style={{ padding: '6px 10px', background: '#fafafa', borderBottom: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -596,7 +597,7 @@ export default function InsightsPage() {
                 <img src="/api/public/crash-alert/composite?group=2" alt="crash #6-10"
                   style={{ width: '100%', display: 'block' }} />
               </div>
-            </>
+            </div>
           )}
 
           {/* ── Modal: full-size composite image ── */}
