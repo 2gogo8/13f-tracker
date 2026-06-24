@@ -37,29 +37,26 @@ export async function GET() {
     const symbols = sorted.map(p => p.symbol);
     const priceMap: Record<string, { price: number; name: string }> = {};
 
-    // FMP /stable/quote accepts comma-separated symbols
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
-      const batch = symbols.slice(i, i + BATCH_SIZE).join(',');
-      try {
-        const res = await fetch(
-          `${FMP_BASE_URL}/stable/quote?symbol=${encodeURIComponent(batch)}&apikey=${FMP_API_KEY}`,
-          { next: { revalidate: 300 } }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            for (const q of data) {
-              if (q.symbol && q.price != null) {
-                priceMap[q.symbol] = { price: q.price, name: q.name || q.symbol };
-              }
+    // FMP /stable/quote does NOT support comma-separated — must query one at a time
+    await Promise.all(
+      symbols.map(async (symbol) => {
+        try {
+          const res = await fetch(
+            `${FMP_BASE_URL}/stable/quote?symbol=${symbol}&apikey=${FMP_API_KEY}`,
+            { next: { revalidate: 300 } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const q = Array.isArray(data) ? data[0] : data;
+            if (q && q.symbol && q.price != null) {
+              priceMap[q.symbol] = { price: q.price, name: q.name || q.symbol };
             }
           }
+        } catch (err) {
+          console.error(`FMP fetch error for ${symbol}:`, err);
         }
-      } catch (err) {
-        console.error('FMP batch fetch error:', err);
-      }
-    }
+      })
+    );
 
     // 4. Build result array
     const results: PickResult[] = sorted.map(pick => {
