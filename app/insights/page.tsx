@@ -393,7 +393,7 @@ export default function InsightsPage() {
 
         {/* ── Article area ── */}
         <main style={{
-          flex: 1, overflow: isMobile ? 'visible' : 'hidden',
+          flex: isMobile ? undefined : 1, overflow: isMobile ? 'visible' : 'hidden',
           padding: '20px 16px 0',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center',
