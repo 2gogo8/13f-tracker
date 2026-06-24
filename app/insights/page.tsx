@@ -3,6 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import JGPicksSidebar from '@/components/JGPicksSidebar';
 
+const BUILD_TIME = "2026-06-24T23:00:00+08:00";
+
+
 interface PickResult {
   symbol: string;
   first_date: string;
@@ -229,6 +232,8 @@ export default function InsightsPage() {
   const [crashModal, setCrashModal] = useState<{stocks:{symbol:string;name:string;change:number}[];idx:number;group?:number} | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [windowHeight, setWindowHeight] = useState(0);
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<Record<string, string | number | boolean>>({});
   const [mobilepicks, setMobilepicks] = useState<PickResult[]>([]);
   const [mobilepicksLoading, setMobilepicksLoading] = useState(true);
   const [mobilepicksUpdatedAt, setMobilepicksUpdatedAt] = useState<string | null>(null);
@@ -250,6 +255,21 @@ export default function InsightsPage() {
   useEffect(() => {
     const check = () => {
       setIsMobile(window.innerWidth < 1100);
+      setWindowHeight(window.innerHeight);
+      // Debug mode
+      if (typeof window !== 'undefined' && window.location.search.includes('debug=1')) {
+        setDebugMode(true);
+        setDebugInfo({
+          buildTime: BUILD_TIME,
+          innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
+          visualVPWidth: window.visualViewport?.width ?? 'N/A',
+          devicePixelRatio: window.devicePixelRatio,
+          matchMedia1099: window.matchMedia('(max-width: 1099px)').matches,
+          isMobile: window.innerWidth < 1100,
+          userAgent: navigator.userAgent.slice(0, 80),
+        });
+      }
       setWindowHeight(window.innerHeight);
     };
     check();
@@ -941,6 +961,24 @@ export default function InsightsPage() {
       >
         {isPlaying ? '🔊' : '🎵'}
       </button>
+
+      {/* Debug overlay — only visible when ?debug=1 */}
+      {debugMode && (
+        <div style={{
+          position: 'fixed', top: '8px', left: '8px', right: '8px',
+          background: 'rgba(0,0,0,0.92)', color: '#00ff88',
+          fontFamily: 'monospace', fontSize: '11px', lineHeight: 1.6,
+          padding: '12px 16px', borderRadius: '8px', zIndex: 99999,
+          border: '1px solid #00ff88', maxWidth: '400px',
+        }}>
+          <div style={{ fontWeight: 700, color: '#ffcc00', marginBottom: '4px' }}>🔍 DEBUG MODE</div>
+          {Object.entries(debugInfo).map(([k, v]) => (
+            <div key={k}><span style={{ color: '#aaa' }}>{k}:</span> <span style={{ color: typeof v === 'boolean' ? (v ? '#00ff88' : '#ff4444') : '#fff' }}>{String(v)}</span></div>
+          ))}
+          <div><span style={{ color: '#aaa' }}>layoutBranch:</span> <span style={{ color: '#ffcc00' }}>{isMobile ? 'MOBILE_READER' : 'DESKTOP_GRID'}</span></div>
+          <div><span style={{ color: '#aaa' }}>pages:</span> <span style={{ color: '#fff' }}>{pages.length} (chunk: {isMobile ? `${mobileBodyHeight > 0 ? Math.round(mobileBodyHeight) + 'px' : 'fallback'}` : '700ch'})</span></div>
+        </div>
+      )}
     </>
   );
 }
