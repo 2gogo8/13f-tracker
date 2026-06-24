@@ -36,6 +36,13 @@ function getCountdownTo6AM(): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// ── Mobile reader constants ───────────────────────────────────────────────────
+const MOBILE_CHARS_PER_LINE = 22;
+const MOBILE_LINE_HEIGHT_PX = 27.2; // 16px * 1.7
+const MOBILE_PARA_MARGIN = 12;
+const MOBILE_H3_EXTRA = 35;
+const MOBILE_LAYOUT_OVERHEAD = 250; // header(80) + nav(44) + cardHeader(110) + action(56) + padding(~60px buffer)
+
 // ── Split pages ───────────────────────────────────────────────────────────────
 function splitIntoPages(text: string, limit = 700, firstPageLimit?: number): string[] {
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
@@ -48,6 +55,56 @@ function splitIntoPages(text: string, limit = 700, firstPageLimit?: number): str
     else { cur = next; }
   }
   if (cur) pages.push(cur);
+  return pages.length ? pages : [text];
+}
+
+function splitAtSentences(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) return [text];
+  const results: string[] = [];
+  const sentences = text.split(/(?<=[。！？；])/);
+  let cur = '';
+  for (const s of sentences) {
+    const next = cur + s;
+    if (cur && next.length > maxLen) {
+      results.push(cur.trim());
+      cur = s;
+    } else {
+      cur = next;
+    }
+  }
+  if (cur.trim()) results.push(cur.trim());
+  return results.length ? results : [text];
+}
+
+function splitIntoPagesByHeight(text: string, targetHeight: number): string[] {
+  if (targetHeight <= 0) return splitIntoPages(text, 280, 180); // fallback
+  const paragraphs = text.split(/\n\n+/).filter(Boolean);
+  const pages: string[] = [];
+  let currentChunks: string[] = [];
+  let currentHeight = 0;
+
+  const estimateHeight = (chunk: string): number => {
+    const isH3 = /^#{1,3}\s/.test(chunk);
+    if (isH3) return MOBILE_H3_EXTRA + MOBILE_PARA_MARGIN;
+    const lines = Math.ceil(chunk.length / MOBILE_CHARS_PER_LINE);
+    return lines * MOBILE_LINE_HEIGHT_PX + MOBILE_PARA_MARGIN;
+  };
+
+  for (const para of paragraphs) {
+    const chunks = para.length > 100 ? splitAtSentences(para, 100) : [para];
+    for (const chunk of chunks) {
+      const h = estimateHeight(chunk);
+      if (currentHeight + h > targetHeight && currentChunks.length > 0) {
+        pages.push(currentChunks.join('\n\n'));
+        currentChunks = [chunk];
+        currentHeight = h;
+      } else {
+        currentChunks.push(chunk);
+        currentHeight += h;
+      }
+    }
+  }
+  if (currentChunks.length > 0) pages.push(currentChunks.join('\n\n'));
   return pages.length ? pages : [text];
 }
 
@@ -122,6 +179,7 @@ export default function InsightsPage() {
   const [crashAlert, setCrashAlert] = useState<{ixicChange:number;date:string;composite1:string|null;composite2:string|null;marketLosers:{symbol:string;name:string;change:number}[]} | null>(null);
   const [crashModal, setCrashModal] = useState<{stocks:{symbol:string;name:string;change:number}[];idx:number;group?:number} | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [windowHeight, setWindowHeight] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);  // default on
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -138,7 +196,10 @@ export default function InsightsPage() {
 
   // Detect mobile
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 1100);
+    const check = () => {
+      setIsMobile(window.innerWidth < 1100);
+      setWindowHeight(window.innerHeight);
+    };
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -194,11 +255,10 @@ export default function InsightsPage() {
   const articleContent = active
     ? (active.article || [active.summary?.timelineAnalysis, active.summary?.keyNumbers, active.summary?.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
     : '';
-  const pages = splitIntoPages(
-    articleContent,
-    isMobile ? 280 : 700,
-    isMobile ? 180 : undefined
-  );
+  const mobileBodyHeight = isMobile && windowHeight > 0 ? windowHeight - MOBILE_LAYOUT_OVERHEAD : 0;
+  const pages = isMobile && mobileBodyHeight > 100
+    ? splitIntoPagesByHeight(articleContent, mobileBodyHeight)
+    : splitIntoPages(articleContent, 700);
   const isLastPage = pageIdx >= pages.length - 1;
 
   useEffect(() => {
@@ -422,7 +482,12 @@ export default function InsightsPage() {
               display: 'flex', flexDirection: 'column',
             }}>
               {/* Card header */}
-              <div style={{ flexShrink: 0, padding: isMobile ? '12px 14px 0' : '24px 32px 0' }}>
+              <div style={{
+                flexShrink: 0,
+                padding: isMobile ? '12px 14px 0' : '24px 32px 0',
+                maxHeight: isMobile ? '130px' : undefined,
+                overflow: isMobile ? 'hidden' : undefined,
+              }}>
                 {active?.articleTitle && (
                   <h2 style={{
                     fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, "Times New Roman", serif',
@@ -439,7 +504,7 @@ export default function InsightsPage() {
                     {active.articleTitle}
                   </h2>
                 )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
                   {active?.topic && (
                     <span style={{
                       fontSize: '12px', color: '#c0202a', fontWeight: 600,
@@ -467,7 +532,12 @@ export default function InsightsPage() {
                 onClick={!pageDone ? skipPage : undefined}
                 className={isMobile ? 'mobile-reader' : ''}
                 style={{
-                  flex: isMobile ? undefined : 1, padding: isMobile ? '12px 14px' : '20px 32px', overflow: isMobile ? 'visible' : 'hidden',
+                  flex: isMobile ? undefined : 1,
+                  padding: isMobile ? '12px 14px' : '20px 32px',
+                  overflow: 'hidden',
+                  height: isMobile && mobileBodyHeight > 100 ? `${mobileBodyHeight}px` : undefined,
+                  minHeight: isMobile ? '200px' : undefined,
+                  maxHeight: isMobile ? '600px' : undefined,
                   cursor: !pageDone ? 'pointer' : 'default',
                   display: 'flex', flexDirection: 'column',
                 }}
