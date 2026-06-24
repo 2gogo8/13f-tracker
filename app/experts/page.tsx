@@ -52,6 +52,8 @@ export default function ExpertsPage() {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkInput, setBulkInput] = useState('');
   const [bulkAdding, setBulkAdding] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string | null>(null);
 
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,20 @@ export default function ExpertsPage() {
       setChannelsLoading(false);
     }
   }, []);
+
+  const triggerScan = async () => {
+    setScanning(true);
+    setScanStatus(null);
+    try {
+      const res = await fetch('/api/admin/scan-now', { method: 'POST' });
+      const data = await res.json();
+      setScanStatus(data.ok ? '✅ 已送出，約 15 分鐘內執行' : '❌ 送出失敗');
+    } catch {
+      setScanStatus('❌ 送出失敗');
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const bulkAddChannels = async () => {
     const urls = bulkInput.split('\n').map(u => u.trim()).filter(Boolean);
@@ -406,6 +422,33 @@ export default function ExpertsPage() {
 
         {activeTab === 'channels' && (
           <div>
+            {/* Manual scan trigger */}
+            <div style={{
+              background: '#f5f2ec', border: '1px solid #e3ddd2', borderRadius: '8px',
+              padding: '14px 16px', marginBottom: '20px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '2px' }}>手動執行揄描</div>
+                <div style={{ fontSize: '12px', color: '#888' }}>搜尋 4 個頻道的最新影片，生成內容並上架</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {scanStatus && <span style={{ fontSize: '13px', color: scanStatus.startsWith('✅') ? '#22c55e' : '#ef5350' }}>{scanStatus}</span>}
+                <button
+                  onClick={triggerScan}
+                  disabled={scanning}
+                  style={{
+                    background: '#c0202a', color: '#fff', border: 'none',
+                    borderRadius: '6px', padding: '10px 20px', fontWeight: 600,
+                    fontSize: '14px', cursor: scanning ? 'not-allowed' : 'pointer',
+                    opacity: scanning ? 0.6 : 1,
+                  }}
+                >
+                  {scanning ? '送出中...' : '▶ 立刻揄描'}
+                </button>
+              </div>
+            </div>
+
             {/* Mode toggle */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
               <button
