@@ -374,6 +374,108 @@ export default function InsightsPage() {
   const totalNavPages = Math.ceil(summaries.length / NAV_PER_PAGE);
   const visibleSummaries = summaries.slice(navPage * NAV_PER_PAGE, (navPage + 1) * NAV_PER_PAGE);
 
+  const mainArticleBody = (
+    <>
+      {loading ? (
+        <div style={{ paddingTop: '4rem', color: '#8a8a8f', fontSize: '15px' }}>載入中...</div>
+      ) : summaries.length === 0 ? (
+        <div style={{ paddingTop: '4rem', color: '#8a8a8f', fontSize: '15px' }}>尚無文章</div>
+      ) : (
+        <div style={{
+          width: '100%', maxWidth: '720px',
+          flex: isMobile ? undefined : 1, overflow: isMobile ? 'visible' : 'hidden',
+          background: '#ffffff',
+          borderLeft: '3px solid #c0202a',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          borderRadius: '0 4px 4px 0',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Card header */}
+          <div style={{
+            flexShrink: 0,
+            padding: isMobile ? '12px 14px 0' : '24px 32px 0',
+            maxHeight: isMobile ? '130px' : undefined,
+            overflow: isMobile ? 'hidden' : undefined,
+          }}>
+            {active?.articleTitle && (
+              <h2 style={{
+                fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, "Times New Roman", serif',
+                fontSize: isMobile ? '18px' : 'clamp(20px, 5vw, 26px)', fontWeight: 700,
+                color: '#1a1a1a', lineHeight: 1.35, margin: '0 0 12px',
+                letterSpacing: '-0.01em',
+                ...(isMobile ? {
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical' as const,
+                  overflow: 'hidden',
+                } : {}),
+              }}>
+                {active.articleTitle}
+              </h2>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              {active?.topic && (
+                <span style={{
+                  fontSize: '12px', color: '#c0202a', fontWeight: 600,
+                  background: 'rgba(192,32,42,0.08)', padding: '2px 8px', borderRadius: '2px',
+                  ...(isMobile ? {
+                    maxWidth: '120px',
+                    overflow: 'hidden' as const,
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap' as const,
+                    display: 'inline-block',
+                  } : {}),
+                }}>
+                  {active.topic.split('·')[0]}
+                </span>
+              )}
+              <span style={{ fontSize: '13px', color: '#8a8a8f' }}>
+                {new Date(active?.publishedAt || '').toLocaleDateString('zh-TW', {
+                  timeZone: 'Asia/Taipei', year: 'numeric', month: 'short', day: 'numeric',
+                })}
+              </span>
+              {pages.length > 1 && (
+                <span style={{ fontSize: '13px', color: '#8a8a8f', marginLeft: 'auto' }}>
+                  {pageIdx + 1} / {pages.length}
+                </span>
+              )}
+            </div>
+            <div style={{ height: '1px', background: '#e3ddd2', marginBottom: '0' }} />
+          </div>
+
+          {/* Content */}
+          <div
+            onClick={!pageDone ? skipPage : undefined}
+            className={isMobile ? 'mobile-reader' : ''}
+            style={{
+              flex: isMobile ? undefined : 1,
+              padding: isMobile ? '12px 14px' : '20px 32px',
+              overflow: 'hidden',
+              height: isMobile && mobileBodyHeight > 100 ? `${mobileBodyHeight}px` : undefined,
+              minHeight: isMobile ? '200px' : undefined,
+              maxHeight: isMobile ? '600px' : undefined,
+              cursor: !pageDone ? 'pointer' : 'default',
+              display: 'flex', flexDirection: 'column',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              {renderMarkdown(displayed)}
+              {!pageDone && (
+                <span style={{
+                  display: 'inline-block', width: '2px', height: '18px',
+                  background: '#c0202a', animation: 'cursor-blink 0.8s step-end infinite',
+                  verticalAlign: 'text-bottom', marginLeft: '2px',
+                }} />
+              )}
+            </div>
+            {/* Bottom spacer */}
+            {!isMobile && <div style={{ flexShrink: 0, height: '80px' }} />}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <>
       <style>{`
@@ -388,6 +490,9 @@ export default function InsightsPage() {
         @media (max-width: 1099px) {
           .mobile-reader p { font-size: 16px !important; line-height: 1.7 !important; margin-bottom: 12px !important; }
           .mobile-reader h3 { font-size: 17px !important; margin: 10px 0 6px !important; }
+        }
+        @media (max-width: 1279px) {
+          .desktop-grid-left { display: none; }
         }
       `}</style>
 
@@ -521,111 +626,89 @@ export default function InsightsPage() {
           </nav>
         )}
 
-        {/* ── Article area ── */}
-        <main style={{
-          flex: isMobile ? undefined : 1, overflow: isMobile ? 'visible' : 'hidden',
-          padding: '20px 16px 0',
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center',
-        }}>
-          {loading ? (
-            <div style={{ paddingTop: '4rem', color: '#8a8a8f', fontSize: '15px' }}>載入中...</div>
-          ) : summaries.length === 0 ? (
-            <div style={{ paddingTop: '4rem', color: '#8a8a8f', fontSize: '15px' }}>尚無文章</div>
-          ) : (
-            <div style={{
-              width: '100%', maxWidth: '720px',
-              flex: isMobile ? undefined : 1, overflow: isMobile ? 'visible' : 'hidden',
-              background: '#ffffff',
-              borderLeft: '3px solid #c0202a',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-              borderRadius: '0 4px 4px 0',
-              display: 'flex', flexDirection: 'column',
+        {/* ── Desktop: 3-column CSS grid / Mobile: single-column ── */}
+        {!isMobile ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(200px, 260px) minmax(600px, 780px) minmax(200px, 280px)',
+            gap: '24px',
+            flex: 1,
+            maxWidth: '1440px',
+            width: '100%',
+            margin: '0 auto',
+            padding: '0 16px',
+            overflow: 'hidden',
+          }}>
+            {/* Left column: JGPicksSidebar */}
+            <aside className="desktop-grid-left" style={{
+              position: 'sticky',
+              top: '0',
+              alignSelf: 'start',
+              maxHeight: '100vh',
+              overflowY: 'auto',
+              overflowX: 'hidden',
             }}>
-              {/* Card header */}
-              <div style={{
-                flexShrink: 0,
-                padding: isMobile ? '12px 14px 0' : '24px 32px 0',
-                maxHeight: isMobile ? '130px' : undefined,
-                overflow: isMobile ? 'hidden' : undefined,
-              }}>
-                {active?.articleTitle && (
-                  <h2 style={{
-                    fontFamily: '"Noto Serif TC", "Source Han Serif", Georgia, "Times New Roman", serif',
-                    fontSize: isMobile ? '18px' : 'clamp(20px, 5vw, 26px)', fontWeight: 700,
-                    color: '#1a1a1a', lineHeight: 1.35, margin: '0 0 12px',
-                    letterSpacing: '-0.01em',
-                    ...(isMobile ? {
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical' as const,
-                      overflow: 'hidden',
-                    } : {}),
-                  }}>
-                    {active.articleTitle}
-                  </h2>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                  {active?.topic && (
-                    <span style={{
-                      fontSize: '12px', color: '#c0202a', fontWeight: 600,
-                      background: 'rgba(192,32,42,0.08)', padding: '2px 8px', borderRadius: '2px',
-                      ...(isMobile ? {
-                        maxWidth: '120px',
-                        overflow: 'hidden' as const,
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap' as const,
-                        display: 'inline-block',
-                      } : {}),
-                    }}>
-                      {active.topic.split('·')[0]}
-                    </span>
-                  )}
-                  <span style={{ fontSize: '13px', color: '#8a8a8f' }}>
-                    {new Date(active?.publishedAt || '').toLocaleDateString('zh-TW', {
-                      timeZone: 'Asia/Taipei', year: 'numeric', month: 'short', day: 'numeric',
-                    })}
-                  </span>
-                  {pages.length > 1 && (
-                    <span style={{ fontSize: '13px', color: '#8a8a8f', marginLeft: 'auto' }}>
-                      {pageIdx + 1} / {pages.length}
-                    </span>
-                  )}
-                </div>
-                <div style={{ height: '1px', background: '#e3ddd2', marginBottom: '0' }} />
-              </div>
+              <JGPicksSidebar />
+            </aside>
 
-              {/* Content */}
-              <div
-                onClick={!pageDone ? skipPage : undefined}
-                className={isMobile ? 'mobile-reader' : ''}
-                style={{
-                  flex: isMobile ? undefined : 1,
-                  padding: isMobile ? '12px 14px' : '20px 32px',
-                  overflow: 'hidden',
-                  height: isMobile && mobileBodyHeight > 100 ? `${mobileBodyHeight}px` : undefined,
-                  minHeight: isMobile ? '200px' : undefined,
-                  maxHeight: isMobile ? '600px' : undefined,
-                  cursor: !pageDone ? 'pointer' : 'default',
-                  display: 'flex', flexDirection: 'column',
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  {renderMarkdown(displayed)}
-                  {!pageDone && (
-                    <span style={{
-                      display: 'inline-block', width: '2px', height: '18px',
-                      background: '#c0202a', animation: 'cursor-blink 0.8s step-end infinite',
-                      verticalAlign: 'text-bottom', marginLeft: '2px',
-                    }} />
-                  )}
-                </div>
-                {/* Bottom spacer */}
-                {!isMobile && <div style={{ flexShrink: 0, height: '80px' }} />}
-              </div>
-            </div>
-          )}
-        </main>
+            {/* Center column: article */}
+            <main style={{
+              flex: 'none',
+              overflow: 'hidden',
+              padding: '20px 0 0',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}>
+              {mainArticleBody}
+            </main>
+
+            {/* Right column: crash chart thumbnails */}
+            <aside style={{
+              position: 'sticky',
+              top: '0',
+              alignSelf: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+            }}>
+              {crashAlert && (
+                <>
+                  <div
+                    className="crash-side-thumb"
+                    onClick={() => setCrashModal({ stocks: [], idx: 0, group: 1 })}
+                    style={{ width: '100%', cursor: 'pointer', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 16px rgba(0,0,0,0.12)', border: '1px solid #e3ddd2', overflow: 'hidden' }}>
+                    <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '10px', color: '#c0202a', fontWeight: 700 }}>⚠️ #1-5</span>
+                      <span style={{ fontSize: '11px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
+                      <span style={{ fontSize: '9px', color: '#aaa', marginLeft: 'auto' }}>🔍</span>
+                    </div>
+                    <img src="/api/public/crash-alert/composite?group=1" alt="crash #1-5" style={{ width: '100%', display: 'block' }} />
+                  </div>
+                  <div
+                    className="crash-side-thumb-right"
+                    onClick={() => setCrashModal({ stocks: [], idx: 0, group: 2 })}
+                    style={{ width: '100%', cursor: 'pointer', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 16px rgba(0,0,0,0.12)', border: '1px solid #e3ddd2', overflow: 'hidden' }}>
+                    <div style={{ padding: '6px 10px', background: '#fafafa', borderBottom: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '10px', color: '#8a8a8f', fontWeight: 700 }}>#6-10</span>
+                      <a href="/crash" onClick={e=>e.stopPropagation()} style={{ fontSize: '9px', color: '#c0202a', textDecoration: 'none', marginLeft: 'auto' }}>全部 →</a>
+                    </div>
+                    <img src="/api/public/crash-alert/composite?group=2" alt="crash #6-10" style={{ width: '100%', display: 'block' }} />
+                  </div>
+                </>
+              )}
+            </aside>
+          </div>
+        ) : (
+          <main style={{
+            overflow: 'visible',
+            padding: '20px 16px 0',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center',
+          }}>
+            {mainArticleBody}
+          </main>
+        )}
 
         {/* ── Prev / Next page buttons ── */}
         {pageDone && !loading && summaries.length > 0 && (pageIdx > 0 || !isLastPage || (isLastPage && isMobile)) && (
@@ -802,38 +885,7 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ── Desktop: crash thumbnails fixed on right gutter (only when alert) ── */}
-      {crashAlert && !isMobile && (
-        <div style={{
-          position: 'fixed', top: '50%', transform: 'translateY(-50%)',
-          right: '8px',
-          width: 'calc(50% - 360px - 16px)',
-          display: 'flex', flexDirection: 'column', gap: '10px',
-          zIndex: 100,
-        }}>
-          <div
-            className="crash-side-thumb"
-            onClick={() => setCrashModal({ stocks: [], idx: 0, group: 1 })}
-            style={{ width: '100%', cursor: 'pointer', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 16px rgba(0,0,0,0.12)', border: '1px solid #e3ddd2', overflow: 'hidden' }}>
-            <div style={{ padding: '6px 10px', background: '#fff8f8', borderBottom: '1px solid #f0e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '10px', color: '#c0202a', fontWeight: 700 }}>⚠️ #1-5</span>
-              <span style={{ fontSize: '11px', fontWeight: 900, color: '#ef5350', fontFamily: 'Georgia,serif' }}>{crashAlert.ixicChange.toFixed(2)}%</span>
-              <span style={{ fontSize: '9px', color: '#aaa', marginLeft: 'auto' }}>🔍</span>
-            </div>
-            <img src="/api/public/crash-alert/composite?group=1" alt="crash #1-5" style={{ width: '100%', display: 'block' }} />
-          </div>
-          <div
-            className="crash-side-thumb-right"
-            onClick={() => setCrashModal({ stocks: [], idx: 0, group: 2 })}
-            style={{ width: '100%', cursor: 'pointer', background: '#fff', borderRadius: '8px', boxShadow: '0 2px 16px rgba(0,0,0,0.12)', border: '1px solid #e3ddd2', overflow: 'hidden' }}>
-            <div style={{ padding: '6px 10px', background: '#fafafa', borderBottom: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '10px', color: '#8a8a8f', fontWeight: 700 }}>#6-10</span>
-              <a href="/crash" onClick={e=>e.stopPropagation()} style={{ fontSize: '9px', color: '#c0202a', textDecoration: 'none', marginLeft: 'auto' }}>全部 →</a>
-            </div>
-            <img src="/api/public/crash-alert/composite?group=2" alt="crash #6-10" style={{ width: '100%', display: 'block' }} />
-          </div>
-        </div>
-      )}
+
 
       {/* ── Modal: full-size composite image ── */}
       {crashModal && (
@@ -861,8 +913,7 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* ── JG Picks Sidebar (desktop only) ── */}
-      {!isMobile && <JGPicksSidebar />}
+
 
       {/* Hidden audio element */}
       <audio ref={audioRef} loop preload="none" src="/audio/bg-music.mp3" />

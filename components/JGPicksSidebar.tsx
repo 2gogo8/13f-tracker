@@ -53,12 +53,7 @@ export default function JGPicksSidebar() {
   return (
     <div
       style={{
-        position: 'fixed',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        left: '8px',
-        width: 'calc(50% - 360px - 16px)',
-        zIndex: 100,
+        width: '100%',
         background: '#ffffff',
         borderRadius: '8px',
         boxShadow: '0 2px 16px rgba(0,0,0,0.12)',
