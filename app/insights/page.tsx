@@ -125,7 +125,7 @@ function splitIntoPagesByHeight(text: string, targetHeight: number): string[] {
   // Post-process: Backfill underfilled pages (loop until filled or no more to pull)
   for (let i = 0; i < pageChunks.length - 1; i++) {
     let pageH = pageChunks[i].reduce((sum, c) => sum + estimateChunkHeight(c), 0);
-    while (pageH / targetHeight < 0.72 && pageChunks[i + 1] && pageChunks[i + 1].length > 1) {
+    while (pageH / targetHeight < 0.72 && pageChunks[i + 1] && pageChunks[i + 1].length > 0) {
       const candidate = pageChunks[i + 1][0];
       const candidateH = estimateChunkHeight(candidate);
       // Don't pull if it would leave an orphaned h3 at start of next page
