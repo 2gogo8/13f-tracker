@@ -193,7 +193,7 @@ export default function InsightsPage() {
   const articleContent = active
     ? (active.article || [active.summary?.timelineAnalysis, active.summary?.keyNumbers, active.summary?.predictionVsReality].filter(Boolean).join('\n\n---\n\n'))
     : '';
-  const pages = splitIntoPages(articleContent, isMobile ? 300 : 700);
+  const pages = splitIntoPages(articleContent, isMobile ? 130 : 700);
   const isLastPage = pageIdx >= pages.length - 1;
 
   useEffect(() => {
