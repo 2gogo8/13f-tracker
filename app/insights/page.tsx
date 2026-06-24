@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import JGPicksSidebar from '@/components/JGPicksSidebar';
 
 interface Summary {
   _id: string;
@@ -627,6 +628,9 @@ export default function InsightsPage() {
           )}
         </>
       )}
+
+      {/* ── JG Picks Sidebar (desktop only) ── */}
+      {!isMobile && <JGPicksSidebar />}
 
       {/* Hidden audio element */}
       <audio ref={audioRef} loop preload="none" src="/audio/bg-music.mp3" />
