@@ -493,6 +493,7 @@ export default function InsightsPage() {
         }
         @media (max-width: 1279px) {
           .desktop-grid-left { display: none; }
+          .desktop-grid-wrapper { grid-template-columns: minmax(600px, 1fr) minmax(200px, 280px) !important; }
         }
       `}</style>
 
@@ -628,7 +629,7 @@ export default function InsightsPage() {
 
         {/* ── Desktop: 3-column CSS grid / Mobile: single-column ── */}
         {!isMobile ? (
-          <div style={{
+          <div className="desktop-grid-wrapper" style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(200px, 260px) minmax(600px, 780px) minmax(200px, 280px)',
             gap: '24px',
