@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
     const summaries = await db
       .collection('summaries')
-      .find({})
+      .find({ investmentRelevant: { $ne: false } })
       .sort({ publishedAt: -1 })
       .limit(limit)
       .project({
