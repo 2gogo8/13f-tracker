@@ -234,6 +234,8 @@ export default function InsightsPage() {
   const [windowHeight, setWindowHeight] = useState(0);
   const [debugMode, setDebugMode] = useState(false);
   const [debugInfo, setDebugInfo] = useState<Record<string, string | number | boolean>>({});
+  const [desktopViewportOnPhoneLikely, setDesktopViewportOnPhoneLikely] = useState(false);
+  const [showDesktopPhoneBanner, setShowDesktopPhoneBanner] = useState(false);
   const [mobilepicks, setMobilepicks] = useState<PickResult[]>([]);
   const [mobilepicksLoading, setMobilepicksLoading] = useState(true);
   const [mobilepicksUpdatedAt, setMobilepicksUpdatedAt] = useState<string | null>(null);
@@ -256,6 +258,17 @@ export default function InsightsPage() {
     const check = () => {
       setIsMobile(window.innerWidth < 1100);
       setWindowHeight(window.innerHeight);
+      // Detect desktop-viewport-on-phone scenario
+      const dvop =
+        window.innerWidth >= 900 &&
+        window.devicePixelRatio > 2 &&
+        (
+          /SamsungBrowser/i.test(navigator.userAgent) ||
+          navigator.maxTouchPoints > 0 ||
+          window.matchMedia('(pointer: coarse)').matches
+        );
+      setDesktopViewportOnPhoneLikely(dvop);
+      setShowDesktopPhoneBanner(dvop);
       // Debug mode
       if (typeof window !== 'undefined' && window.location.search.includes('debug=1')) {
         setDebugMode(true);
@@ -268,6 +281,12 @@ export default function InsightsPage() {
           matchMedia1099: window.matchMedia('(max-width: 1099px)').matches,
           isMobile: window.innerWidth < 1100,
           userAgent: navigator.userAgent.slice(0, 80),
+          'screen.width': window.screen.width,
+          'screen.height': window.screen.height,
+          'maxTouchPoints': navigator.maxTouchPoints,
+          'pointer:coarse': window.matchMedia('(pointer: coarse)').matches,
+          'hover:none': window.matchMedia('(hover: none)').matches,
+          desktopViewportOnPhoneLikely: dvop,
         });
       }
       setWindowHeight(window.innerHeight);
@@ -498,6 +517,28 @@ export default function InsightsPage() {
 
   return (
     <>
+      {/* ── Desktop-viewport-on-phone banner ── */}
+      {showDesktopPhoneBanner && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999999,
+          background: '#fffbe6', borderBottom: '1.5px solid #f0c000',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '6px 12px', gap: '8px',
+        }}>
+          <span style={{ fontSize: '12px', color: '#5c4a00', lineHeight: 1.5, flex: 1 }}>
+            ⚠️ 目前瀏覽器可能使用桌面版網站，請關閉桌面版網站以取得正常手機閱讀版。
+          </span>
+          <button
+            onClick={() => setShowDesktopPhoneBanner(false)}
+            style={{
+              flexShrink: 0, background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: '16px', color: '#5c4a00',
+              lineHeight: 1, padding: '0 4px',
+            }}
+            aria-label="關閉提示"
+          >×</button>
+        </div>
+      )}
       <style>{`
         /* Fonts loaded via <link> in layout.tsx */
         * { box-sizing: border-box; }
