@@ -41,6 +41,14 @@ export default function ExpertsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<'experts' | 'channels'>('experts');
+
+  // Channel management state
+  const [channels, setChannels] = useState<any[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(false);
+  const [newChannelUrl, setNewChannelUrl] = useState('');
+  const [addingChannel, setAddingChannel] = useState(false);
+
   const [experts, setExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,6 +88,41 @@ export default function ExpertsPage() {
       router.replace('/not-member');
     }
   }, [status, session, router]);
+
+  const fetchChannels = useCallback(async () => {
+    setChannelsLoading(true);
+    try {
+      const res = await fetch('/api/channels');
+      const data = await res.json();
+      if (data.ok) setChannels(data.channels || []);
+    } catch (err) {
+      console.error('Failed to fetch channels:', err);
+    } finally {
+      setChannelsLoading(false);
+    }
+  }, []);
+
+  const addChannel = async () => {
+    if (!newChannelUrl.trim()) return;
+    setAddingChannel(true);
+    try {
+      const res = await fetch('/api/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newChannelUrl.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setNewChannelUrl('');
+        fetchChannels();
+        alert(data.duplicate ? '頻道已存在' : '✅ 頻道已新增！下次掃描時會自動處理最新一集。');
+      }
+    } catch (err) {
+      console.error('Add channel failed:', err);
+    } finally {
+      setAddingChannel(false);
+    }
+  };
 
   const fetchExperts = useCallback(async () => {
     try {
@@ -285,6 +328,95 @@ export default function ExpertsPage() {
       </header>
 
       <div className="max-w-5xl mx-auto">
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+          <button
+            onClick={() => setActiveTab('experts')}
+            style={{
+              padding: '8px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              background: activeTab === 'experts' ? '#c0202a' : '#f0ede8',
+              color: activeTab === 'experts' ? '#fff' : '#555',
+              fontWeight: 600, fontSize: '14px',
+            }}
+          >專家管理</button>
+          <button
+            onClick={() => { setActiveTab('channels'); fetchChannels(); }}
+            style={{
+              padding: '8px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              background: activeTab === 'channels' ? '#c0202a' : '#f0ede8',
+              color: activeTab === 'channels' ? '#fff' : '#555',
+              fontWeight: 600, fontSize: '14px',
+            }}
+          >頻道管理</button>
+        </div>
+
+        {activeTab === 'channels' && (
+          <div>
+            {/* URL input */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+              <input
+                value={newChannelUrl}
+                onChange={e => setNewChannelUrl(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addChannel()}
+                placeholder="貼上 YouTube 頻道或 Podcast URL..."
+                style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', border: '1px solid #e3ddd2', fontSize: '14px' }}
+              />
+              <button
+                onClick={addChannel}
+                disabled={addingChannel || !newChannelUrl.trim()}
+                style={{
+                  padding: '10px 20px', background: '#c0202a', color: '#fff',
+                  border: 'none', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
+                  opacity: addingChannel ? 0.6 : 1,
+                }}
+              >
+                {addingChannel ? '新增中...' : '+ 新增頻道'}
+              </button>
+            </div>
+
+            {/* Channel list */}
+            {channelsLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#aaa' }}>載入中...</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {channels.filter(c => c.active !== false).map(ch => (
+                  <div key={ch._id?.toString()} style={{
+                    background: '#fff', border: '1px solid #e3ddd2', borderRadius: '8px',
+                    padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px',
+                  }}>
+                    <span style={{ fontSize: '20px' }}>{ch.type === 'youtube' ? '▶️' : '🎙'}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: '14px' }}>{ch.name !== ch.url ? ch.name : (ch.short || ch.url)}</div>
+                      <div style={{ fontSize: '12px', color: '#aaa', marginTop: '2px' }}>
+                        {ch.url} · 已處理 {ch.episodeCount || 0} 集
+                        {ch.lastProcessedAt
+                          ? ` · 上次：${new Date(ch.lastProcessedAt).toLocaleDateString('zh-TW')}`
+                          : ' · 尚未處理'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`移除頻道 ${ch.name || ch.url}？`)) return;
+                        await fetch(`/api/channels?url=${encodeURIComponent(ch.url)}`, { method: 'DELETE' });
+                        fetchChannels();
+                      }}
+                      style={{ background: 'none', border: '1px solid #f0ede8', borderRadius: '4px', padding: '4px 10px', color: '#aaa', cursor: 'pointer', fontSize: '12px' }}
+                    >移除</button>
+                  </div>
+                ))}
+                {channels.filter(c => c.active !== false).length === 0 && (
+                  <div style={{ color: '#aaa', textAlign: 'center', padding: '40px' }}>尚無頻道</div>
+                )}
+              </div>
+            )}
+
+            <div style={{ marginTop: '16px', fontSize: '12px', color: '#aaa' }}>
+              💡 新增頻道後，每天 07:00 自動抓最新一集。或直接在 Discord 貼 URL 給 JGClaw 立刻執行。
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'experts' && (<>
         {/* Search + Add button */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1 relative">
@@ -510,6 +642,7 @@ export default function ExpertsPage() {
             </div>
           )}
         </div>
+        </>)}
       </div>
 
       {/* Modal */}
