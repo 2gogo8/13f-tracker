@@ -17,6 +17,9 @@ interface PickResult {
   mentionClose?: number;
   latestClose?: number;
   latestCloseDate?: string;
+  isManual?: boolean;
+  source?: string;
+  note?: string;
 }
 
 interface Summary {
@@ -914,7 +917,7 @@ export default function InsightsPage() {
               {!mobilepicksLoading && mobilepicks.length === 0 && (
                 <div style={{ padding: '14px', fontSize: '12px', color: '#aaa', textAlign: 'center' }}>暫無資料</div>
               )}
-              {!mobilepicksLoading && mobilepicks.slice(0, 10).map((pick, idx) => {
+              {!mobilepicksLoading && mobilepicks.map((pick, idx) => {
                 const pct = pick.return_pct;
                 const isPos = pct != null && pct >= 0;
                 const pctColor = pct == null ? '#aaa' : isPos ? '#22c55e' : '#ef5350';
@@ -929,6 +932,9 @@ export default function InsightsPage() {
                   pick.mentionClose != null && pick.latestClose != null && mmdd
                     ? `${dateStr} · ${fmtPx(pick.mentionClose)} → ${fmtPx(pick.latestClose)} · ${mmdd}`
                     : dateStr;
+                const srcLabel = pick.isManual
+                  ? (pick.source === 'live' ? '直播' : pick.source === 'member-channel' ? '會員' : pick.source === 'article' ? '文章' : '手動')
+                  : null;
                 return (
                   <div key={pick.symbol}>
                     <div
@@ -936,8 +942,9 @@ export default function InsightsPage() {
                       style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', cursor: 'pointer' }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                           <span style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a1a', fontFamily: '"Noto Sans TC", monospace' }}>{pick.symbol}</span>
+                          {srcLabel && <span style={{ fontSize: '7px', background: pick.source === 'manual' ? '#f5f0ff' : '#f0f7ff', color: pick.source === 'manual' ? '#7c4dff' : '#4a90d9', padding: '0 3px', borderRadius: '2px', fontWeight: 600 }}>{srcLabel}</span>}
                           <span style={{ flexShrink: 0, fontSize: '14px', fontWeight: 700, color: pctColor, fontFamily: 'Georgia, serif' }}>{pctText}</span>
                         </div>
                         <div style={{ fontSize: '9px', color: '#bbb', marginTop: '2px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -945,7 +952,7 @@ export default function InsightsPage() {
                         </div>
                       </div>
                     </div>
-                    {idx < Math.min(mobilepicks.length, 10) - 1 && (
+                    {idx < mobilepicks.length - 1 && (
                       <div style={{ height: '1px', background: '#f0ede8', margin: '0 12px' }} />
                     )}
                   </div>

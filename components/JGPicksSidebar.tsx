@@ -13,6 +13,9 @@ interface PickResult {
   latestClose?: number;
   latestCloseDate?: string;
   lastUpdatedAt?: string;
+  isManual?: boolean;
+  source?: string;
+  note?: string;
 }
 
 interface ApiResponse {
@@ -194,8 +197,16 @@ export default function JGPicksSidebar() {
                   >
                     {pick.symbol}
                   </div>
-                  <div style={{ fontSize: '9px', color: '#999', marginTop: '1px' }}>
-                    提到 {formatDate(pick.first_date)}
+                  <div style={{ fontSize: '9px', color: '#999', marginTop: '1px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>提到 {formatDate(pick.first_date)}</span>
+                    {pick.isManual && pick.source && pick.source !== 'manual' && (
+                      <span style={{ fontSize: '7px', background: '#f0f7ff', color: '#4a90d9', padding: '0 3px', borderRadius: '2px', fontWeight: 600 }}>
+                        {pick.source === 'live' ? '直播' : pick.source === 'member-channel' ? '會員' : pick.source === 'article' ? '文章' : '手動'}
+                      </span>
+                    )}
+                    {pick.isManual && (!pick.source || pick.source === 'manual') && (
+                      <span style={{ fontSize: '7px', background: '#f5f0ff', color: '#7c4dff', padding: '0 3px', borderRadius: '2px', fontWeight: 600 }}>手動</span>
+                    )}
                   </div>
                   {(pick.mentionClose != null && pick.latestClose != null && pick.latestCloseDate) ? (
                     <div style={{ fontSize: '8px', color: '#bbb', marginTop: '2px', lineHeight: 1.3 }}>
