@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useSession, signIn } from 'next-auth/react';
 import JGPicksSidebar from '@/components/JGPicksSidebar';
 import { getTopicLabel, getJgTitle, getSourceLabel } from '@/lib/topic-mapping';
 
@@ -233,7 +234,22 @@ function charDelay(c: string) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Tracking helper ─────────────────────────────────────────────────────────
+function trackEvent(eventType: string, extra?: Record<string, unknown>) {
+  const sessionId = sessionStorage.getItem('insights_sid') || (() => {
+    const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    sessionStorage.setItem('insights_sid', id);
+    return id;
+  })();
+  fetch('/api/track/insights', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ eventType, sessionId, ...extra }),
+  }).catch(() => {});
+}
+
 export default function InsightsPage() {
+  const { data: session, status: authStatus } = useSession();
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [loading, setLoading] = useState(true);
   const [topicIdx, setTopicIdx] = useState(0);
@@ -329,6 +345,14 @@ export default function InsightsPage() {
     }
   };
 
+  // Track page view on mount (after auth confirmed)
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      trackEvent('insights_page_view');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus]);
+
   // Fetch summaries
   useEffect(() => {
     fetch('/api/insights?limit=10')
@@ -367,7 +391,18 @@ export default function InsightsPage() {
     setDisplayed(''); setCharIdx(0); setPageDone(false);
   }, [topicIdx, pageIdx]);
 
-  useEffect(() => { setPageIdx(0); }, [topicIdx]);
+  useEffect(() => {
+    setPageIdx(0);
+    // Track article view when user switches topics
+    if (authStatus === 'authenticated' && summaries[topicIdx]) {
+      const s = summaries[topicIdx];
+      trackEvent('article_view', {
+        articleTopic: s.topic || s.tags?.[0] || '',
+        articleTitle: s.jgTitle || s.articleTitle || '',
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topicIdx]);
 
   useEffect(() => {
     if (pageDone || !pages[pageIdx]) return;
@@ -557,6 +592,68 @@ export default function InsightsPage() {
       )}
     </>
   );
+
+  // ── Auth gate: require Google login, no isMember check ─────────────
+  if (authStatus === 'loading') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf8f4' }}>
+        <div style={{ fontSize: '14px', color: '#aaa' }}>載入中...</div>
+      </div>
+    );
+  }
+
+  if (authStatus === 'unauthenticated') {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: '#faf8f4', padding: '32px 20px',
+      }}>
+        <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center' }}>
+          <div style={{ fontFamily: '"Noto Serif TC", Georgia, serif', fontSize: 'clamp(22px, 6vw, 32px)', fontWeight: 700, color: '#c0202a', marginBottom: '8px' }}>
+            JG 反市場研究中櫞
+          </div>
+          <div style={{ fontSize: '13px', color: '#888', marginBottom: '32px', letterSpacing: '0.05em' }}>
+            Alpha 測試
+          </div>
+          <div style={{
+            background: '#fff', borderRadius: '12px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
+            border: '1px solid #e3ddd2',
+            padding: '32px 28px',
+          }}>
+            <div style={{ fontSize: '16px', fontWeight: 600, color: '#1a1a1a', marginBottom: '10px' }}>
+              歡迎來到 Alpha 測試
+            </div>
+            <div style={{ fontSize: '14px', color: '#666', marginBottom: '28px', lineHeight: 1.6 }}>
+              目前為測試版，請使用 Google 登入後查看。
+            </div>
+            <button
+              onClick={() => signIn('google', { callbackUrl: '/insights' })}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                padding: '14px 24px',
+                background: '#c0202a', color: '#fff',
+                border: 'none', borderRadius: '8px',
+                fontSize: '15px', fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(192,32,42,0.25)',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+                <path d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z" fill="#fff" opacity="0.9"/>
+              </svg>
+              使用 Google 登入
+            </button>
+          </div>
+          <div style={{ marginTop: '24px', fontSize: '12px', color: '#bbb' }}>
+            登入即代表同意使用用戶腳蹤數據用於测試分析。
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

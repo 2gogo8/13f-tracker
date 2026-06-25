@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import getClientPromise from '@/lib/mongodb';
 
 export const maxDuration = 30;
@@ -66,6 +68,12 @@ export interface PickResult {
 }
 
 export async function GET() {
+  // Require login — any Google or Discord session. No isMember check.
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const client = await getClientPromise();
     const db = client.db('13f-tracker');

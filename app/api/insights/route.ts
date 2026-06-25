@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import getClientPromise from '@/lib/mongodb';
 
 // ── Alpha Safety Gate v2 ──────────────────────────────────────────────────────
@@ -59,6 +61,12 @@ const ALPHA_DB_FILTER = {
 };
 
 export async function GET(request: Request) {
+  // Require login — any Google or Discord session. No isMember check.
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50);
