@@ -41,7 +41,11 @@ export default function ExpertsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'experts' | 'channels' | 'jg-picks'>('experts');
+  const [activeTab, setActiveTab] = useState<'experts' | 'channels' | 'jg-picks' | 'usage'>('experts');
+
+  // Usage analytics state
+  const [usageData, setUsageData] = useState<any>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
 
   // JG Picks admin state
   const [manualPicks, setManualPicks] = useState<any[]>([]);
@@ -446,7 +450,134 @@ export default function ExpertsPage() {
               fontWeight: 600, fontSize: '14px',
             }}
           >📈 JG 提到過</button>
+          <button
+            onClick={() => {
+              setActiveTab('usage');
+              if (!usageData) {
+                setUsageLoading(true);
+                fetch('/api/admin/insights-usage').then(r => r.json()).then(d => {
+                  setUsageData(d);
+                }).catch(() => {}).finally(() => setUsageLoading(false));
+              }
+            }}
+            style={{
+              padding: '8px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              background: activeTab === 'usage' ? '#c0202a' : '#f0ede8',
+              color: activeTab === 'usage' ? '#fff' : '#555',
+              fontWeight: 600, fontSize: '14px',
+            }}
+          >📊 Alpha 使用紀錄</button>
         </div>
+
+        {activeTab === 'usage' && (
+          <div style={{ maxWidth: '1100px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontWeight: 700, fontSize: '18px' }}>Alpha 使用紀錄</h2>
+              <button onClick={() => {
+                setUsageLoading(true);
+                fetch('/api/admin/insights-usage').then(r => r.json()).then(setUsageData).catch(() => {}).finally(() => setUsageLoading(false));
+              }} style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', fontSize: '13px' }}>
+                刷新
+              </button>
+            </div>
+
+            {usageLoading && <div style={{ color: '#aaa', fontSize: '14px' }}>載入中...</div>}
+
+            {!usageLoading && usageData && (() => {
+              const { overview, users, articles, recentEvents } = usageData;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+
+                  {/* ── Overview cards ── */}
+                  <div>
+                    <h3 style={{ fontWeight: 700, fontSize: '15px', marginBottom: '12px', color: '#555' }}>總覽</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                      {[['總使用者', overview.totalUsers],
+                        ['總 page_view', overview.totalPageViews],
+                        ['總 article_view', overview.totalArticleViews],
+                        ['今日事件', overview.todayEvents],
+                        ['最近 24h', overview.last24hEvents],
+                      ].map(([label, value]) => (
+                        <div key={String(label)} style={{ background: '#fdfbf8', border: '1px solid #e3ddd2', borderRadius: '8px', padding: '16px 14px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '24px', fontWeight: 700, color: '#c0202a' }}>{value}</div>
+                          <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {overview.lastEventAt && (
+                      <div style={{ fontSize: '12px', color: '#aaa', marginTop: '8px' }}>最後一次使用：{overview.lastEventAt.slice(0, 16).replace('T', ' ')}</div>
+                    )}
+                  </div>
+
+                  {/* ── User list ── */}
+                  <div>
+                    <h3 style={{ fontWeight: 700, fontSize: '15px', marginBottom: '12px', color: '#555' }}>使用者列表（依最近使用排序）</h3>
+                    <div style={{ border: '1px solid #e3ddd2', borderRadius: '8px', overflow: 'hidden' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '220px 80px 80px 80px 140px 1fr', background: '#f0ede8', padding: '10px 12px', fontSize: '11px', fontWeight: 700, color: '#666' }}>
+                        <span>Email</span><span>page_view</span><span>article</span><span>session</span><span>最近使用</span><span>最近文章</span>
+                      </div>
+                      {users.length === 0 && <div style={{ padding: '20px', color: '#aaa', fontSize: '13px', textAlign: 'center' }}>尚無資料</div>}
+                      {users.map((u: any, i: number) => (
+                        <div key={u.email} style={{ display: 'grid', gridTemplateColumns: '220px 80px 80px 80px 140px 1fr', padding: '10px 12px', borderTop: i > 0 ? '1px solid #f0ede8' : 'none', fontSize: '12px', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</span>
+                          <span>{u.visitCount}</span>
+                          <span>{u.articleViewCount}</span>
+                          <span>{u.sessionCount}</span>
+                          <span style={{ color: '#888', fontSize: '11px' }}>{u.lastSeenAt?.slice(0, 16).replace('T', ' ')}</span>
+                          <span style={{ color: '#999', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {u.recentArticle?.title || u.recentArticle?.topic || '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Article ranking ── */}
+                  <div>
+                    <h3 style={{ fontWeight: 700, fontSize: '15px', marginBottom: '12px', color: '#555' }}>文章觀看排行</h3>
+                    <div style={{ border: '1px solid #e3ddd2', borderRadius: '8px', overflow: 'hidden' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 150px', background: '#f0ede8', padding: '10px 12px', fontSize: '11px', fontWeight: 700, color: '#666' }}>
+                        <span>文章</span><span>總看數</span><span>獨立用戶</span><span>最近觀看</span>
+                      </div>
+                      {articles.length === 0 && <div style={{ padding: '20px', color: '#aaa', fontSize: '13px', textAlign: 'center' }}>尚無資料</div>}
+                      {articles.map((a: any, i: number) => (
+                        <div key={a.articleTopic || i} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 80px 150px', padding: '10px 12px', borderTop: i > 0 ? '1px solid #f0ede8' : 'none', fontSize: '12px', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.articleTitle || a.articleTopic}</div>
+                            <div style={{ fontSize: '10px', color: '#aaa' }}>{a.articleTopic}</div>
+                          </div>
+                          <span style={{ fontWeight: 700, color: '#c0202a' }}>{a.viewCount}</span>
+                          <span>{a.uniqueUsers}</span>
+                          <span style={{ color: '#888', fontSize: '11px' }}>{a.lastViewedAt?.slice(0, 16).replace('T', ' ')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ── Recent events ── */}
+                  <div>
+                    <h3 style={{ fontWeight: 700, fontSize: '15px', marginBottom: '12px', color: '#555' }}>最近事件（最新 50 筆）</h3>
+                    <div style={{ border: '1px solid #e3ddd2', borderRadius: '8px', overflow: 'hidden' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '140px 180px 130px 1fr', background: '#f0ede8', padding: '10px 12px', fontSize: '11px', fontWeight: 700, color: '#666' }}>
+                        <span>時間</span><span>Email</span><span>Event</span><span>文章</span>
+                      </div>
+                      {recentEvents.length === 0 && <div style={{ padding: '20px', color: '#aaa', fontSize: '13px', textAlign: 'center' }}>尚無資料</div>}
+                      {recentEvents.map((e: any, i: number) => (
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '140px 180px 130px 1fr', padding: '8px 12px', borderTop: i > 0 ? '1px solid #f0ede8' : 'none', fontSize: '11px', alignItems: 'center', background: i % 2 === 0 ? '#fff' : '#fdfbf8' }}>
+                          <span style={{ color: '#888' }}>{e.timestamp?.slice(0, 16).replace('T', ' ')}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{e.userEmail}</span>
+                          <span style={{ color: e.eventType === 'article_view' ? '#4a90d9' : '#22c55e', fontFamily: 'monospace', fontSize: '10px' }}>{e.eventType}</span>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#666' }}>{e.articleTitle || e.articleTopic || e.path}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {activeTab === 'jg-picks' && (
           <div style={{ maxWidth: '900px' }}>
