@@ -25,37 +25,31 @@ except ImportError:
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 
 # ─────────────────────────────────────────────────────────
-# TAIEX — 從 TWSE 官方 API 抓取月份資料
+# TAIEX — FMP ^TWII（共用 FMP API key）
 # ─────────────────────────────────────────────────────────
-def fetch_taiex(months: list[str]) -> list[dict]:
-    """抓取 TAIEX 收盤指數，months 格式如 ['20260501', '20260601']"""
-    frames = []
-    for m in months:
-        url = f"https://www.twse.com.tw/rwd/zh/TAIEX/MI_5MINS_HIST?date={m}&response=json"
-        try:
-            r = requests.get(url, timeout=15)
-            data = r.json()
-            if data.get("stat") == "OK" and "data" in data:
-                for row in data["data"]:
-                    # row[0] = 民國日期 (114/05/20), row[-1] = 收盤指數
-                    roc_str = row[0].strip()
-                    parts = roc_str.split("/")
-                    if len(parts) == 3:
-                        year = int(parts[0]) + 1911
-                        date_str = f"{year}-{parts[1]}-{parts[2]}"
-                        close_str = row[-1].replace(",", "")
-                        try:
-                            close = float(close_str)
-                            frames.append({"date": date_str, "close": close})
-                        except ValueError:
-                            pass
-        except Exception as e:
-            print(f"  TAIEX {m} 失敗: {e}")
-        time.sleep(0.3)
+FMP_KEY = os.environ.get("FMP_API_KEY", "3c03eZvjdPpKONYydbgoAT9chCaQDnsp")
 
-    frames.sort(key=lambda x: x["date"])
-    print(f"  TAIEX: {len(frames)} 個交易日")
-    return frames
+def fetch_taiex_fmp(from_date: str = "2024-01-01") -> list[dict]:
+    """TAIEX 收盤指數，來自 FMP ^TWII"""
+    url = f"https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=^TWII&from={from_date}&apikey={FMP_KEY}"
+    try:
+        r = requests.get(url, timeout=20)
+        data = r.json()
+        if isinstance(data, list) and data:
+            frames = sorted(
+                [{"date": d["date"], "close": d["close"]} for d in data if "date" in d and "close" in d],
+                key=lambda x: x["date"]
+            )
+            print(f"  TAIEX (FMP ^TWII): {len(frames)} 個交易日，最新={frames[-1]['date']}")
+            return frames
+    except Exception as e:
+        print(f"  TAIEX FMP 失敗: {e}")
+    return []
+
+
+def fetch_taiex(months: list[str]) -> list[dict]:
+    """Legacy TWSE fallback — now calls FMP instead."""
+    return fetch_taiex_fmp()
 
 
 # ─────────────────────────────────────────────────────────
