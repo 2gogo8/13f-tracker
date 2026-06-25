@@ -256,7 +256,7 @@ export default function InsightsPage() {
   const [mobilepicks, setMobilepicks] = useState<PickResult[]>([]);
   const [mobilepicksLoading, setMobilepicksLoading] = useState(true);
   const [mobilepicksUpdatedAt, setMobilepicksUpdatedAt] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(true);  // default on
+  const [isPlaying, setIsPlaying] = useState(false);  // default off — user must click to play
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Taiwan date + countdown
@@ -313,26 +313,7 @@ export default function InsightsPage() {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Auto-play after 5s delay (don't block initial page load)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const audio = audioRef.current;
-      if (!audio) return;
-      audio.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => {
-          // Browser blocked autoplay — play on first interaction after delay
-          const onInteract = () => {
-            audio.play().then(() => setIsPlaying(true)).catch(() => {});
-            document.removeEventListener('click', onInteract);
-            document.removeEventListener('touchstart', onInteract);
-          };
-          document.addEventListener('click', onInteract, { once: true });
-          document.addEventListener('touchstart', onInteract, { once: true });
-        });
-    }, 5000); // 5 second delay — page loads first
-    return () => clearTimeout(timer);
-  }, []);
+  // Music is off by default. No auto-play. User must click the music button.
 
   const toggleMusic = () => {
     const audio = audioRef.current;
