@@ -9,6 +9,8 @@ interface PickResult {
   current_price: number | null;
   return_pct: number | null;
   name?: string;
+  latestCloseDate?: string;
+  lastUpdatedAt?: string;
 }
 
 interface ApiResponse {
@@ -21,13 +23,10 @@ function formatDate(d: string) {
   return d.slice(2).replace(/-/g, '-');
 }
 
-function formatTime(iso: string) {
-  const date = new Date(iso);
-  return date.toLocaleTimeString('zh-TW', {
-    timeZone: 'Asia/Taipei',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+function formatLatestCloseDate(d: string | undefined): string {
+  if (!d) return '';
+  const p = d.split('-');
+  return p.length >= 3 ? `截至 ${p[1]}/${p[2]} 收盤` : d;
 }
 
 export default function JGPicksSidebar() {
@@ -89,11 +88,7 @@ export default function JGPicksSidebar() {
           📈 JG 提到過
         </span>
         <span style={{ fontSize: '9px', color: '#aaa' }}>
-          {loading
-            ? '更新中...'
-            : updatedAt
-            ? formatTime(updatedAt)
-            : ''}
+          {loading ? '更新中...' : ''}
         </span>
       </div>
 
@@ -193,8 +188,13 @@ export default function JGPicksSidebar() {
                     {pick.symbol}
                   </div>
                   <div style={{ fontSize: '9px', color: '#999', marginTop: '1px' }}>
-                    {formatDate(pick.first_date)}
+                    提到 {formatDate(pick.first_date)}
                   </div>
+                  {pick.latestCloseDate && (
+                    <div style={{ fontSize: '8px', color: '#bbb', marginTop: '1px' }}>
+                      {formatLatestCloseDate(pick.latestCloseDate)}
+                    </div>
+                  )}
                 </div>
                 <div style={{ flex: 1, fontSize: '10px', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingLeft: '4px' }}>
                   {pick.name || ''}
