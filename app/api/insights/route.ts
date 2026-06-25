@@ -1,24 +1,60 @@
 import { NextResponse } from 'next/server';
 import getClientPromise from '@/lib/mongodb';
 
-// ── Alpha Safety Gate ─────────────────────────────────────────────────────────
-// Only these topic keys are allowed in the public Alpha feed.
-// To add a new article: either set articleVersion="v2_alpha" or alphaReady=true in DB,
-// OR add the topic key below.
-// Rollback: remove the filter from the .find() query below.
-const ALPHA_TOPIC_ALLOWLIST = new Set([
-  'All-In·6/24',
-  'Manual·6/24',
-  'a16z·6/24',
-  'ARK·6/24',
+// ── Alpha Safety Gate v2 ──────────────────────────────────────────────────────
+//
+// Rules (ANY one must be true):
+//   1. alphaReady === true  (manually approved in DB)
+//   2. articleVersion === "v2_alpha" AND no script/broadcast banned phrases
+//   3. _id in ALPHA_APPROVED_ARTICLES  (hardcoded whitelist by article ID)
+//
+// Removed: topic-based allowlist — topic-mapping.ts hit does NOT imply alpha-ready.
+//
+// Rollback: revert to previous commit or replace ALPHA_FILTER below with
+//   { investmentRelevant: { $ne: false } }
+
+// ── Explicit article ID whitelist (add manually approved article IDs here) ───
+const ALPHA_APPROVED_ARTICLES = new Set<string>([
+  // Example: '6a3bb178dcf7b7046d928600'
+  // Add article _id strings here when manually approved via review
 ]);
 
-const ALPHA_FILTER = {
+// ── Banned phrases: indicate podcast / broadcast script format ───────────────
+const SCRIPT_BANNED_PHRASES = [
+  '大家好',
+  '我是 JG',
+  '今天要跟大家聊',
+  '今天我們來聊',
+  '這集 podcast',
+  '這集 Podcast',
+  '這個人的履歷誇張',
+  '## 開場',
+  '各位觀眾',
+];
+
+function isScriptContent(article: string | undefined | null): boolean {
+  if (!article) return false;
+  return SCRIPT_BANNED_PHRASES.some(phrase => article.includes(phrase));
+}
+
+function isAlphaReady(doc: Record<string, unknown>): boolean {
+  // Rule 1: explicitly marked alphaReady in DB
+  if (doc.alphaReady === true) return true;
+  // Rule 2: v2_alpha version AND content passes lint
+  if (doc.articleVersion === 'v2_alpha' && !isScriptContent(doc.article as string)) return true;
+  // Rule 3: in hardcoded approved list
+  if (doc._id && ALPHA_APPROVED_ARTICLES.has(String(doc._id))) return true;
+  return false;
+}
+
+// DB pre-filter: fetch only candidates that could pass the gate
+// (avoids loading all 18+ docs on every request)
+const ALPHA_DB_FILTER = {
   investmentRelevant: { $ne: false },
   $or: [
-    { articleVersion: 'v2_alpha' },
     { alphaReady: true },
-    { topic: { $in: Array.from(ALPHA_TOPIC_ALLOWLIST) } },
+    { articleVersion: 'v2_alpha' },
+    // Note: ALPHA_APPROVED_ARTICLES checked in code below
   ],
 };
 
@@ -30,11 +66,12 @@ export async function GET(request: Request) {
     const client = await getClientPromise();
     const db = client.db('13f-tracker');
 
-    const summaries = await db
+    // Fetch candidates
+    const candidates = await db
       .collection('summaries')
-      .find(ALPHA_FILTER)
+      .find(ALPHA_DB_FILTER)
       .sort({ publishedAt: -1 })
-      .limit(limit)
+      .limit(limit * 3) // over-fetch to account for content lint filtering
       .project({
         tags: 1,
         source: 1,
@@ -45,7 +82,7 @@ export async function GET(request: Request) {
         expertCount: 1,
         publishedAt: 1,
         createdAt: 1,
-        // Alpha metadata fields
+        // Alpha metadata
         articleVersion: 1,
         alphaReady: 1,
         articleType: 1,
@@ -60,6 +97,11 @@ export async function GET(request: Request) {
         needsReview: 1,
       })
       .toArray();
+
+    // Apply content lint gate
+    const summaries = (candidates as Record<string, unknown>[])
+      .filter(doc => isAlphaReady(doc))
+      .slice(0, limit);
 
     const res = NextResponse.json(summaries);
     res.headers.set('Cache-Control', 'no-store, max-age=0');
