@@ -19,7 +19,7 @@ interface PickResult {
 interface Summary {
   _id: string;
   tags: string[];
-  source: 'manual' | 'auto' | 'video';
+  source: 'manual' | 'auto' | 'video' | 'expert-pipeline';
   topic?: string;
   summary: { timelineAnalysis: string; keyNumbers: string; predictionVsReality: string };
   article?: string;
@@ -27,6 +27,19 @@ interface Summary {
   expertCount: number;
   publishedAt: string;
   createdAt: string;
+  // Alpha metadata fields
+  articleVersion?: string;
+  alphaReady?: boolean;
+  articleType?: string;
+  topicLabel?: string;
+  jgTitle?: string;
+  sourceLabel?: string;
+  sourceDate?: string;
+  analysisDate?: string;
+  dataCutoffDate?: string;
+  claimsToCheck?: string[];
+  verificationPoints?: string[];
+  needsReview?: boolean;
 }
 
 // ── Taiwan time ──────────────────────────────────────────────────────────────
@@ -406,11 +419,39 @@ export default function InsightsPage() {
     if (pageIdx > 0) setPageIdx(p => p - 1);
   }, [pageIdx]);
 
+  // ── Alpha tab label rules ─────────────────────────────────────────────────
+  // Priority: topicLabel (DB) > topic-mapping > articleType Chinese > fallback
+  // Forbidden: sourceName, channelName, All-In/ARK/a16z/Manual, dates, empty
+  const ARTICLE_TYPE_LABELS: Record<string, string> = {
+    'channel_summary': 'JG 今日雷達',
+    'expert_interview_summary': '專家觀點',
+    'hot_topic': '熱門議題',
+    'deep_research': '深度研究',
+    'core_idea': '核心觀念',
+    'business_teardown': '商業模式拆解',
+    'forum_signal': '論壇情緒',
+    'macro_brief': '總經風險',
+  };
+  const DATE_SUFFIX_RE = /[·・]\d{1,2}\/\d{1,2}$/;
+  const SOURCE_NAME_RE = /^(All-In|ARK|a16z|Manual|CNBC|Bloomberg|RealV|ILTB|Odd Lots|Acquired)([·・]|$)/i;
+
   const getLabel = (s: Summary, i: number) => {
-    const raw = s.topic || s.tags[0] || `話題${i + 1}`;
-    const fallback = raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 12) || `話題${i + 1}`;
-    // Use topicLabel from mapping (e.g. '私募市場破牆') instead of source name
-    return getTopicLabel(s.topic || '', fallback);
+    // 1. DB-level topicLabel (future proofing)
+    if (s.topicLabel) return s.topicLabel;
+    // 2. topic-mapping.ts hardcoded entries
+    const mapped = getTopicLabel(s.topic || '', '');
+    if (mapped) return mapped;
+    // 3. articleType → Chinese category
+    if (s.articleType && ARTICLE_TYPE_LABELS[s.articleType]) {
+      return ARTICLE_TYPE_LABELS[s.articleType];
+    }
+    // 4. Fallback — but NEVER show source names or date strings
+    const raw = s.topic || '';
+    if (DATE_SUFFIX_RE.test(raw) || SOURCE_NAME_RE.test(raw) || !raw.trim()) {
+      return `JG 今日雷達`;
+    }
+    const cleaned = raw.replace(/政策題材|題材|政策/g, '').trim().slice(0, 12);
+    return cleaned || `JG 今日雷達`;
   };
 
   const totalNavPages = Math.ceil(summaries.length / NAV_PER_PAGE);
@@ -470,7 +511,7 @@ export default function InsightsPage() {
                     display: 'inline-block',
                   } : {}),
                 }}>
-                  {getTopicLabel(active.topic, active.topic.split('·')[0])}
+                  {active ? getLabel(active, topicIdx) : ''}
                 </span>
               )}
               {/* source metadata badge — demoted, small, grey */}
