@@ -377,9 +377,7 @@ export default function TempRidingwavePage() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/" className="text-accent hover:text-accent/80 text-sm font-light tracking-wide mb-4 inline-block">
-            ← 返回總覽
-          </Link>
+
           <h1 className="font-serif text-3xl md:text-4xl font-bold leading-tight">
             <span className="text-primary">JG說真的</span>{' '}
             <span className="text-gray-900">臨時破浪儀表板</span>
