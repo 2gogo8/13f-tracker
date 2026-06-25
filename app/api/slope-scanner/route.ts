@@ -57,23 +57,29 @@ interface SlopeResult {
 }
 
 function findClosestPrice(prices: PriceRecord[], targetDate: string): number | null {
-  // prices are typically sorted descending by date; find closest before or on targetDate
-  let closest: PriceRecord | null = null;
-  let closestDiff = Infinity;
+  if (!prices || prices.length === 0) return null;
 
-  for (const p of prices) {
-    if (p.date <= targetDate) {
-      const diff = new Date(targetDate).getTime() - new Date(p.date).getTime();
-      if (diff < closestDiff) {
-        closestDiff = diff;
-        closest = p;
-      }
-    }
-  }
-  // Allow up to 10 days gap
-  if (closest && closestDiff <= 10 * 24 * 60 * 60 * 1000) {
-    return closest.close;
-  }
+  // Find all records on or before targetDate, sorted most-recent-first
+  const candidates = prices
+    .filter(p => p.date <= targetDate)
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  if (candidates.length === 0) return null;
+
+  const best = candidates[0];
+  const diffDays =
+    (new Date(targetDate).getTime() - new Date(best.date).getTime()) / 86400000;
+
+  // Normal case: within 10 days (covers weekends and holidays)
+  if (diffDays <= 10) return best.close;
+
+  // Stale cache: target date is beyond all available data — use latest available.
+  // This avoids a hard error when the cache hasn't been refreshed yet;
+  // the slope will use the most recent real trading day in cache.
+  const maxDate = prices.reduce((a, b) => (a.date > b.date ? a : b)).date;
+  if (targetDate > maxDate) return best.close;
+
+  // Large gap within cache range (genuine missing data) — do not interpolate
   return null;
 }
 
