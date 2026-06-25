@@ -41,7 +41,18 @@ export default function ExpertsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'experts' | 'channels'>('experts');
+  const [activeTab, setActiveTab] = useState<'experts' | 'channels' | 'jg-picks'>('experts');
+
+  // JG Picks admin state
+  const [manualPicks, setManualPicks] = useState<any[]>([]);
+  const [picksLoading, setPicksLoading] = useState(false);
+  const [addSymbol, setAddSymbol] = useState('');
+  const [addMentionDate, setAddMentionDate] = useState('');
+  const [addNote, setAddNote] = useState('');
+  const [addSource, setAddSource] = useState('manual');
+  const [addingPick, setAddingPick] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addSuccess, setAddSuccess] = useState<string | null>(null);
 
   // Channel management state
   const [channels, setChannels] = useState<any[]>([]);
@@ -418,7 +429,127 @@ export default function ExpertsPage() {
               fontWeight: 600, fontSize: '14px',
             }}
           >頻道管理</button>
+          <button
+            onClick={() => {
+              setActiveTab('jg-picks');
+              if (manualPicks.length === 0) {
+                setPicksLoading(true);
+                fetch('/api/admin/jg-picks').then(r => r.json()).then(d => {
+                  setManualPicks(d.picks || []);
+                }).catch(() => {}).finally(() => setPicksLoading(false));
+              }
+            }}
+            style={{
+              padding: '8px 20px', borderRadius: '6px', border: 'none', cursor: 'pointer',
+              background: activeTab === 'jg-picks' ? '#c0202a' : '#f0ede8',
+              color: activeTab === 'jg-picks' ? '#fff' : '#555',
+              fontWeight: 600, fontSize: '14px',
+            }}
+          >📈 JG 提到過</button>
         </div>
+
+        {activeTab === 'jg-picks' && (
+          <div style={{ maxWidth: '900px' }}>
+            <h2 style={{ fontWeight: 700, fontSize: '18px', marginBottom: '16px' }}>JG 提到過股票管理</h2>
+
+            {/* Add form */}
+            <div style={{ background: '#fdfbf8', border: '1px solid #e3ddd2', borderRadius: '8px', padding: '20px', marginBottom: '24px' }}>
+              <h3 style={{ fontWeight: 600, fontSize: '15px', marginBottom: '12px' }}>新增股票</h3>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>Ticker *</label>
+                  <input value={addSymbol} onChange={e => setAddSymbol(e.target.value.toUpperCase())}
+                    placeholder="NVDA" style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '14px', width: '100px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>提到日期 *</label>
+                  <input type="date" value={addMentionDate} onChange={e => setAddMentionDate(e.target.value)}
+                    style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '14px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>備註（選填）</label>
+                  <input value={addNote} onChange={e => setAddNote(e.target.value)}
+                    placeholder="會員直播提到" style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '14px', width: '180px' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', color: '#666', display: 'block', marginBottom: '4px' }}>來源</label>
+                  <select value={addSource} onChange={e => setAddSource(e.target.value)}
+                    style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '14px' }}>
+                    <option value="manual">手動</option>
+                    <option value="live">直播</option>
+                    <option value="member-channel">會員頻道</option>
+                    <option value="article">文章</option>
+                  </select>
+                </div>
+                <button
+                  disabled={addingPick || !addSymbol || !addMentionDate}
+                  onClick={async () => {
+                    setAddingPick(true); setAddError(null); setAddSuccess(null);
+                    try {
+                      const res = await fetch('/api/admin/jg-picks', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ symbol: addSymbol, mentionDate: addMentionDate, note: addNote, source: addSource }),
+                      });
+                      const d = await res.json();
+                      if (d.ok) {
+                        setAddSuccess(`✅ ${addSymbol} 新增成功！mentionClose=${d.pick.mentionClose} latestClose=${d.pick.latestClose} perf=${d.pick.performancePct}%`);
+                        setAddSymbol(''); setAddMentionDate(''); setAddNote('');
+                        setManualPicks(prev => [d.pick, ...prev]);
+                      } else {
+                        setAddError(`❌ ${d.error}`);
+                      }
+                    } catch (e) { setAddError('❌ 請求失敗'); }
+                    finally { setAddingPick(false); }
+                  }}
+                  style={{ padding: '8px 20px', background: addingPick ? '#ccc' : '#c0202a', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '14px' }}
+                >{addingPick ? '新增中...' : '新增'}</button>
+              </div>
+              {addError && <div style={{ marginTop: '10px', color: '#c0202a', fontSize: '13px' }}>{addError}</div>}
+              {addSuccess && <div style={{ marginTop: '10px', color: '#22c55e', fontSize: '13px' }}>{addSuccess}</div>}
+            </div>
+
+            {/* List */}
+            {picksLoading ? (
+              <div style={{ color: '#aaa', fontSize: '14px' }}>載入中...</div>
+            ) : (
+              <div style={{ border: '1px solid #e3ddd2', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '80px 100px 90px 90px 90px 80px 1fr 80px', gap: '0', background: '#f0ede8', padding: '10px 12px', fontSize: '11px', fontWeight: 700, color: '#666' }}>
+                  <span>Ticker</span><span>提到日期</span><span>提到價</span><span>最新收盤</span><span>截至</span><span>績效</span><span>備註</span><span>狀態</span>
+                </div>
+                {manualPicks.length === 0 && (
+                  <div style={{ padding: '20px', color: '#aaa', fontSize: '13px', textAlign: 'center' }}>尚無手動新增股票</div>
+                )}
+                {manualPicks.map((pick, idx) => (
+                  <div key={String(pick._id)} style={{ display: 'grid', gridTemplateColumns: '80px 100px 90px 90px 90px 80px 1fr 80px', gap: '0', padding: '10px 12px', borderTop: idx > 0 ? '1px solid #f0ede8' : 'none', fontSize: '13px', alignItems: 'center', background: pick.active === false ? '#fafafa' : '#fff' }}>
+                    <span style={{ fontWeight: 700, color: pick.active === false ? '#aaa' : '#1a1a1a' }}>{pick.symbol}</span>
+                    <span style={{ color: '#666' }}>{pick.mentionDate}</span>
+                    <span>{pick.mentionClose != null ? `$${pick.mentionClose}` : '—'}</span>
+                    <span>{pick.latestClose != null ? `$${pick.latestClose}` : '—'}</span>
+                    <span style={{ color: '#999', fontSize: '11px' }}>{pick.latestCloseDate || '—'}</span>
+                    <span style={{ fontWeight: 700, color: pick.performancePct > 0 ? '#22c55e' : pick.performancePct < 0 ? '#ef5350' : '#aaa' }}>
+                      {pick.performancePct != null ? `${pick.performancePct > 0 ? '+' : ''}${pick.performancePct}%` : '—'}
+                    </span>
+                    <span style={{ color: '#999', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pick.note || ''}</span>
+                    <button
+                      onClick={async () => {
+                        const newActive = !(pick.active !== false);
+                        const res = await fetch(`/api/admin/jg-picks/${pick._id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ active: newActive }),
+                        });
+                        const d = await res.json();
+                        if (d.ok) setManualPicks(prev => prev.map(p => String(p._id) === String(pick._id) ? { ...p, active: newActive } : p));
+                      }}
+                      style={{ padding: '4px 10px', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', background: pick.active === false ? '#e8f5e9' : '#fff3f3', color: pick.active === false ? '#22c55e' : '#c0202a' }}
+                    >{pick.active === false ? '啟用' : '停用'}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === 'channels' && (
           <div>

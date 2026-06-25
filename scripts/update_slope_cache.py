@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """
-Slope Scanner Data Updater (incremental, FMP-only, no yfinance)
-- Builds universe: S&P 500 + NASDAQ clean common stocks (market cap >$500M, US, non-ETF/fund)
-- Loads existing price_cache.json and only fetches MISSING symbols
-- Saves incrementally every 200 symbols to avoid memory/kill issues
-- Benchmarks QQQ/SPY/IWM always preserved
+Slope Scanner Data Updater (incremental, FMP-only, daily-refresh mode)
+
+Universe: S&P 500 + NASDAQ clean common stocks (market cap >$500M, US, non-ETF/fund)
++ QQQ/SPY/IWM benchmarks
+
+Daily refresh behaviour:
+  - NEW symbols: fetch full 550-day history
+  - STALE symbols (latest date older than 3 days): fetch only recent data from last date
+  - FRESH symbols (latest date within 3 days): skip (already up to date)
+
+Checkpoint: saves to price_cache.json every SAVE_EVERY symbols to survive SIGKILL.
+NO yfinance. FMP-only.
 """
 
 import json
 import os
-import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import requests
 
@@ -19,7 +25,8 @@ API_KEY = os.environ.get("FMP_API_KEY", "3c03eZvjdPpKONYydbgoAT9chCaQDnsp")
 BASE_URL = "https://financialmodelingprep.com"
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 RATE_LIMIT_SLEEP = 0.07
-SAVE_EVERY = 200  # write price_cache every N new symbols
+SAVE_EVERY = 100          # checkpoint every N symbols
+FRESH_DAYS = 3            # skip if latest date is within this many days of today
 
 
 def fetch_json(url: str) -> list | dict:
@@ -29,25 +36,21 @@ def fetch_json(url: str) -> list | dict:
 
 
 def save_cache(cache: dict, path: str) -> None:
-    with open(path + ".tmp", "w") as f:
+    """Atomic write: temp file → rename."""
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
         json.dump(cache, f)
-    os.replace(path + ".tmp", path)
+    os.replace(tmp, path)
 
 
-def get_universe() -> tuple[set[str], set[str], set[str]]:
-    """
-    Returns (sp500_syms, nasdaq_clean_syms, all_syms_with_benchmarks).
-    NASDAQ clean: market cap >$500M, US, isEtf=false, isFund=false,
-    isActivelyTrading=true, must have sector, no dot in ticker.
-    """
-    # S&P 500
+def get_universe() -> tuple[set, set, set]:
+    """Returns (sp500, nasdaq_clean, all_with_benchmarks)."""
     print("  Fetching S&P 500...", flush=True)
-    sp500_data = fetch_json(f"{BASE_URL}/stable/sp500-constituent?apikey={API_KEY}")
-    sp500 = {x["symbol"] for x in sp500_data if x.get("symbol")}
+    sp500_raw = fetch_json(f"{BASE_URL}/stable/sp500-constituent?apikey={API_KEY}")
+    sp500 = {x["symbol"] for x in sp500_raw if x.get("symbol")}
     time.sleep(RATE_LIMIT_SLEEP)
-    print(f"    SP500: {len(sp500)} symbols", flush=True)
+    print(f"    SP500: {len(sp500)}", flush=True)
 
-    # NASDAQ screener
     print("  Fetching NASDAQ screener...", flush=True)
     screener_url = (
         f"{BASE_URL}/stable/company-screener"
@@ -58,8 +61,7 @@ def get_universe() -> tuple[set[str], set[str], set[str]]:
     raw = fetch_json(screener_url)
     time.sleep(RATE_LIMIT_SLEEP)
 
-    nasdaq: set[str] = set()
-    skipped = 0
+    nasdaq: set = set()
     for x in raw:
         sym = x.get("symbol", "")
         if (
@@ -70,23 +72,44 @@ def get_universe() -> tuple[set[str], set[str], set[str]]:
             and not x.get("isFund", False)
         ):
             nasdaq.add(sym)
-        else:
-            skipped += 1
-
-    print(f"    NASDAQ raw: {len(raw)}, clean: {len(nasdaq)}, skipped: {skipped}", flush=True)
+    print(f"    NASDAQ clean: {len(nasdaq)} (from {len(raw)} raw)", flush=True)
 
     all_syms = sp500 | nasdaq | {"QQQ", "SPY", "IWM"}
-    print(f"  Total universe: {len(all_syms)} (SP500={len(sp500)}, NASDAQ-clean={len(nasdaq)}, overlap={len(sp500 & nasdaq)})", flush=True)
+    print(f"  Universe total: {len(all_syms)}", flush=True)
     return sp500, nasdaq, all_syms
 
 
-def fetch_symbol_prices(sym: str, from_date: str) -> list:
+def get_fetch_mode(sym: str, existing_prices: dict[str, list]) -> tuple[str, str]:
+    """
+    Returns (mode, from_date):
+      ('skip', '')           - data is fresh, no fetch needed
+      ('full', '2024-xx-xx') - new symbol, fetch full history
+      ('update', '2026-xx-xx') - stale symbol, fetch from last date + 1
+    """
+    records = existing_prices.get(sym)
+    if not records:
+        from_date = (datetime.now() - timedelta(days=550)).strftime("%Y-%m-%d")
+        return "full", from_date
+
+    latest_str = max(r["date"] for r in records)
+    latest = date.fromisoformat(latest_str)
+    days_old = (date.today() - latest).days
+
+    if days_old <= FRESH_DAYS:
+        return "skip", ""
+    else:
+        # Fetch only from the day after latest known date
+        next_day = (latest + timedelta(days=1)).strftime("%Y-%m-%d")
+        return "update", next_day
+
+
+def fetch_symbol(sym: str, from_date: str) -> list:
     url = (
         f"{BASE_URL}/stable/historical-price-eod/full"
         f"?symbol={sym}&from={from_date}&apikey={API_KEY}"
     )
     data = fetch_json(url)
-    if isinstance(data, list) and data:
+    if isinstance(data, list):
         return [
             {"date": r["date"], "close": r["close"]}
             for r in data
@@ -95,12 +118,19 @@ def fetch_symbol_prices(sym: str, from_date: str) -> list:
     return []
 
 
+def merge_records(existing: list, new_records: list) -> list:
+    """Merge new records into existing, overwriting on date collision."""
+    date_map = {r["date"]: r for r in existing}
+    for r in new_records:
+        date_map[r["date"]] = r
+    return sorted(date_map.values(), key=lambda x: x["date"])
+
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     price_path = os.path.join(DATA_DIR, "price_cache.json")
-    from_date = (datetime.now() - timedelta(days=550)).strftime("%Y-%m-%d")
 
-    print("=== Slope Scanner Updater (incremental, FMP-only) ===", flush=True)
+    print("=== Slope Cache Updater (daily-refresh, FMP-only) ===", flush=True)
     print(f"Output: {price_path}", flush=True)
 
     # 1. Build universe
@@ -109,29 +139,50 @@ def main():
 
     # 2. Load existing cache
     print("\n[2/2] Loading existing cache...", flush=True)
-    cache: dict = {"prices": {}, "symbols": [], "updated_at": ""}
+    cache: dict = {"prices": {}, "symbols": []}
     if os.path.exists(price_path):
         try:
             cache = json.load(open(price_path))
-            print(f"  Loaded existing: {len(cache.get('symbols', []))} symbols", flush=True)
+            existing_count = len(cache.get("symbols", []))
+            print(f"  Existing: {existing_count} symbols", flush=True)
         except Exception as e:
             print(f"  WARN: could not load existing cache: {e}", flush=True)
 
-    existing_syms = set(cache.get("symbols", []))
-    to_fetch = sorted(all_syms - existing_syms)
-    print(f"  Already have: {len(existing_syms)}", flush=True)
-    print(f"  Need to fetch: {len(to_fetch)} new symbols", flush=True)
+    existing_prices: dict = cache.get("prices", {})
 
-    # 3. Fetch missing symbols incrementally
-    failed: list[str] = []
-    empty: list[str] = []
-    total = len(to_fetch)
+    # 3. Determine what to fetch for each symbol
+    full_list, update_list, skip_list = [], [], []
+    for sym in sorted(all_syms):
+        mode, from_date = get_fetch_mode(sym, existing_prices)
+        if mode == "full":
+            full_list.append((sym, from_date))
+        elif mode == "update":
+            update_list.append((sym, from_date))
+        else:
+            skip_list.append(sym)
 
-    for i, sym in enumerate(to_fetch):
+    print(f"  NEW symbols (full fetch): {len(full_list)}", flush=True)
+    print(f"  STALE symbols (update): {len(update_list)}", flush=True)
+    print(f"  FRESH symbols (skip): {len(skip_list)}", flush=True)
+
+    # 4. Fetch
+    to_process = full_list + update_list  # process new first, then updates
+    failed: list = []
+    empty: list = []
+    processed = 0
+    total = len(to_process)
+
+    for i, (sym, from_date) in enumerate(to_process):
+        mode = "full" if (sym, from_date) in full_list else "update"
         try:
-            records = fetch_symbol_prices(sym, from_date)
-            if records:
-                cache["prices"][sym] = records
+            new_records = fetch_symbol(sym, from_date)
+            if new_records:
+                if mode == "update" and existing_prices.get(sym):
+                    # Merge new records with existing
+                    existing_prices[sym] = merge_records(existing_prices[sym], new_records)
+                else:
+                    existing_prices[sym] = new_records
+                processed += 1
             else:
                 empty.append(sym)
             time.sleep(RATE_LIMIT_SLEEP)
@@ -141,18 +192,20 @@ def main():
             time.sleep(RATE_LIMIT_SLEEP)
 
         if (i + 1) % 100 == 0:
-            print(f"  [{i+1}/{total}] fetched... (failed={len(failed)}, empty={len(empty)})", flush=True)
+            pct = round((i + 1) / total * 100)
+            print(f"  [{i+1}/{total}] {pct}% done (ok={processed} fail={len(failed)} empty={len(empty)})", flush=True)
 
-        # Incremental save every SAVE_EVERY symbols
+        # Checkpoint
         if (i + 1) % SAVE_EVERY == 0:
-            cache["symbols"] = sorted(cache["prices"].keys())
+            cache["prices"] = existing_prices
+            cache["symbols"] = sorted(existing_prices.keys())
             cache["updated_at"] = datetime.now().isoformat()
-            cache["universe_source"] = "SP500 + NASDAQ screener (FMP, cap>500M, US, no ETF/fund)"
             save_cache(cache, price_path)
             print(f"  [checkpoint] saved {len(cache['symbols'])} symbols", flush=True)
 
-    # Final metadata and save
-    cache["symbols"] = sorted(cache["prices"].keys())
+    # 5. Final save
+    cache["prices"] = existing_prices
+    cache["symbols"] = sorted(existing_prices.keys())
     cache["updated_at"] = datetime.now().isoformat()
     cache["universe_source"] = "SP500 + NASDAQ screener (FMP, cap>500M, US, no ETF/fund)"
     cache["universe_sp500"] = len(sp500)
@@ -163,10 +216,11 @@ def main():
     save_cache(cache, price_path)
 
     print(f"\n=== Done ===", flush=True)
-    print(f"  Total symbols in cache: {len(cache['symbols'])}", flush=True)
+    print(f"  Total in cache: {len(cache['symbols'])}", flush=True)
+    print(f"  New: {len(full_list)}, Updated: {len(update_list)}, Skipped: {len(skip_list)}", flush=True)
     print(f"  Failed: {len(failed)} — {failed[:10]}", flush=True)
-    print(f"  Empty (no FMP data): {len(empty)}", flush=True)
-    print(f"  NOTE: short_interest.json NOT updated (yfinance excluded)", flush=True)
+    print(f"  Empty: {len(empty)}", flush=True)
+    print(f"  NOTE: short_interest.json NOT updated (yfinance excluded per policy)", flush=True)
 
 
 if __name__ == "__main__":
