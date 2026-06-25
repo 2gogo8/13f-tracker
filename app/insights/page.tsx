@@ -14,6 +14,9 @@ interface PickResult {
   current_price: number | null;
   return_pct: number | null;
   name?: string;
+  mentionClose?: number;
+  latestClose?: number;
+  latestCloseDate?: string;
 }
 
 interface Summary {
@@ -936,18 +939,30 @@ export default function InsightsPage() {
                 const pctColor = pct == null ? '#aaa' : isPos ? '#22c55e' : '#ef5350';
                 const pctText = pct == null ? '—' : `${isPos ? '+' : ''}${pct.toFixed(1)}%`;
                 const dateStr = pick.first_date.slice(2).replace(/-/g, '-');
+                const fmtPx = (p: number) =>
+                  p >= 1000 ? '$' + Math.round(p).toLocaleString('en-US') : '$' + p.toFixed(2);
+                const mmdd = pick.latestCloseDate
+                  ? pick.latestCloseDate.slice(5).replace('-', '/')
+                  : null;
+                const priceLine =
+                  pick.mentionClose != null && pick.latestClose != null && mmdd
+                    ? `${dateStr} · ${fmtPx(pick.mentionClose)} → ${fmtPx(pick.latestClose)} · ${mmdd}`
+                    : dateStr;
                 return (
                   <div key={pick.symbol}>
                     <div
                       onClick={() => window.open(`/stock/${pick.symbol}`, '_blank')}
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', cursor: 'pointer' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', cursor: 'pointer' }}
                     >
-                      <div style={{ flexShrink: 0, minWidth: '48px' }}>
-                        <div style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a1a', lineHeight: 1.2, fontFamily: '"Noto Sans TC", monospace' }}>{pick.symbol}</div>
-                        <div style={{ fontSize: '10px', color: '#999', marginTop: '1px' }}>{dateStr}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a1a', fontFamily: '"Noto Sans TC", monospace' }}>{pick.symbol}</span>
+                          <span style={{ flexShrink: 0, fontSize: '14px', fontWeight: 700, color: pctColor, fontFamily: 'Georgia, serif' }}>{pctText}</span>
+                        </div>
+                        <div style={{ fontSize: '9px', color: '#bbb', marginTop: '2px', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {priceLine}
+                        </div>
                       </div>
-                      <div style={{ flex: 1, fontSize: '11px', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pick.name || ''}</div>
-                      <div style={{ flexShrink: 0, fontSize: '14px', fontWeight: 700, color: pctColor, fontFamily: 'Georgia, serif' }}>{pctText}</div>
                     </div>
                     {idx < Math.min(mobilepicks.length, 10) - 1 && (
                       <div style={{ height: '1px', background: '#f0ede8', margin: '0 12px' }} />
