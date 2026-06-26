@@ -32,6 +32,9 @@ interface TWScanResponse {
   bench_slope_us: number;
   explosive_threshold: number;
   data_updated_at: string;
+  taiex_latest_date?: string;
+  stocks_latest_date?: string;
+  data_source?: string;
   type1: Type1Group[];
   type2: Type2Result[];
   error?: string;
@@ -400,13 +403,44 @@ export default function TWSlopeScanner() {
         )
       )}
 
-      {/* Footer */}
-      {data && (
-        <div className="mt-6 flex items-center justify-between text-xs text-gray-400 pt-4 border-t border-gray-100">
-          <span>資料含 1,976 支台股（TWSE + TPEx）</span>
-          <span>更新：{new Date(data.data_updated_at).toLocaleString('zh-TW')}</span>
-        </div>
-      )}
+      {/* Data Freshness Footer */}
+      {data && (() => {
+        const stocksDate = data.stocks_latest_date;
+        const taiexDate = data.taiex_latest_date;
+        const updatedAt = new Date(data.data_updated_at);
+        const today = new Date();
+        const stocksDateObj = stocksDate ? new Date(stocksDate) : null;
+        // Stale if stocks latest date is more than 5 calendar days behind today
+        const msPerDay = 86400000;
+        const isStale = stocksDateObj ? (today.getTime() - stocksDateObj.getTime()) / msPerDay > 5 : false;
+
+        const fmtDate = (d: string | undefined) =>
+          d ? d.replace(/-/g, '/') : '—';
+        const fmtTime = (d: Date) =>
+          d.toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+        return (
+          <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
+            {isStale && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700 flex items-start gap-2">
+                <span>⚠️</span>
+                <span>
+                  個股資料可能未更新，目前使用 <strong>{fmtDate(stocksDate)}</strong> 收盤資料。
+                  TAIEX 最新至 <strong>{fmtDate(taiexDate)}</strong>，兩者可能有落差。
+                </span>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-1 text-xs text-gray-400">
+              <span>
+                台股個股 <strong className={isStale ? 'text-amber-600' : 'text-gray-600'}>{fmtDate(stocksDate)} 收盤</strong>
+                ｜ TAIEX {fmtDate(taiexDate)}
+                ｜ 最後更新 {fmtTime(updatedAt)}
+              </span>
+              <span className="text-gray-300">資料來源：{data.data_source ?? 'yfinance [temporary]'}</span>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

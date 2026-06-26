@@ -289,11 +289,26 @@ export async function POST(request: NextRequest) {
     // Sort Type2 by twSlope descending
     type2.sort((a, b) => b.twSlope - a.twSlope);
 
+    // Compute freshness metadata
+    const taiexLatestDate = twCache.taiex?.length
+      ? twCache.taiex.reduce((a: PriceRecord, b: PriceRecord) => (a.date > b.date ? a : b)).date
+      : null;
+    const stockSampleDates = twCache.symbols.slice(0, 50).map((sym: string) => {
+      const p = twCache.prices[sym];
+      return p?.length ? p.reduce((a: PriceRecord, b: PriceRecord) => (a.date > b.date ? a : b)).date : null;
+    }).filter(Boolean) as string[];
+    const stocksLatestDate = stockSampleDates.length
+      ? stockSampleDates.sort().at(-1)!
+      : null;
+
     return NextResponse.json({
       taiex_slope: roundedTaiex,
       bench_slope_us: benchSlopeUS,
       explosive_threshold: explosiveThreshold,
       data_updated_at: twCache.updated_at,
+      taiex_latest_date: taiexLatestDate,
+      stocks_latest_date: stocksLatestDate,
+      data_source: (twCache as unknown as Record<string, unknown>).data_source ?? 'yfinance [temporary]',
       type1,
       type2,
     });

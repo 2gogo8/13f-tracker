@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
-台股斜率選股資料更新腳本
-- TAIEX：TWSE 官方 API
-- 台股價格：yfinance（TWSE + TPEx）
+台股斜率選股資料更新腳本 (v2)
+- TAIEX：FMP ^TWII
+- 台股價格：yfinance（TWSE + TPEx）[temporary source]
 - 輸出：data/tw_price_cache.json
+
+修正記錄 (2026-06-26):
+  - 延長歷史至 400 天（約 250 個交易日）
+  - 加入 merge 保護：新資料若比現有舊，保留現有資料
+  - 加入 failed / skipped 記錄
+  - 加入 backup 機制（.bak）
+  - 加入 --force flag（強制全量更新）
 """
 
 import json
@@ -156,9 +163,16 @@ def main():
     print("=== 台股斜率快取更新 ===")
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    # 抓最近 6 個月的資料（足夠任意日期查詢）
+    import shutil
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--force', action='store_true', help='強制全量更新，忽略現有 cache')
+    args = parser.parse_args()
+
+    # 抓最近 400 天（約 250 個交易日）
     today = datetime.now()
-    start_date = (today - timedelta(days=200)).strftime("%Y-%m-%d")
+    start_date = (today - timedelta(days=400)).strftime("%Y-%m-%d")
     end_date = (today + timedelta(days=1)).strftime("%Y-%m-%d")
 
     # 產生需要的月份（TWSE API 按月抓）
@@ -195,27 +209,109 @@ def main():
 
     tickers = [s["symbol"] for s in stocks]
 
+    # 載入既有 cache（用於 merge 保護）
+    out_path = os.path.join(DATA_DIR, "tw_price_cache.json")
+    existing_prices: dict[str, list] = {}
+    if os.path.exists(out_path) and not args.force:
+        try:
+            with open(out_path, "r", encoding="utf-8") as f:
+                old = json.load(f)
+            existing_prices = old.get("prices", {})
+            old_latest = max(
+                (max(r["date"] for r in v) for v in existing_prices.values() if v),
+                default="N/A"
+            )
+            print(f"  既有 cache 最新個股日期: {old_latest}")
+            # Backup before overwrite
+            bak_path = out_path + ".bak"
+            shutil.copy2(out_path, bak_path)
+            print(f"  備份至 {bak_path}")
+        except Exception as e:
+            print(f"  載入既有 cache 失敗，全量更新: {e}")
+            existing_prices = {}
+
     print(f"\n[3/3] 批量下載價格 ({len(tickers)} 支，約需 5-8 分鐘)...")
-    prices = batch_download_prices(tickers, start_date, end_date)
-    print(f"  成功下載: {len(prices)}/{len(tickers)} 支")
+    print(f"  [temporary source: yfinance]")
+    new_prices = batch_download_prices(tickers, start_date, end_date)
+    print(f"  成功下載: {len(new_prices)}/{len(tickers)} 支")
+
+    # Merge 保護：若 yfinance 回傳日期 < 現有，保留現有
+    merged_prices: dict[str, list] = {}
+    updated_count = 0
+    kept_old_count = 0
+    failed_symbols = []
+    skipped_symbols = []
+
+    all_tickers = set(tickers)
+    fetched_tickers = set(new_prices.keys())
+    missing_tickers = all_tickers - fetched_tickers
+
+    for sym in tickers:
+        new_data = new_prices.get(sym, [])
+        old_data = existing_prices.get(sym, [])
+
+        if not new_data and not old_data:
+            failed_symbols.append(sym)
+            continue
+
+        if not new_data:
+            # yfinance 沒抓到，保留舊資料
+            merged_prices[sym] = old_data
+            skipped_symbols.append(sym)
+            kept_old_count += 1
+            continue
+
+        new_latest = max(r["date"] for r in new_data)
+        old_latest = max(r["date"] for r in old_data) if old_data else "0000-00-00"
+
+        if new_latest >= old_latest:
+            merged_prices[sym] = new_data
+            updated_count += 1
+        else:
+            # 新資料比舊資料舊，保留舊資料（防止意外倒退）
+            merged_prices[sym] = old_data
+            kept_old_count += 1
+            skipped_symbols.append(sym)
+
+    # 合併新 metadata（保留既有）
+    if existing_prices:
+        old_meta = old.get("metadata", {}) if 'old' in dir() else {}
+        for sym, meta in old_meta.items():
+            if sym not in metadata:
+                metadata[sym] = meta
 
     # 組合輸出
     cache = {
         "updated_at": datetime.now().isoformat(),
+        "data_source": "yfinance [temporary]",
         "taiex": taiex_data,
-        "symbols": sorted(prices.keys()),
-        "prices": prices,
+        "symbols": sorted(merged_prices.keys()),
+        "prices": merged_prices,
         "metadata": metadata,
     }
 
-    out_path = os.path.join(DATA_DIR, "tw_price_cache.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False)
 
     size_mb = os.path.getsize(out_path) / 1024 / 1024
+
+    # 回報最新個股日期
+    if merged_prices:
+        latest_stock_date = max(
+            (max(r["date"] for r in v) for v in merged_prices.values() if v),
+            default="N/A"
+        )
+    else:
+        latest_stock_date = "N/A"
+
     print(f"\n✅ 儲存完成：{out_path} ({size_mb:.1f} MB)")
-    print(f"   TAIEX: {len(taiex_data)} 交易日")
-    print(f"   股票: {len(prices)} 支")
+    print(f"   TAIEX: {len(taiex_data)} 交易日，最新={taiex_data[-1]['date'] if taiex_data else 'N/A'}")
+    print(f"   台股個股最新日期: {latest_stock_date}")
+    print(f"   更新: {updated_count} 支 | 保留舊資料: {kept_old_count} 支 | 失敗: {len(failed_symbols)} 支")
+    if failed_symbols:
+        print(f"   Failed ({len(failed_symbols)}): {failed_symbols[:20]}{'...' if len(failed_symbols)>20 else ''}")
+    if skipped_symbols[:5]:
+        print(f"   Skipped sample: {skipped_symbols[:5]}")
     print("\n=== 完成 ===")
 
 
