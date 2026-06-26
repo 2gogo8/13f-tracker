@@ -45,11 +45,17 @@ export const authOptions: NextAuthOptions = {
           token.isMember = false;
         }
       }
+
+      // Check if user is an admin (ADMIN_EMAILS env var)
+      const adminEmails = process.env.ADMIN_EMAILS?.split(',').map((e) => e.trim()).filter(Boolean) ?? [];
+      token.isAdmin = adminEmails.length > 0 && adminEmails.includes(token.email as string);
+
       return token;
     },
     async session({ session, token }) {
       (session as any).accessToken = token.accessToken;
       (session.user as any).isMember = token.isMember;
+      (session.user as any).isAdmin = token.isAdmin ?? false;
       return session;
     },
   },

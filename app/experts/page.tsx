@@ -123,7 +123,11 @@ export default function ExpertsPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/login');
-    } else if (status === 'authenticated' && (session?.user as any)?.isMember === false) {
+    } else if (
+      status === 'authenticated' &&
+      (session?.user as any)?.isMember === false &&
+      (session?.user as any)?.isAdmin !== true
+    ) {
       router.replace('/not-member');
     }
   }, [status, session, router]);
