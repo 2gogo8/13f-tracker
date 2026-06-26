@@ -40,6 +40,9 @@ function isScriptContent(article: string | undefined | null): boolean {
 }
 
 function isAlphaReady(doc: Record<string, unknown>): boolean {
+  // Status gate: if status field exists and is not 'published', block it
+  // (Backward compat: old docs without status field are unaffected)
+  if (doc.status && doc.status !== 'published') return false;
   // Rule 1: explicitly marked alphaReady in DB
   if (doc.alphaReady === true) return true;
   // Rule 2: v2_alpha version AND content passes lint
@@ -78,7 +81,7 @@ export async function GET(request: Request) {
     const candidates = await db
       .collection('summaries')
       .find(ALPHA_DB_FILTER)
-      .sort({ publishedAt: -1 })
+      .sort({ isPinned: -1, sortOrder: 1, publishedAt: -1, createdAt: -1 })
       .limit(limit * 3) // over-fetch to account for content lint filtering
       .project({
         tags: 1,
@@ -103,6 +106,11 @@ export async function GET(request: Request) {
         claimsToCheck: 1,
         verificationPoints: 1,
         needsReview: 1,
+        // CMS fields
+        status: 1,
+        isPinned: 1,
+        sortOrder: 1,
+        displaySection: 1,
       })
       .toArray();
 
