@@ -52,7 +52,8 @@ function computePullback(
       // Check rebound reset condition
       const rebound = close - segLow;
       const prevDrop = segHigh - segLow;
-      if (prevDrop > 0 && (rebound / prevDrop) * 100 >= reboundResetPct) {
+      const minDropPct = (prevDrop / segHigh) * 100;
+      if (prevDrop > 0 && minDropPct >= 8 && (rebound / prevDrop) * 100 >= reboundResetPct) {
         segHigh = close;
         segHighDate = date;
         segLow = close;
