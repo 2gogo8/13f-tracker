@@ -1,21 +1,33 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getToken } from 'next-auth/jwt';
+import { type NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+// Use getToken() to access the JWT server-side (includes discordId which is not in client session)
+export async function GET(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+
+  if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(e => e.trim()).filter(Boolean) ?? [];
-  const isAdmin = adminEmails.length > 0 && adminEmails.includes(session.user.email);
-  const isMember = (session.user as any).isMember ?? false;
+  // Admin check: Option C — support both ADMIN_EMAILS and ADMIN_DISCORD_IDS
+  const adminEmails =
+    process.env.ADMIN_EMAILS?.split(',').map((e) => e.trim()).filter(Boolean) ?? [];
+  const adminDiscordIds =
+    process.env.ADMIN_DISCORD_IDS?.split(',').map((e) => e.trim()).filter(Boolean) ?? [];
+
+  const isAdminByEmail =
+    typeof token.email === 'string' && adminEmails.includes(token.email);
+  const isAdminByDiscord =
+    typeof token.discordId === 'string' && adminDiscordIds.includes(token.discordId as string);
+  const isAdmin = isAdminByEmail || isAdminByDiscord;
+
+  const isMember = (token.isMember as boolean) ?? false;
 
   return NextResponse.json({
     ok: true,
-    email: session.user.email,
-    name: session.user.name,
+    name: token.name ?? null,
+    email: token.email ?? null,       // null for Discord logins (no email scope)
+    discordId: token.discordId ?? null,
     isMember,
     isAdmin,
   });

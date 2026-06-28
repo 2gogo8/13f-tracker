@@ -26,35 +26,53 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async jwt({ token, account }) {
-      if (account?.access_token) {
-        token.accessToken = account.access_token;
+      // Only runs on first login (account is present) or token refresh (account is undefined)
+      if (account) {
+        if (account.provider === "discord" && account.access_token) {
+          // Store Discord user ID for ADMIN_DISCORD_IDS check (server-side only)
+          token.discordId = account.providerAccountId;
 
-        // Check if user is in JG's Discord server
-        try {
-          const res = await fetch(
-            `https://discord.com/api/v10/users/@me/guilds`,
-            { headers: { Authorization: `Bearer ${account.access_token}` } }
-          );
-          if (res.ok) {
-            const guilds: { id: string }[] = await res.json();
-            token.isMember = guilds.some((g) => g.id === DISCORD_GUILD_ID);
-          } else {
+          // Check Discord guild membership — access_token stays in JWT, never sent to client
+          try {
+            const res = await fetch(
+              `https://discord.com/api/v10/users/@me/guilds`,
+              { headers: { Authorization: `Bearer ${account.access_token}` } }
+            );
+            if (res.ok) {
+              const guilds: { id: string }[] = await res.json();
+              token.isMember = guilds.some((g) => g.id === DISCORD_GUILD_ID);
+            } else {
+              token.isMember = false;
+            }
+          } catch {
             token.isMember = false;
           }
-        } catch {
+        } else if (account.provider === "google") {
+          // Google users are not Discord members by default
           token.isMember = false;
         }
       }
 
-      // Check if user is an admin (ADMIN_EMAILS env var)
-      const adminEmails = process.env.ADMIN_EMAILS?.split(',').map((e) => e.trim()).filter(Boolean) ?? [];
-      token.isAdmin = adminEmails.length > 0 && adminEmails.includes(token.email as string);
+      // Admin check on every token evaluation:
+      // Option C: support both ADMIN_EMAILS (Google login) and ADMIN_DISCORD_IDS (Discord login)
+      const adminEmails =
+        process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim()).filter(Boolean) ?? [];
+      const adminDiscordIds =
+        process.env.ADMIN_DISCORD_IDS?.split(",").map((e) => e.trim()).filter(Boolean) ?? [];
+
+      const isAdminByEmail =
+        typeof token.email === "string" && adminEmails.includes(token.email);
+      const isAdminByDiscord =
+        typeof token.discordId === "string" && adminDiscordIds.includes(token.discordId);
+
+      token.isAdmin = isAdminByEmail || isAdminByDiscord;
 
       return token;
     },
+
     async session({ session, token }) {
-      (session as any).accessToken = token.accessToken;
-      (session.user as any).isMember = token.isMember;
+      // Only expose what the client needs — NO accessToken, NO discordId
+      (session.user as any).isMember = token.isMember ?? false;
       (session.user as any).isAdmin = token.isAdmin ?? false;
       return session;
     },
