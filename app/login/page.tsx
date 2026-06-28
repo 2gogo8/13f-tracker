@@ -31,6 +31,17 @@ function LoginContent() {
             </div>
           )}
 
+          {error && error !== "not_member" && (
+            <div className="mb-6 p-4 bg-orange-50 rounded-xl border border-orange-100">
+              <p className="text-sm text-orange-800 font-medium mb-1">
+                ⚠️ 登入失敗
+              </p>
+              <p className="text-xs text-orange-600">
+                錯誤代碼：{error}
+              </p>
+            </div>
+          )}
+
           <p className="text-sm text-gray-500 mb-6">
             請使用 Discord 帳號登入
           </p>
