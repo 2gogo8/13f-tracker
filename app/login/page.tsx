@@ -2,11 +2,24 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+
+  // Clear service worker cache for auth routes to prevent OAuth redirect loops
+  useEffect(() => {
+    if (typeof window !== "undefined" && "caches" in window) {
+      caches.keys().then((names) => {
+        names.forEach((name) => {
+          if (name.includes("apis") || name.includes("start-url") || name.includes("pages")) {
+            caches.delete(name);
+          }
+        });
+      });
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#F5F3EF] flex items-center justify-center px-4">
