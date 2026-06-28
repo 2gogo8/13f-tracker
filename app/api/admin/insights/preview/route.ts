@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/admin';
+import { checkAdminStatus } from '@/lib/admin';
 import getClientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
 export async function GET(req: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin) {
-    return NextResponse.json(
-      { error: 'Forbidden – ADMIN_EMAILS not set or email not in allowlist' },
-      { status: 403 }
-    );
+  const authResult = await checkAdminStatus();
+  if (authResult.status === 'unauthenticated') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (authResult.status === 'forbidden') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);

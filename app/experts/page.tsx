@@ -125,7 +125,6 @@ export default function ExpertsPage() {
       router.replace('/login');
     } else if (
       status === 'authenticated' &&
-      (session?.user as any)?.isMember === false &&
       (session?.user as any)?.isAdmin !== true
     ) {
       router.replace('/not-member');

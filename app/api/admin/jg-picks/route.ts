@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { checkAdminStatus } from '@/lib/admin';
 import getClientPromise from '@/lib/mongodb';
 
 const FMP_KEY = process.env.FMP_API_KEY || '3c03eZvjdPpKONYydbgoAT9chCaQDnsp';
@@ -8,13 +7,6 @@ const FMP_BASE = 'https://financialmodelingprep.com';
 const DB = '13f-tracker';
 const MANUAL_COL = 'jg_picks_manual';
 const CACHE_COL = 'jg_picks_cache';
-
-// ── Auth guard ────────────────────────────────────────────────────────────────
-async function requireAuth() {
-  const session = await getServerSession(authOptions);
-  if (!session) return null;
-  return session;
-}
 
 // ── FMP helpers ───────────────────────────────────────────────────────────────
 async function fmpEOD(symbol: string): Promise<Array<{ date: string; close: number }>> {
@@ -43,9 +35,9 @@ function findLatest(records: Array<{ date: string; close: number }>) {
 
 // ── GET: list all manual picks ────────────────────────────────────────────────
 export async function GET() {
-  if (!(await requireAuth())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authGet = await checkAdminStatus();
+  if (authGet.status === 'unauthenticated') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (authGet.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const client = await getClientPromise();
     const picks = await client
@@ -62,8 +54,9 @@ export async function GET() {
 
 // ── POST: add a new pick ──────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const session = await requireAuth();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await checkAdminStatus();
+  if (auth.status === 'unauthenticated') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (auth.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
   const symbol: string = (body.symbol || '').toUpperCase().trim();
@@ -106,7 +99,7 @@ export async function POST(req: NextRequest) {
     active: true,
     createdAt: now,
     updatedAt: now,
-    createdBy: (session.user as { email?: string })?.email || 'admin',
+    createdBy: auth.email || 'admin',
     mentionClose: mentionHit.close,
     mentionCloseDate: mentionHit.date,
     latestClose: latest.close,

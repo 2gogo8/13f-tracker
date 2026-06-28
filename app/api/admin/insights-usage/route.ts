@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { checkAdminStatus } from '@/lib/admin';
 import getClientPromise from '@/lib/mongodb';
 
 const DB = '13f-tracker';
 const COL = 'insights_usage_events';
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = await checkAdminStatus();
+  if (auth.status === 'unauthenticated') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (auth.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
     const client = await getClientPromise();

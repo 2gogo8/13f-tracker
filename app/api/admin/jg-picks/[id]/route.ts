@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { checkAdminStatus } from '@/lib/admin';
 import getClientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
@@ -8,19 +7,14 @@ const DB = '13f-tracker';
 const MANUAL_COL = 'jg_picks_manual';
 const CACHE_COL = 'jg_picks_cache';
 
-async function requireAuth() {
-  const session = await getServerSession(authOptions);
-  return session ?? null;
-}
-
 // PATCH /api/admin/jg-picks/[id] — deactivate (active=false)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await requireAuth())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const auth = await checkAdminStatus();
+  if (auth.status === 'unauthenticated') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (auth.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { id } = await params;
   if (!id || !ObjectId.isValid(id)) {
