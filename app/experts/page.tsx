@@ -63,6 +63,11 @@ export default function ExpertsPage() {
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [marketDirectionsText, setMarketDirectionsText] = useState('');
+
+  // 自動挑片狀態
+  const [rankingContext, setRankingContext] = useState('');
+  const [isRanking, setIsRanking] = useState(false);
+  const [rankingMsg, setRankingMsg] = useState('');
   const [draftResult, setDraftResult] = useState<Record<string, any> | null>(null);
 
   // Usage analytics state
@@ -188,6 +193,29 @@ export default function ExpertsPage() {
       }
     } catch {
       setCmsMsg('❌ 網路錯誤');
+    }
+  };
+
+  const handleRankVideos = async () => {
+    setIsRanking(true);
+    setRankingMsg('評分中...');
+    try {
+      const res = await fetch('/api/admin/insights/rank-videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ marketContextRaw: rankingContext.trim() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setRankingMsg(`✅ 評分完成：推薦 ${data.results.recommended} 支，待確認 ${data.results.needs_review} 支，低優先 ${data.results.low_priority} 支`);
+        fetchCmsData();
+      } else {
+        setRankingMsg(`⚠️ 評分失敗：${data.error}`);
+      }
+    } catch {
+      setRankingMsg('⚠️ 網路錯誤');
+    } finally {
+      setIsRanking(false);
     }
   };
 
@@ -963,9 +991,34 @@ export default function ExpertsPage() {
 
             {/* A. New expert_insights */}
             <section style={{ marginBottom: '32px' }}>
+              {/* 自動挑片 區塊 */}
+              <div className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                <div className="text-sm font-semibold text-gray-300 mb-2">🧭 自動挑選值得處理的影片</div>
+                <textarea
+                  value={rankingContext}
+                  onChange={e => setRankingContext(e.target.value)}
+                  placeholder={`近期市場方向（可選）：\n熱錢很多，但市場開始注意 AI 泡沫風險。\n市場還很樂觀，但如果通膀或利率預期變動，資金可能會重新定價高估値資產。`}
+                  rows={3}
+                  className="w-full text-xs bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 resize-y mb-2"
+                />
+                <button
+                  onClick={handleRankVideos}
+                  disabled={isRanking}
+                  className="text-sm px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded"
+                >
+                  {isRanking ? '評分中...' : '🧭 自動挑選'}
+                </button>
+                {rankingMsg && <div className="text-xs text-gray-300 mt-2">{rankingMsg}</div>}
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '2px solid #e5e5e5', paddingBottom: '6px' }}>
                 <h3 style={{ fontWeight: 700, fontSize: '16px', margin: 0 }}>
                   A. 新掃描內容 ({cmsData?.newExpertInsights.length ?? 0})
+                  {(cmsData as any)?.sectionAIrrelevantCount > 0 && (
+                    <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 400, marginLeft: '8px' }}>
+                      (另有 {(cmsData as any).sectionAIrrelevantCount} 支 irrelevant 已隱藏)
+                    </span>
+                  )}
                 </h3>
                 <button
                   onClick={async () => {
@@ -1093,6 +1146,35 @@ export default function ExpertsPage() {
                           )
                         })()}
                         <div style={{ fontSize: '12px', color: '#555' }}>{String(snippet).slice(0, 150)}{String(snippet).length > 150 ? '…' : ''}</div>
+                        {/* Triage badges */}
+                        <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                          {ins.triageStatus === 'recommended' && (
+                            <span style={{ fontSize: '11px', color: '#86efac', background: 'rgba(20,83,45,0.4)', padding: '1px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                              ⭐ 推薦處理 {ins.priorityScore}分
+                            </span>
+                          )}
+                          {ins.triageStatus === 'needs_review' && (
+                            <span style={{ fontSize: '11px', color: '#fde047', background: 'rgba(113,63,18,0.3)', padding: '1px 8px', borderRadius: '4px' }}>
+                              🔍 待確認 {ins.priorityScore}分
+                            </span>
+                          )}
+                          {ins.triageStatus === 'low_priority' && (
+                            <span style={{ fontSize: '11px', color: '#9ca3af', background: 'rgba(55,65,81,0.5)', padding: '1px 8px', borderRadius: '4px' }}>
+                              📋 低優先 {ins.priorityScore}分
+                            </span>
+                          )}
+                          {!ins.triageStatus && (
+                            <span style={{ fontSize: '11px', color: '#6b7280' }}>尚未自動挑選</span>
+                          )}
+                          {ins.priorityReason && (
+                            <span style={{ fontSize: '11px', color: '#9ca3af', fontStyle: 'italic' }}>{ins.priorityReason}</span>
+                          )}
+                        </div>
+                        {Array.isArray(ins.matchedMarketThemes) && ins.matchedMarketThemes.length > 0 && (
+                          <div style={{ fontSize: '11px', color: '#60a5fa', marginTop: '4px' }}>
+                            🏷️ {ins.matchedMarketThemes.join(' / ')}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>

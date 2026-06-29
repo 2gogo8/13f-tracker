@@ -41,12 +41,27 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const newExpertInsights = await db
+  const sectionADocs = await db
     .collection('expert_insights')
     .find(expertFilter)
     .sort({ publish_date: -1, createdAt: -1 })
     .limit(limit)
     .toArray();
+
+  // 按 triageStatus 排序：recommended > needs_review > low_priority > 未評分 > irrelevant
+  // 再按 priorityScore desc，再按 publish_date desc
+  const triageOrder: Record<string, number> = { recommended: 0, needs_review: 1, low_priority: 2, irrelevant: 4 };
+
+  const sorted = [...sectionADocs].sort((a, b) => {
+    const aOrder = triageOrder[a.triageStatus as string] ?? 3;
+    const bOrder = triageOrder[b.triageStatus as string] ?? 3;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    if ((b.priorityScore || 0) !== (a.priorityScore || 0)) return (b.priorityScore || 0) - (a.priorityScore || 0);
+    return (b.publish_date || '') > (a.publish_date || '') ? 1 : -1;
+  });
+
+  const irrelevantCount = sorted.filter(d => d.triageStatus === 'irrelevant').length;
+  const newExpertInsights = sorted.filter(d => d.triageStatus !== 'irrelevant');
 
   const sectionAEmpty = newExpertInsights.length === 0;
 
@@ -109,6 +124,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     newExpertInsights,
+    sectionAIrrelevantCount: irrelevantCount,
     ...(sectionAEmpty ? { sectionAEmpty: true, sectionAEmptyReason: 'no_recent_insights' } : {}),
     candidateSummaries,
     publishedSummaries,
