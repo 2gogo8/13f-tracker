@@ -196,14 +196,11 @@ export default function ExpertsPage() {
     setDraftResult(null);
     setCmsMsg(null);
     try {
-      const marketDirections = marketDirectionsText
-        .split('\n')
-        .map(s => s.trim())
-        .filter(Boolean);
+      // 支援 freeform 自由文字，直接傳 raw string。LLM 會先整理成主題。
       const res = await fetch('/api/admin/insights/generate-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ summaryId, marketDirections }),
+        body: JSON.stringify({ summaryId, marketDirectionsRaw: marketDirectionsText.trim() }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {

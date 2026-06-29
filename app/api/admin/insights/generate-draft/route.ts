@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
 
   // 2. Parse body
   const body = await req.json();
-  const { summaryId, marketDirections } = body;
+  const { summaryId, marketDirections, marketDirectionsRaw } = body;
+  // 支援 freeform string 或 string[]
+  const originalMarketDirectionInput: string =
+    marketDirectionsRaw ||
+    (Array.isArray(marketDirections) ? marketDirections.join('\n') : (marketDirections ?? ''));
   if (!summaryId) {
     return NextResponse.json({ error: 'summaryId required' }, { status: 400 });
   }
@@ -113,7 +117,7 @@ export async function POST(req: NextRequest) {
   const kiText = validKI.map((k, i) => `${i + 1}. ${k}`).join('\n');
   const tsSection = ts.length > 50 ? `\n訪談片段：\n${ts.slice(0, 800)}` : '';
   const expertLine = [expertName, expertRole, expertOrg].filter(Boolean).join('，');
-  const mdirList = (marketDirections as string[] | undefined);
+  const mdirList = originalMarketDirectionInput;
 
   const systemPrompt = `你是一個財經研究助理。你必須只回傳一個 valid JSON object，不加任何解釋文字、markdown code block、或前後文。`;
 
@@ -129,8 +133,8 @@ export async function POST(req: NextRequest) {
 ${kiText}
 ${tsSection}
 
-近期市場方向（admin 輸入）：
-${mdirList?.length ? mdirList.map((d, i) => `${i + 1}. ${d}`).join('\n') : '（未提供）'}
+近期市場感覺 / 方向（admin 原始輸入，請先整理成主題再進行連結）：
+${mdirList?.trim() ? mdirList : '（未提供）'}
 
 最近已上架文章（供聯想參考）：
 ${recentArticles.length > 0
@@ -144,14 +148,16 @@ ${recentArticles.length > 0
 {
   "suggestedTitle": "建議標題（繁體中文）",
   "articleDraft": "完整文章草稿（markdown 格式，見下方格式說明）",
-  "selectedMarketDirection": "最相關的市場方向（字串），若 fitScore < 70 則為 null",
+  "normalizedMarketThemes": ["整理後的市場主題 1", "整理後的市場主題 2"],
+  "selectedMarketDirection": "最相關的整理後主題（字串），若 fitScore < 70 則為 null",
   "marketDirectionFitScore": 0,
-  "marketDirectionReason": "為什麼這則素材符合或不符合市場方向（1-2 句）",
+  "marketDirectionReason": "為什麼這則素材符合或不符合此市場方向（1-2 句）",
   "relatedRecentArticles": [],
   "jgAngleCandidates": []
 }
 
 欄位規則：
+- normalizedMarketThemes：將 admin 輸入的自由文字整理成清楚的市場主題陣列（1-5 個主題），若未提供則為 []
 - marketDirectionFitScore 是 0-100 的數字
 - marketDirectionFitScore < 70 → selectedMarketDirection 必須是 null
 - relatedRecentArticles 中每個 item 格式：{"id": "文章 _id 字串", "title": "文章標題", "fitScore": 數字, "reason": "為什麼相關（1 句）"}
@@ -259,7 +265,9 @@ JG 觀點候選：
         updatedAt: generatedAt.toISOString(),
         sourceDate,
         sourceDateFallback,
-        marketDirectionInput: marketDirections || [],
+        marketDirectionInput: originalMarketDirectionInput || '',
+        originalMarketDirectionInput: originalMarketDirectionInput || '',
+        normalizedMarketThemes: parsed.normalizedMarketThemes ?? [],
         selectedMarketDirection: parsed.selectedMarketDirection ?? null,
         marketDirectionFitScore: parsed.marketDirectionFitScore ?? 0,
         marketDirectionReason: parsed.marketDirectionReason ?? '',
