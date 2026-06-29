@@ -6,6 +6,20 @@ import { ObjectId } from 'mongodb';
 // Banned broadcast / podcast phrases
 const BROADCAST_BANNED = ['大家好', '歡迎回到', '記得按讚', '訂閱', '開啟小鈴鐺'];
 
+// JG 待補內容 / 後台操作指令（publish blocker）
+const JG_PENDING_BLOCKERS = [
+  '【JG 觀點待補】',
+  '《JG 觀點待補》',
+  '請從上面候選方向',
+  '候選方向中選一個',
+  '改寫成正式 JG 判斷',
+  'reviewer note',
+  'internal instruction',
+  'TODO for JG',
+  '請 JG',
+  '後台操作指令',
+];
+
 function lintSummary(doc: Record<string, unknown>): string[] {
   const errors: string[] = [];
 
@@ -26,6 +40,13 @@ function lintSummary(doc: Record<string, unknown>): string[] {
   const articleText = ((doc.article || doc.body || '') as string);
   for (const phrase of BROADCAST_BANNED) {
     if (articleText.includes(phrase)) errors.push(`banned_phrase:${phrase}`);
+  }
+  // 8b. JG 待補內容 / 後台操作指令 — publish blocker
+  for (const blocker of JG_PENDING_BLOCKERS) {
+    if (articleText.includes(blocker)) {
+      errors.push('jg_pending_content:文章仍包含 JG 待補內容或後台操作指令，不能上架');
+      break;
+    }
   }
   // 9. source_thin
   if (doc.source_thin === true) errors.push('source_thin');

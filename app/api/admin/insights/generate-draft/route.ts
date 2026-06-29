@@ -290,25 +290,18 @@ JG 觀點候選：
   let draftBody = draftLines.slice(bodyStart).join('\n').trim();
 
   // 「程式保證」：檢查【JG 觀點待補】是否存在
-  const PLACEHOLDER = '《JG 觀點待補》';
+  const PLACEHOLDER = '【JG 觀點待補】';  // 和 prompt 中一致
   const hasPlaceholder = draftBody.includes(PLACEHOLDER);
   let jgPlaceholderInsertedByGuard = false;
 
   if (!hasPlaceholder) {
-    // 尋找「可能的 JG 觀點方向」段落，插在其下方
-    const sectionIdx = draftBody.indexOf('## 三、可能的 JG 觀點方向');
+    // 只插入【JG 觀點待補】，不帶任何後台操作說明
     const section4Idx = draftBody.indexOf('## 四、');
+    const guardBlock = `\n\n【JG 觀點待補】`;
 
-    const guardBlock = `\n\n[《JG 觀點待補》]\n請從上面候選方向中選一個，改寫成正式 JG 判斷。`;
-
-    if (sectionIdx >= 0 && section4Idx > sectionIdx) {
-      // 插在第四段前
-      draftBody = draftBody.slice(0, section4Idx).trimEnd() + guardBlock + '\n\n' + draftBody.slice(section4Idx);
-    } else if (section4Idx >= 0) {
-      // 插在第四段前
+    if (section4Idx >= 0) {
       draftBody = draftBody.slice(0, section4Idx).trimEnd() + guardBlock + '\n\n' + draftBody.slice(section4Idx);
     } else {
-      // Fallback：插在文章結尾
       draftBody = draftBody.trimEnd() + guardBlock;
     }
     jgPlaceholderInsertedByGuard = true;
