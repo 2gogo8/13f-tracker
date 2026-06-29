@@ -287,7 +287,37 @@ JG 觀點候選：
       break;
     }
   }
-  const draftBody = draftLines.slice(bodyStart).join('\n').trim();
+  let draftBody = draftLines.slice(bodyStart).join('\n').trim();
+
+  // 「程式保證」：檢查【JG 觀點待補】是否存在
+  const PLACEHOLDER = '《JG 觀點待補》';
+  const hasPlaceholder = draftBody.includes(PLACEHOLDER);
+  let jgPlaceholderInsertedByGuard = false;
+
+  if (!hasPlaceholder) {
+    // 尋找「可能的 JG 觀點方向」段落，插在其下方
+    const sectionIdx = draftBody.indexOf('## 三、可能的 JG 觀點方向');
+    const section4Idx = draftBody.indexOf('## 四、');
+
+    const guardBlock = `\n\n[《JG 觀點待補》]\n請從上面候選方向中選一個，改寫成正式 JG 判斷。`;
+
+    if (sectionIdx >= 0 && section4Idx > sectionIdx) {
+      // 插在第四段前
+      draftBody = draftBody.slice(0, section4Idx).trimEnd() + guardBlock + '\n\n' + draftBody.slice(section4Idx);
+    } else if (section4Idx >= 0) {
+      // 插在第四段前
+      draftBody = draftBody.slice(0, section4Idx).trimEnd() + guardBlock + '\n\n' + draftBody.slice(section4Idx);
+    } else {
+      // Fallback：插在文章結尾
+      draftBody = draftBody.trimEnd() + guardBlock;
+    }
+    jgPlaceholderInsertedByGuard = true;
+  }
+
+  const jgPlaceholderCheckedAt = new Date();
+
+  // 將 articleDraft 也同步更新（含標題行）
+  const finalArticleDraft = draftLines.slice(0, bodyStart).join('\n') + (bodyStart > 0 ? '\n' : '') + draftBody;
 
   // 寫回 summaries
   const today = new Date().toISOString().split('T')[0];
@@ -300,6 +330,9 @@ JG 觀點候選：
       $set: {
         article: draftBody,
         body: draftBody,
+        hasJgPlaceholder: true,
+        jgPlaceholderInsertedByGuard,
+        jgPlaceholderCheckedAt,
         title: draftTitle,
         jgTitle: draftTitle,
         analysisDate: today,
