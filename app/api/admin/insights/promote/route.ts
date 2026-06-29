@@ -46,6 +46,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // ── Article worthiness gate ──
+  const articleDecision = insight.articleDecision as string | undefined
+  if (articleDecision === 'material_only') {
+    return NextResponse.json(
+      { error: '此素材已判斷為「只放素材庫」，不可轉成候選文章', articleDecision: 'material_only' },
+      { status: 400 }
+    )
+  }
+  if (articleDecision === 'reject') {
+    return NextResponse.json(
+      { error: '此素材已判斷為「不建議處理」，不可轉成候選文章', articleDecision: 'reject' },
+      { status: 400 }
+    )
+  }
+  // 若尚未跑 gate，允許轉候選（gate 未跑不等於 reject）
+
   // ── sourceDate fallback chain ──
   // Priority: publishedAt > publish_date > video_published_at > sourceDate (existing)
   // Never fallback to createdAt — that's insertion time, not video publish date

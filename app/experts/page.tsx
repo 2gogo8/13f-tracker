@@ -277,6 +277,31 @@ export default function ExpertsPage() {
     }
   };
 
+  const handleArticleGate = async (expertInsightId: string) => {
+    setEnrichingId(expertInsightId)
+    try {
+      const res = await fetch('/api/admin/insights/article-gate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expertInsightId })
+      })
+      const data = await res.json()
+      if (data.ok) {
+        const label = data.articleDecision === 'draft_candidate' ? '🔥 適合成文'
+          : data.articleDecision === 'material_only' ? '📚 只放素材庫'
+          : '🚫 不建議處理'
+        setCmsMsg(`${label}（${data.articleWorthinessScore}分）`)
+        fetchCmsData()
+      } else {
+        setCmsMsg(`⚠️ ${data.error}`)
+      }
+    } catch {
+      setCmsMsg('⚠️ 網路錯誤')
+    } finally {
+      setEnrichingId(null)
+    }
+  }
+
   const openPreview = async (id: string, type: 'summary' | 'expert_insight') => {
     setCmsPreviewLoading(true);
     setCmsPreview(null);
@@ -1371,11 +1396,50 @@ export default function ExpertsPage() {
                             🏷️ {ins.matchedMarketThemes.join(' / ')}
                           </div>
                         )}
+                        {/* Article worthiness badge */}
+                        {ins.articleDecision === 'draft_candidate' && (
+                          <span style={{ fontSize: 11, background: '#166534', color: '#86efac', padding: '2px 8px', borderRadius: 4, display: 'inline-block', marginTop: 4 }}>
+                            🔥 適合成文 {ins.articleWorthinessScore}分
+                          </span>
+                        )}
+                        {ins.articleDecision === 'material_only' && (
+                          <span style={{ fontSize: 11, background: '#713f12', color: '#fde68a', padding: '2px 8px', borderRadius: 4, display: 'inline-block', marginTop: 4 }}>
+                            📚 只放素材庫 {ins.articleWorthinessScore}分
+                          </span>
+                        )}
+                        {ins.articleDecision === 'reject' && (
+                          <span style={{ fontSize: 11, background: '#450a0a', color: '#fca5a5', padding: '2px 8px', borderRadius: 4, display: 'inline-block', marginTop: 4 }}>
+                            🚫 不建議處理 {ins.articleWorthinessScore}分
+                          </span>
+                        )}
+                        {!ins.articleDecision && ins.enrichmentStatus === 'enriched' && (
+                          <span style={{ fontSize: 11, color: '#9ca3af', display: 'inline-block', marginTop: 4 }}>尚未判斷成文價値</span>
+                        )}
+                        {ins.articleReason && (
+                          <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontStyle: 'italic' }}>{ins.articleReason}</div>
+                        )}
+                        {Array.isArray(ins.matchedStocks) && ins.matchedStocks.length > 0 && (
+                          <div style={{ fontSize: 11, color: '#60a5fa', marginTop: 2 }}>🎯 {ins.matchedStocks.join(', ')}</div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
                         {ins.enrichmentStatus === 'enriched' && (ins.key_insights?.length > 0 || ins.keyInsights?.length > 0) ? (
-                          <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={btnStyle('#16a34a')}>➡️ 轉成最新候選</button>
+                          ins.articleDecision === 'draft_candidate' ? (
+                            <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={btnStyle('#16a34a')}>➡️ 轉成最新候選</button>
+                          ) : ins.articleDecision === 'material_only' ? (
+                            <span style={{ fontSize: '11px', color: '#fbbf24', padding: '4px 8px', alignSelf: 'center' }}>📚 已整理為素材，不建議成文</span>
+                          ) : ins.articleDecision === 'reject' ? (
+                            <span style={{ fontSize: '11px', color: '#f87171', padding: '4px 8px', alignSelf: 'center' }}>🚫 不建議處理</span>
+                          ) : (
+                            <button
+                              onClick={() => handleArticleGate(ins._id)}
+                              disabled={enrichingId === ins._id}
+                              style={{ ...btnStyle('#7c3aed'), opacity: enrichingId === ins._id ? 0.6 : 1, cursor: enrichingId === ins._id ? 'wait' : 'pointer' }}
+                            >
+                              {enrichingId === ins._id ? '判斷中...' : '🧠 判斷是否値得成文'}
+                            </button>
+                          )
                         ) : ins.enrichmentStatus === 'transcript_too_short' ? (
                           <span style={{ fontSize: '11px', color: '#ef4444', padding: '4px 8px', alignSelf: 'center' }}>⚠️ 內容太短，不適合成稿</span>
                         ) : ins.enrichmentStatus === 'transcript_unavailable' ? (

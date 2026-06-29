@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
     : {};
 
   // B 區主列表：最新候選（有 sourceType=video_queue、sourceDate 在 30 天內、未 archived）
+  // 加過濾：只接受 draft_candidate 或尚未判斷（undefined/null）
   const newCandidates = await db
     .collection('summaries')
     .find({
@@ -90,6 +91,11 @@ export async function GET(req: NextRequest) {
       sourceType: 'video_queue',
       sourceDate: { $exists: true, $nin: [null, 'n/a'], $gte: thirtyDaysAgoStr },
       draftStatus: { $ne: 'archived' },
+      $or: [
+        { articleDecision: 'draft_candidate' },
+        { articleDecision: { $exists: false } },
+        { articleDecision: null },
+      ],
     })
     .sort({ sourceDate: -1 })
     .limit(limit)
