@@ -962,11 +962,33 @@ export default function ExpertsPage() {
 
             {/* A. New expert_insights */}
             <section style={{ marginBottom: '32px' }}>
-              <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '12px', borderBottom: '2px solid #e5e5e5', paddingBottom: '6px' }}>
-                A. 新掃描內容 ({cmsData?.newExpertInsights.length ?? 0})
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '2px solid #e5e5e5', paddingBottom: '6px' }}>
+                <h3 style={{ fontWeight: 700, fontSize: '16px', margin: 0 }}>
+                  A. 新掃描內容 ({cmsData?.newExpertInsights.length ?? 0})
+                </h3>
+                <button
+                  onClick={async () => {
+                    setCmsMsg(null);
+                    try {
+                      const res = await fetch('/api/admin/insights/sync-video-queue', { method: 'POST' });
+                      const data = await res.json();
+                      if (data.ok) {
+                        setCmsMsg(`✅ 同步完成：${data.synced} 筆新增，${data.skipped} 筆已存在`);
+                        fetchCmsData();
+                      } else {
+                        setCmsMsg(`❌ 同步失敗：${data.error}`);
+                      }
+                    } catch {
+                      setCmsMsg('❌ 同步失敗：網路錯誤');
+                    }
+                  }}
+                  style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #3b82f6', background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                >
+                  🔄 同步頻道素材
+                </button>
+              </div>
               {!cmsData?.newExpertInsights.length && !cmsLoading && (
-                <div style={{ color: '#888', fontSize: '14px' }}>無新內容（expert_insights collection 待外部 pipeline 填充）</div>
+                <div style={{ color: '#888', fontSize: '14px' }}>無新內容（請點「同步頻道素材」從 video_queue 導入）</div>
               )}
               {cmsData?.newExpertInsights.map((ins: any) => {
                 const displayTitle =
@@ -1004,6 +1026,15 @@ export default function ExpertsPage() {
                           {hasKeyInsights && <span style={{ fontSize: '11px', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '4px' }}>🟢 key_insights</span>}
                           {hasTranscript && <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: '4px' }}>🔵 transcript</span>}
                           {onlyExpertName && <span style={{ fontSize: '11px', background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 格式異常</span>}
+                          {ins.enrichmentStatus === 'needs_transcript_or_insights' && (
+                            <span style={{ fontSize: '11px', background: '#431407', color: '#fb923c', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 需補逐字稿</span>
+                          )}
+                          {ins.source_type === 'video_queue' && (
+                            <span style={{ fontSize: '11px', background: '#1e3a5f', color: '#60a5fa', padding: '1px 6px', borderRadius: '4px' }}>📡 頻道同步</span>
+                          )}
+                          {typeof ins.investmentScore === 'number' && (
+                            <span style={{ fontSize: '11px', color: '#9ca3af', padding: '1px 6px' }}>投資分: {ins.investmentScore}</span>
+                          )}
                         </div>
                         <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>{metaParts}</div>
                         {(() => {

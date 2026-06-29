@@ -93,6 +93,14 @@ export async function POST(req: NextRequest) {
   if (!hasContent) {
     return NextResponse.json({ error: '缺少 key_insights 和 transcript_sample' }, { status: 400 });
   }
+
+  // enrichmentStatus 防呆：如果標記為 needs_transcript_or_insights，不允許生成
+  if ((raw as Record<string, unknown>)?.enrichmentStatus === 'needs_transcript_or_insights') {
+    return NextResponse.json(
+      { error: '此素材缺少 key_insights 和 transcript_sample，請先補充內容後再生成草稿', enrichmentBlock: true },
+      { status: 400 }
+    );
+  }
   if (!hasTopic) {
     return NextResponse.json({ error: 'topic 空白' }, { status: 400 });
   }

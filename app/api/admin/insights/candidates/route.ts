@@ -18,14 +18,27 @@ export async function GET(req: NextRequest) {
   const client = await getClientPromise();
   const db = client.db('13f-tracker');
 
-  // A. New expert_insights (status=new or no status)
+  // A. New expert_insights (status=new or no status), 30-day filter
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
   const expertFilter: Record<string, unknown> = {
     $or: [{ status: 'new' }, { status: { $exists: false } }],
+    source_type: { $ne: 'no_match' },
+    $and: [
+      {
+        $or: [
+          { publish_date: { $gte: thirtyDaysAgoStr } },
+          { createdAt: { $gte: thirtyDaysAgo } },
+        ],
+      },
+    ],
   };
   if (q) {
-    expertFilter['$and'] = [
-      { $or: [{ title: { $regex: q, $options: 'i' } }, { topic: { $regex: q, $options: 'i' } }] },
-    ];
+    (expertFilter['$and'] as unknown[]).push(
+      { $or: [{ title: { $regex: q, $options: 'i' } }, { topic: { $regex: q, $options: 'i' } }] }
+    );
   }
 
   const newExpertInsights = await db
@@ -34,6 +47,8 @@ export async function GET(req: NextRequest) {
     .sort({ publish_date: -1, createdAt: -1 })
     .limit(limit)
     .toArray();
+
+  const sectionAEmpty = newExpertInsights.length === 0;
 
   // B. Candidate summaries
   const candidateFilter: Record<string, unknown> = { status: 'candidate' };
@@ -94,6 +109,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     newExpertInsights,
+    ...(sectionAEmpty ? { sectionAEmpty: true, sectionAEmptyReason: 'no_recent_insights' } : {}),
     candidateSummaries,
     publishedSummaries,
     archivedRejectedUnpublished: [
