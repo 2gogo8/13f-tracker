@@ -805,18 +805,54 @@ export default function ExpertsPage() {
                   {cmsPreviewLoading && <div>載入中…</div>}
                   {cmsPreview && (
                     <div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>{cmsPreview.jgTitle || cmsPreview.title || cmsPreview.articleTitle}</div>
+                      <div style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>{cmsPreview.video_title || cmsPreview.jgTitle || cmsPreview.title || cmsPreview.articleTitle || cmsPreview.topic || cmsPreview.expert_name || '(no title)'}</div>
                       <div style={{ fontSize: '12px', color: '#888', marginBottom: '12px' }}>
-                        topic: {cmsPreview.topic} | source: {cmsPreview.source} | sourceDate: {cmsPreview.sourceDate} | status: {cmsPreview.status || 'n/a'} | alphaReady: {String(cmsPreview.alphaReady)}
+                        topic: {cmsPreview.topic || '—'} | ticker: {cmsPreview.ticker || cmsPreview.topic_ticker || '—'} | source: {cmsPreview.channel || cmsPreview.source_type || cmsPreview.source || '—'} | status: {cmsPreview.status || 'n/a'}
                       </div>
                       {cmsPreview.lintErrors?.length > 0 && (
                         <div style={{ background: '#fff5f5', padding: '8px', borderRadius: '6px', marginBottom: '12px', fontSize: '12px' }}>
                           <strong>Lint errors:</strong> {cmsPreview.lintErrors.join(', ')}
                         </div>
                       )}
-                      <div style={{ fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', background: '#f8f8f8', padding: '12px', borderRadius: '6px' }}>
-                        {cmsPreview.article || cmsPreview.body || '(無內容)'}
-                      </div>
+                      {(cmsPreview.article || cmsPreview.body) ? (
+                        <div style={{ fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', background: '#f8f8f8', padding: '12px', borderRadius: '6px' }}>
+                          {cmsPreview.article || cmsPreview.body}
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {(cmsPreview.expert_name || cmsPreview.expert_org || cmsPreview.expert_role || cmsPreview.expert_title) && (
+                            <div style={{ background: '#f0f4ff', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
+                              <strong>👤 專家</strong>：{[cmsPreview.expert_name, cmsPreview.expert_role || cmsPreview.expert_title, cmsPreview.expert_org || cmsPreview.expert_institution].filter(Boolean).join(' / ')}
+                            </div>
+                          )}
+                          {(cmsPreview.ticker || cmsPreview.topic_ticker || cmsPreview.topic || cmsPreview.url) && (
+                            <div style={{ background: '#f0fdf4', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
+                              <strong>📌 標的</strong>：ticker={cmsPreview.ticker || cmsPreview.topic_ticker || '—'} | topic={cmsPreview.topic || '—'}{cmsPreview.url ? <> | <a href={cmsPreview.url} target="_blank" rel="noreferrer" style={{ color: '#0070f3' }}>來源連結</a></> : null}
+                            </div>
+                          )}
+                          {Array.isArray(cmsPreview.key_insights) && cmsPreview.key_insights.length > 0 && (
+                            <div style={{ background: '#fffbeb', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
+                              <strong>🔑 Key Insights</strong>
+                              <ol style={{ margin: '8px 0 0 0', paddingLeft: '18px', lineHeight: 1.7 }}>
+                                {cmsPreview.key_insights.map((ins: string, i: number) => (
+                                  <li key={i}>{ins}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+                          {cmsPreview.transcript_sample && (
+                            <div style={{ background: '#f8f8f8', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
+                              <strong>📝 Transcript（前段）</strong>
+                              <div style={{ marginTop: '6px', whiteSpace: 'pre-wrap', lineHeight: 1.6, maxHeight: '200px', overflowY: 'auto', color: '#444' }}>
+                                {String(cmsPreview.transcript_sample).slice(0, 600)}{String(cmsPreview.transcript_sample).length > 600 ? '…' : ''}
+                              </div>
+                            </div>
+                          )}
+                          {!cmsPreview.key_insights?.length && !cmsPreview.transcript_sample && (
+                            <div style={{ color: '#aaa', fontSize: '13px', padding: '12px', textAlign: 'center' }}>(無文章內容、無 key_insights、無 transcript_sample)</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -875,26 +911,56 @@ export default function ExpertsPage() {
               {!cmsData?.newExpertInsights.length && !cmsLoading && (
                 <div style={{ color: '#888', fontSize: '14px' }}>無新內容（expert_insights collection 待外部 pipeline 填充）</div>
               )}
-              {cmsData?.newExpertInsights.map((ins: any) => (
-                <div key={ins._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{ins.title || '(no title)'}</div>
-                      <div style={{ fontSize: '12px', color: '#888' }}>
-                        topic: {ins.topic} | source: {ins.source} | {ins.createdAt?.slice(0, 10)} | status: {ins.status || 'new'}
-                        {ins.ticker && ` | ticker: ${ins.ticker}`}
+              {cmsData?.newExpertInsights.map((ins: any) => {
+                const displayTitle =
+                  ins.video_title ||
+                  ins.title ||
+                  ins.topic ||
+                  (ins.expert_name && ins.topic ? `${ins.expert_name} — ${ins.topic}` : null) ||
+                  ins.expert_name ||
+                  '(no title)';
+                const metaParts = [
+                  ins.ticker || ins.topic_ticker,
+                  ins.topic,
+                  ins.expert_name,
+                  ins.channel || ins.source_type,
+                  ins.status || 'new',
+                ].map((p: any) => p || '—').join(' / ');
+                const snippet =
+                  (Array.isArray(ins.key_insights) && ins.key_insights[0]) ||
+                  ins.note ||
+                  ins.transcript_sample?.slice(0, 120) ||
+                  '無摘要';
+                const hasTitle = !!(ins.video_title || ins.title);
+                const hasTicker = !!(ins.ticker || ins.topic_ticker);
+                const hasKeyInsights = Array.isArray(ins.key_insights) && ins.key_insights.length > 0;
+                const hasTranscript = !!ins.transcript_sample;
+                const onlyExpertName = !hasTitle && !hasTicker && !hasKeyInsights && !hasTranscript && !!ins.expert_name;
+                return (
+                  <div key={ins._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span>{displayTitle}</span>
+                          {!hasTitle && <span style={{ fontSize: '11px', background: '#fee2e2', color: '#dc2626', padding: '1px 6px', borderRadius: '4px' }}>🔴 缺title</span>}
+                          {!hasTicker && <span style={{ fontSize: '11px', background: '#fef9c3', color: '#854d0e', padding: '1px 6px', borderRadius: '4px' }}>🟡 缺ticker</span>}
+                          {hasKeyInsights && <span style={{ fontSize: '11px', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '4px' }}>🟢 key_insights</span>}
+                          {hasTranscript && <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: '4px' }}>🔵 transcript</span>}
+                          {onlyExpertName && <span style={{ fontSize: '11px', background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 格式異常</span>}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>{metaParts}</div>
+                        <div style={{ fontSize: '12px', color: '#555' }}>{String(snippet).slice(0, 150)}{String(snippet).length > 150 ? '…' : ''}</div>
                       </div>
-                      {ins.summary && <div style={{ fontSize: '12px', color: '#555', marginTop: '4px' }}>{String(ins.summary).slice(0, 120)}&hellip;</div>}
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
-                      <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={btnStyle('#0070f3')}>轉成候選</button>
-                      <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
-                      <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
+                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
+                        <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={btnStyle('#0070f3')}>轉成候選</button>
+                        <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
+                        <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </section>
 
             {/* B. Candidate summaries */}
