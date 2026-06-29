@@ -31,6 +31,20 @@ export async function POST(req: NextRequest) {
 
   const client = await getClientPromise()
   const db = client.db('13f-tracker')
+
+  // Ensure TTL index on video_transcripts（idempotent）
+  try {
+    const col = db.collection('video_transcripts')
+    const indexes = await col.indexes()
+    const hasTTL = indexes.some(idx => (idx.key as Record<string, unknown>)?.expiresAt === 1 || idx.expireAfterSeconds !== undefined)
+    if (!hasTTL) {
+      await col.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'video_transcripts_ttl' })
+      console.log('[enrich-video] Created TTL index on video_transcripts.expiresAt')
+    }
+  } catch (e) {
+    console.warn('[enrich-video] TTL index check skipped:', e)
+  }
+
   const doc = await db.collection('expert_insights').findOne({ _id: new ObjectId(expertInsightId) })
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -74,11 +88,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const fullTranscript = transcriptLines.map(l => l.text).join(' ')
-  const transcriptSample = fullTranscript.slice(0, 600)
-  const transcriptForLLM = fullTranscript.slice(0, 7000)
+  const fullTranscript = transcriptLines.map((l: { text: string }) => l.text).join(' ')
   const transcriptLength = fullTranscript.length
   const transcriptSegments = transcriptLines.length
+  const transcriptSample = fullTranscript.slice(0, 600)
 
   // 短內容 gate
   const titleLower = title.toLowerCase()
@@ -117,65 +130,119 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // LLM 抽 key_insights
+  // 保存完整 transcript 到 video_transcripts
+  const fetchedAt = new Date()
+  const expiresAt = new Date(fetchedAt.getTime() + 30 * 24 * 60 * 60 * 1000) // +30 days
+
+  const transcriptDoc = {
+    youtube_id: youtubeId,
+    video_title: title,
+    channel: channel,
+    publish_date: (doc.publish_date as string) || null,
+    sourceExpertInsightId: expertInsightId,
+    fullTranscript,
+    transcriptSegments,
+    transcriptLength,
+    transcriptSource: 'youtube-transcript',
+    fetchedAt,
+    expiresAt,
+    createdAt: fetchedAt,
+    updatedAt: fetchedAt,
+  }
+
+  // 去重：youtube_id 已存在就 reuse（updateOne with upsert）
+  await db.collection('video_transcripts').updateOne(
+    { youtube_id: youtubeId },
+    { $set: transcriptDoc },
+    { upsert: true }
+  )
+
+  const transcriptRef = `video_transcripts/${youtubeId}`
+  const transcriptExpiresAt = expiresAt
+
+  // Chunked key_insights 抽取
+  const CHUNK_SIZE = 7000
+  const MAX_CHUNKS = 5  // 最多 5 chunks = 35,000 chars（成本控制）
+  const chunks: string[] = []
+  for (let i = 0; i < fullTranscript.length && chunks.length < MAX_CHUNKS; i += CHUNK_SIZE) {
+    chunks.push(fullTranscript.slice(i, i + CHUNK_SIZE))
+  }
+  const transcriptCoverageRatio = Math.min(1, (chunks.length * CHUNK_SIZE) / transcriptLength)
+  const chunksProcessed = chunks.length
+
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const MODEL = 'claude-sonnet-4-5'
 
-  const msg = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 1000,
-    system: '你是一個財經分析助理，只回傳 JSON，不加任何解釋文字。',
-    messages: [{
-      role: 'user',
-      content: `頻道：${channel}
-影片標題：${title}
-逐字稿節錄：
-${transcriptForLLM}
-
-請從逐字稿中抽取 6-8 條 key_insights。
-每條必須：
-- 具體，跟投資/市場/公司/產業有關
-- 不含 [music]、like、subscribe、寒暄、空泛句
-- 說話者的實質觀點或數據
-
-只回傳 JSON array：
-["insight 1", "insight 2", ...]`
-    }]
-  })
-
-  let keyInsights: string[] = []
-  try {
-    const raw = (msg.content[0] as { text: string }).text.trim()
-    keyInsights = JSON.parse(raw)
-    // 過濾無效
-    keyInsights = keyInsights.filter(k =>
-      typeof k === 'string' &&
-      k.length > 20 &&
-      !k.match(/\[music\]/i) &&
-      !k.match(/\b(like|subscribe|subscrib)\b/i)
-    )
-  } catch {
-    // JSON parse 失敗，寫 error
-    await db.collection('expert_insights').updateOne(
-      { _id: new ObjectId(expertInsightId) },
-      { $set: { enrichmentStatus: 'error', enrichmentError: 'llm_json_parse_failed', enrichedAt: now } }
-    )
-    return NextResponse.json({ ok: false, enrichmentStatus: 'error', reason: 'llm_json_parse_failed' }, { status: 500 })
+  // 每個 chunk 抽 partial insights（2-4 條）
+  const allPartialInsights: string[] = []
+  for (let i = 0; i < chunks.length; i++) {
+    try {
+      const chunkMsg = await anthropic.messages.create({
+        model: MODEL,
+        max_tokens: 600,
+        system: '你是財經分析助理，只回傳 JSON array，不加解釋文字。',
+        messages: [{
+          role: 'user',
+          content: `這是逐字稿第 ${i + 1}/${chunks.length} 段：\n${chunks[i]}\n\n請從這段抽出 2-4 條投資/商業/產業相關的具體觀點。\n去除：[music]、like/subscribe、寒暄、空泛句。\n只回傳 JSON array：["觀點1", "觀點2", ...]`
+        }]
+      })
+      const raw = (chunkMsg.content[0] as { text: string }).text.trim()
+      const parsed: string[] = JSON.parse(raw.startsWith('[') ? raw : raw.replace(/^```json\n?/, '').replace(/```$/, ''))
+      allPartialInsights.push(...parsed.filter(k => typeof k === 'string' && k.length > 20))
+    } catch { /* skip failed chunk */ }
   }
 
-  // 寫回
+  // 彙總成 6-8 條 final key_insights
+  let keyInsights: string[] = []
+  try {
+    const summaryMsg = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 800,
+      system: '你是財經分析助理，只回傳 JSON array，不加解釋文字。',
+      messages: [{
+        role: 'user',
+        content: `以下是從逐字稿各段抽出的觀點（共 ${allPartialInsights.length} 條）：\n${allPartialInsights.map((k, i) => `${i + 1}. ${k}`).join('\n')}\n\n請整合成 6-8 條最重要的 final key_insights。\n去除重複、空泛、非投資相關的內容。\n只回傳 JSON array：["final insight 1", ...]`
+      }]
+    })
+    const raw = (summaryMsg.content[0] as { text: string }).text.trim()
+    keyInsights = JSON.parse(raw.startsWith('[') ? raw : raw.replace(/^```json\n?/, '').replace(/```$/, ''))
+    keyInsights = keyInsights.filter(k => typeof k === 'string' && k.length > 20 && !/\[music\]/i.test(k))
+  } catch {
+    // If summary fails but we have partial insights, use them
+    if (allPartialInsights.length > 0) {
+      keyInsights = allPartialInsights.slice(0, 8)
+    }
+  }
+
+  if (keyInsights.length === 0 && allPartialInsights.length === 0) {
+    await db.collection('expert_insights').updateOne(
+      { _id: new ObjectId(expertInsightId) },
+      { $set: { enrichmentStatus: 'error', enrichmentError: 'llm_no_insights_extracted', enrichedAt: now } }
+    )
+    return NextResponse.json({ ok: false, enrichmentStatus: 'error', reason: 'llm_no_insights_extracted' }, { status: 500 })
+  }
+
+  // 寫回 expert_insights
   await db.collection('expert_insights').updateOne(
     { _id: new ObjectId(expertInsightId) },
     {
       $set: {
         key_insights: keyInsights,
         transcript_sample: transcriptSample,
-        transcriptFetchedAt: now,
+        transcriptRef,
+        transcriptStored: true,
+        transcriptFetchedAt: fetchedAt,
+        transcriptLength,
+        transcriptSegments,
+        transcriptExpiresAt: transcriptExpiresAt.toISOString(),
         enrichmentStatus: 'enriched',
-        enrichedAt: now,
+        enrichedAt: fetchedAt,
         enrichmentModel: MODEL,
         sourceQuality: 'youtube_transcript',
-        transcriptLength,
+        insightExtractionMode: 'chunked_full_transcript',
+        chunksProcessed,
+        chunkSize: CHUNK_SIZE,
+        transcriptCoverageRatio: Math.round(transcriptCoverageRatio * 100) / 100,
         keyInsightsCount: keyInsights.length,
         enrichmentError: null,
       }
@@ -189,6 +256,10 @@ ${transcriptForLLM}
     keyInsightsCount: keyInsights.length,
     transcriptAvailable: true,
     transcriptLength,
+    transcriptStored: true,
+    insightExtractionMode: 'chunked_full_transcript',
+    chunksProcessed,
+    transcriptCoverageRatio: Math.round(transcriptCoverageRatio * 100) / 100,
     keyInsightsSample: keyInsights.slice(0, 2),
   })
 }

@@ -63,6 +63,10 @@ export default function ExpertsPage() {
   const [cmsMsg, setCmsMsg] = useState<string | null>(null);
   const [cmsPreview, setCmsPreview] = useState<any | null>(null);
   const [cmsPreviewLoading, setCmsPreviewLoading] = useState(false);
+  const [previewTab, setPreviewTab] = useState<'draft' | 'insights' | 'transcript' | 'source'>('draft');
+  const [transcriptData, setTranscriptData] = useState<{fullTranscript: string, transcriptLength?: number, fetchedAt: string, expiresAt: string} | null>(null);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
   const [cmsEditId, setCmsEditId] = useState<string | null>(null);
   const [cmsEditMeta, setCmsEditMeta] = useState<Record<string, any>>({});
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null);
@@ -276,6 +280,9 @@ export default function ExpertsPage() {
   const openPreview = async (id: string, type: 'summary' | 'expert_insight') => {
     setCmsPreviewLoading(true);
     setCmsPreview(null);
+    setPreviewTab('draft');
+    setTranscriptData(null);
+    setTranscriptError(null);
     try {
       const res = await fetch(`/api/admin/insights/preview?id=${id}&type=${type}`);
       const data = await res.json();
@@ -283,6 +290,20 @@ export default function ExpertsPage() {
     } finally {
       setCmsPreviewLoading(false);
     }
+  };
+
+  const loadTranscript = async (youtubeId: string) => {
+    setTranscriptLoading(true);
+    setTranscriptError(null);
+    try {
+      const res = await fetch(`/api/admin/insights/transcript?youtube_id=${youtubeId}`);
+      const data = await res.json();
+      if (data.ok) setTranscriptData(data);
+      else setTranscriptError(data.error || '無法載入逐字稿');
+    } catch {
+      setTranscriptError('網路錯誤');
+    }
+    setTranscriptLoading(false);
   };
 
   const triggerScan = async () => {
@@ -926,43 +947,130 @@ export default function ExpertsPage() {
                           <strong>Lint errors:</strong> {cmsPreview.lintErrors.join(', ')}
                         </div>
                       )}
-                      {(cmsPreview.article || cmsPreview.body) ? (
-                        <div style={{ fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', background: '#f8f8f8', padding: '12px', borderRadius: '6px' }}>
-                          {cmsPreview.article || cmsPreview.body}
+                      {/* Tab navigation */}
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, borderBottom: '1px solid #ddd', paddingBottom: 8 }}>
+                        {(['draft', 'insights', 'transcript', 'source'] as const).map(tab => (
+                          <button
+                            key={tab}
+                            onClick={() => {
+                              setPreviewTab(tab);
+                              if (tab === 'transcript' && cmsPreview?.youtube_id && !transcriptData) {
+                                loadTranscript(cmsPreview.youtube_id);
+                              }
+                            }}
+                            style={{
+                              padding: '4px 12px', fontSize: 13, borderRadius: 4, cursor: 'pointer',
+                              background: previewTab === tab ? '#c9a84c' : '#eee',
+                              color: previewTab === tab ? '#000' : '#666', border: 'none', fontWeight: previewTab === tab ? 700 : 400,
+                            }}
+                          >
+                            {tab === 'draft' ? '📝 草稿' : tab === 'insights' ? '🔑 Key Insights' : tab === 'transcript' ? '📄 Transcript' : '🔗 Source'}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Tab: draft */}
+                      {previewTab === 'draft' && (
+                        <div>
+                          {(cmsPreview.article || cmsPreview.body) ? (
+                            <div style={{ fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', background: '#f8f8f8', padding: '12px', borderRadius: '6px' }}>
+                              {cmsPreview.article || cmsPreview.body}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {(cmsPreview.expert_name || cmsPreview.expert_org || cmsPreview.expert_role || cmsPreview.expert_title) && (
+                                <div style={{ background: '#f0f4ff', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
+                                  <strong>👤 專家</strong>：{[cmsPreview.expert_name, cmsPreview.expert_role || cmsPreview.expert_title, cmsPreview.expert_org || cmsPreview.expert_institution].filter(Boolean).join(' / ')}
+                                </div>
+                              )}
+                              {(cmsPreview.ticker || cmsPreview.topic_ticker || cmsPreview.topic || cmsPreview.url) && (
+                                <div style={{ background: '#f0fdf4', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
+                                  <strong>📌 標的</strong>：ticker={cmsPreview.ticker || cmsPreview.topic_ticker || '—'} | topic={cmsPreview.topic || '—'}{cmsPreview.url ? <> | <a href={cmsPreview.url} target="_blank" rel="noreferrer" style={{ color: '#0070f3' }}>來源連結</a></> : null}
+                                </div>
+                              )}
+                              {cmsPreview.transcript_sample && (
+                                <div style={{ background: '#f8f8f8', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
+                                  <strong>📝 Transcript（前段）</strong>
+                                  <div style={{ marginTop: '6px', whiteSpace: 'pre-wrap', lineHeight: 1.6, maxHeight: '200px', overflowY: 'auto', color: '#444' }}>
+                                    {String(cmsPreview.transcript_sample).slice(0, 600)}{String(cmsPreview.transcript_sample).length > 600 ? '…' : ''}
+                                  </div>
+                                </div>
+                              )}
+                              {!cmsPreview.key_insights?.length && !cmsPreview.transcript_sample && !cmsPreview.article && !cmsPreview.body && (
+                                <div style={{ color: '#aaa', fontSize: '13px', padding: '12px', textAlign: 'center' }}>(無文章內容、無 key_insights、無 transcript_sample)</div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                          {(cmsPreview.expert_name || cmsPreview.expert_org || cmsPreview.expert_role || cmsPreview.expert_title) && (
-                            <div style={{ background: '#f0f4ff', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
-                              <strong>👤 專家</strong>：{[cmsPreview.expert_name, cmsPreview.expert_role || cmsPreview.expert_title, cmsPreview.expert_org || cmsPreview.expert_institution].filter(Boolean).join(' / ')}
-                            </div>
+                      )}
+
+                      {/* Tab: insights */}
+                      {previewTab === 'insights' && (
+                        <div>
+                          <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                            {cmsPreview.keyInsightsCount || cmsPreview.key_insights?.length || 0} 條 | 模式: {cmsPreview.insightExtractionMode || 'unknown'} | 覆蓋率: {cmsPreview.transcriptCoverageRatio ? `${Math.round(cmsPreview.transcriptCoverageRatio * 100)}%` : 'N/A'}
+                          </div>
+                          {Array.isArray(cmsPreview.key_insights) && cmsPreview.key_insights.length > 0 ? (
+                            cmsPreview.key_insights.map((ki: string, i: number) => (
+                              <div key={i} style={{ marginBottom: 8, padding: '8px', background: '#fffbeb', borderRadius: 4, fontSize: 13 }}>
+                                <span style={{ color: '#c9a84c', marginRight: 8, fontWeight: 700 }}>{i + 1}.</span>{ki}
+                              </div>
+                            ))
+                          ) : (
+                            <div style={{ color: '#aaa', fontSize: 13, padding: 12, textAlign: 'center' }}>(無 key_insights)</div>
                           )}
-                          {(cmsPreview.ticker || cmsPreview.topic_ticker || cmsPreview.topic || cmsPreview.url) && (
-                            <div style={{ background: '#f0fdf4', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
-                              <strong>📌 標的</strong>：ticker={cmsPreview.ticker || cmsPreview.topic_ticker || '—'} | topic={cmsPreview.topic || '—'}{cmsPreview.url ? <> | <a href={cmsPreview.url} target="_blank" rel="noreferrer" style={{ color: '#0070f3' }}>來源連結</a></> : null}
-                            </div>
-                          )}
-                          {Array.isArray(cmsPreview.key_insights) && cmsPreview.key_insights.length > 0 && (
-                            <div style={{ background: '#fffbeb', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
-                              <strong>🔑 Key Insights</strong>
-                              <ol style={{ margin: '8px 0 0 0', paddingLeft: '18px', lineHeight: 1.7 }}>
-                                {cmsPreview.key_insights.map((ins: string, i: number) => (
-                                  <li key={i}>{ins}</li>
-                                ))}
-                              </ol>
-                            </div>
-                          )}
-                          {cmsPreview.transcript_sample && (
-                            <div style={{ background: '#f8f8f8', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
-                              <strong>📝 Transcript（前段）</strong>
-                              <div style={{ marginTop: '6px', whiteSpace: 'pre-wrap', lineHeight: 1.6, maxHeight: '200px', overflowY: 'auto', color: '#444' }}>
-                                {String(cmsPreview.transcript_sample).slice(0, 600)}{String(cmsPreview.transcript_sample).length > 600 ? '…' : ''}
+                        </div>
+                      )}
+
+                      {/* Tab: transcript */}
+                      {previewTab === 'transcript' && (
+                        <div>
+                          {transcriptLoading && <div style={{ color: '#888' }}>載入中...</div>}
+                          {transcriptError && <div style={{ color: '#d32f2f' }}>⚠️ {transcriptError}</div>}
+                          {transcriptData && (
+                            <div>
+                              <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                                {transcriptData.transcriptLength?.toLocaleString()} 字 | 抓取: {transcriptData.fetchedAt ? new Date(transcriptData.fetchedAt).toLocaleDateString() : 'N/A'} | 到期: {transcriptData.expiresAt ? new Date(transcriptData.expiresAt).toLocaleDateString() : 'N/A'}
+                              </div>
+                              <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                {transcriptData.fullTranscript}
                               </div>
                             </div>
                           )}
-                          {!cmsPreview.key_insights?.length && !cmsPreview.transcript_sample && (
-                            <div style={{ color: '#aaa', fontSize: '13px', padding: '12px', textAlign: 'center' }}>(無文章內容、無 key_insights、無 transcript_sample)</div>
+                          {!transcriptLoading && !transcriptError && !transcriptData && cmsPreview?.transcript_sample && (
+                            <div>
+                              <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Transcript Sample（前 600 字）</div>
+                              <div style={{ fontSize: 13, color: '#444', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>{cmsPreview.transcript_sample}</div>
+                            </div>
                           )}
+                          {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && (
+                            <div style={{ color: '#aaa', fontSize: 13, padding: 12, textAlign: 'center' }}>(無逐字稿資料)</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Tab: source */}
+                      {previewTab === 'source' && (
+                        <div style={{ fontSize: 13 }}>
+                          {cmsPreview?.youtube_id && (
+                            <div style={{ marginBottom: 8 }}>
+                              <a href={`https://www.youtube.com/watch?v=${cmsPreview.youtube_id}`} target="_blank" rel="noopener noreferrer"
+                                style={{ color: '#0070f3', textDecoration: 'underline' }}>
+                                ▶ 在 YouTube 觀看原影片
+                              </a>
+                            </div>
+                          )}
+                          <div style={{ color: '#888', fontSize: 12 }}>
+                            <div>youtube_id: {cmsPreview?.youtube_id || 'N/A'}</div>
+                            <div>channel: {cmsPreview?.channel || 'N/A'}</div>
+                            <div>video_title: {cmsPreview?.video_title || cmsPreview?.title || 'N/A'}</div>
+                            <div>publish_date: {cmsPreview?.publish_date || cmsPreview?.sourceDate || 'N/A'}</div>
+                            <div>sourceExpertInsightId: {cmsPreview?.sourceExpertInsightId || cmsPreview?._id || 'N/A'}</div>
+                            <div>enrichmentModel: {cmsPreview?.enrichmentModel || 'N/A'}</div>
+                            <div>insightExtractionMode: {cmsPreview?.insightExtractionMode || 'N/A'}</div>
+                            <div>transcriptStored: {cmsPreview?.transcriptStored ? 'Yes' : 'No'}</div>
+                            <div>transcriptLength: {cmsPreview?.transcriptLength?.toLocaleString() || 'N/A'}</div>
+                          </div>
                         </div>
                       )}
                     </div>
