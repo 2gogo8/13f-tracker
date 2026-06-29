@@ -66,6 +66,9 @@ export default function ExpertsPage() {
 
   // 自動挑片狀態
   const [rankingContext, setRankingContext] = useState('');
+  const [manualKeywords, setManualKeywords] = useState('');
+  const [useKeywordPool, setUseKeywordPool] = useState(false);
+  const [keywordPoolCount, setKeywordPoolCount] = useState<number | null>(null);
   const [isRanking, setIsRanking] = useState(false);
   const [rankingMsg, setRankingMsg] = useState('');
   const [draftResult, setDraftResult] = useState<Record<string, any> | null>(null);
@@ -141,6 +144,16 @@ export default function ExpertsPage() {
     }
   }, [status, session, router]);
 
+  // Preload keyword pool count
+  useEffect(() => {
+    fetch('/api/admin/insights/keyword-pool')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.ok) setKeywordPoolCount(d.totalKeywords);
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchChannels = useCallback(async () => {
     setChannelsLoading(true);
     try {
@@ -203,11 +216,19 @@ export default function ExpertsPage() {
       const res = await fetch('/api/admin/insights/rank-videos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ marketContextRaw: rankingContext.trim() }),
+        body: JSON.stringify({
+          marketContextRaw: rankingContext.trim(),
+          manualKeywordsRaw: manualKeywords.trim(),
+          useKeywordPool,
+          topN: 5,
+        }),
       });
       const data = await res.json();
       if (data.ok) {
-        setRankingMsg(`✅ 評分完成：推薦 ${data.results.recommended} 支，待確認 ${data.results.needs_review} 支，低優先 ${data.results.low_priority} 支`);
+        setRankingMsg(
+          `✅ 推薦 ${data.results.recommended}支 / 待確認 ${data.results.needs_review}支 / 低優先 ${data.results.low_priority}支` +
+            (data.keywordsUsed ? ` (關鍵字 ${data.keywordsUsed} 個)` : '')
+        );
         fetchCmsData();
       } else {
         setRankingMsg(`⚠️ 評分失敗：${data.error}`);
@@ -994,13 +1015,38 @@ export default function ExpertsPage() {
               {/* 自動挑片 區塊 */}
               <div className="mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
                 <div className="text-sm font-semibold text-gray-300 mb-2">🧭 自動挑選值得處理的影片</div>
+
                 <textarea
                   value={rankingContext}
                   onChange={e => setRankingContext(e.target.value)}
-                  placeholder={`近期市場方向（可選）：\n熱錢很多，但市場開始注意 AI 泡沫風險。\n市場還很樂觀，但如果通膀或利率預期變動，資金可能會重新定價高估値資產。`}
-                  rows={3}
+                  placeholder={`近期市場方向（可選）：\n熱錢很多，但市場開始注意 AI 泡沫風險。\n市場還很樂觀，但如果通膨或利率預期變動，資金可能會重新定價高估值資產。`}
+                  rows={2}
                   className="w-full text-xs bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 resize-y mb-2"
                 />
+
+                <textarea
+                  value={manualKeywords}
+                  onChange={e => setManualKeywords(e.target.value)}
+                  placeholder="手動關鍵字 / 股票（例如：RKLB, MSTR, AI power, bitcoin treasury）"
+                  rows={2}
+                  className="w-full text-xs bg-gray-700 text-white border border-gray-600 rounded px-2 py-1.5 resize-y mb-2"
+                />
+
+                <div className="flex items-center gap-3 mb-2">
+                  <label className="flex items-center gap-1.5 text-xs text-gray-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useKeywordPool}
+                      onChange={e => setUseKeywordPool(e.target.checked)}
+                      className="rounded"
+                    />
+                    使用 JG Keyword Pool（Watchlist + Picks）
+                  </label>
+                  {useKeywordPool && keywordPoolCount !== null && (
+                    <span className="text-xs text-gray-400">（{keywordPoolCount} 個關鍵字）</span>
+                  )}
+                </div>
+
                 <button
                   onClick={handleRankVideos}
                   disabled={isRanking}
@@ -1150,28 +1196,51 @@ export default function ExpertsPage() {
                         <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                           {ins.triageStatus === 'recommended' && (
                             <span style={{ fontSize: '11px', color: '#86efac', background: 'rgba(20,83,45,0.4)', padding: '1px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                              ⭐ 推薦處理 {ins.priorityScore}分
+                              🔥 推薦處理 {ins.priorityScore}分
                             </span>
                           )}
                           {ins.triageStatus === 'needs_review' && (
                             <span style={{ fontSize: '11px', color: '#fde047', background: 'rgba(113,63,18,0.3)', padding: '1px 8px', borderRadius: '4px' }}>
-                              🔍 待確認 {ins.priorityScore}分
+                              🟡 可人工確認 {ins.priorityScore}分
                             </span>
                           )}
                           {ins.triageStatus === 'low_priority' && (
                             <span style={{ fontSize: '11px', color: '#9ca3af', background: 'rgba(55,65,81,0.5)', padding: '1px 8px', borderRadius: '4px' }}>
-                              📋 低優先 {ins.priorityScore}分
+                              ⚪ 低優先 {ins.priorityScore}分
+                            </span>
+                          )}
+                          {ins.triageStatus === 'irrelevant' && (
+                            <span style={{ fontSize: '11px', color: '#6b7280', background: 'rgba(55,65,81,0.3)', padding: '1px 8px', borderRadius: '4px' }}>
+                              🚫 不相關
                             </span>
                           )}
                           {!ins.triageStatus && (
-                            <span style={{ fontSize: '11px', color: '#6b7280' }}>尚未自動挑選</span>
+                            <span style={{ fontSize: '11px', color: '#6b7280' }}>（尚未自動挑選）</span>
                           )}
-                          {ins.priorityReason && (
-                            <span style={{ fontSize: '11px', color: '#9ca3af', fontStyle: 'italic' }}>{ins.priorityReason}</span>
+                          {ins.enrichmentStatus === 'needs_transcript_or_insights' && !ins.triageStatus && (
+                            <span style={{ fontSize: '11px', color: '#60a5fa' }}>📡 最新影片，尚未讀取內容</span>
                           )}
                         </div>
-                        {Array.isArray(ins.matchedMarketThemes) && ins.matchedMarketThemes.length > 0 && (
-                          <div style={{ fontSize: '11px', color: '#60a5fa', marginTop: '4px' }}>
+                        {ins.investmentRelevanceScore !== undefined && (
+                          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '3px' }}>
+                            投資相關:{ins.investmentRelevanceScore} 關鍵字:{ins.keywordMatchScore}
+                          </div>
+                        )}
+                        {ins.priorityReason && (
+                          <div style={{ fontSize: '11px', color: '#9ca3af', fontStyle: 'italic', marginTop: '2px' }}>{ins.priorityReason}</div>
+                        )}
+                        {Array.isArray(ins.matchedTickers) && ins.matchedTickers.length > 0 && (
+                          <div style={{ fontSize: '11px', color: '#f59e0b', marginTop: '3px' }}>
+                            🎯 {ins.matchedTickers.join(', ')}
+                          </div>
+                        )}
+                        {Array.isArray(ins.matchedThemes) && ins.matchedThemes.length > 0 && (
+                          <div style={{ fontSize: '11px', color: '#60a5fa', marginTop: '2px' }}>
+                            🏷️ {ins.matchedThemes.join(' / ')}
+                          </div>
+                        )}
+                        {Array.isArray(ins.matchedMarketThemes) && ins.matchedMarketThemes.length > 0 && !ins.matchedThemes?.length && (
+                          <div style={{ fontSize: '11px', color: '#60a5fa', marginTop: '2px' }}>
                             🏷️ {ins.matchedMarketThemes.join(' / ')}
                           </div>
                         )}
