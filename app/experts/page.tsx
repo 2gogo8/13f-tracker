@@ -1007,8 +1007,22 @@ export default function ExpertsPage() {
                       {/* Tab: insights */}
                       {previewTab === 'insights' && (
                         <div>
-                          <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
-                            {cmsPreview.keyInsightsCount || cmsPreview.key_insights?.length || 0} 條 | 模式: {cmsPreview.insightExtractionMode || 'unknown'} | 覆蓋率: {cmsPreview.transcriptCoverageRatio ? `${Math.round(cmsPreview.transcriptCoverageRatio * 100)}%` : 'N/A'}
+                          <div style={{ fontSize: 12, marginBottom: 8 }}>
+                            <span style={{ color: '#888' }}>
+                              {cmsPreview.keyInsightsCount || cmsPreview.key_insights?.length || 0} 條 | 模式: {cmsPreview.insightExtractionMode || 'unknown'}
+                              {' | '}chunks: {cmsPreview.chunksProcessed || 'N/A'}/{cmsPreview.totalChunks || 'N/A'}
+                            </span>
+                            {' '}
+                            {(cmsPreview.transcriptCoverageRatio ?? 0) >= 0.95
+                              ? <span style={{ color: '#4ade80' }}>✅ Key insights 已覆蓋完整逐字稿 ({Math.round((cmsPreview.transcriptCoverageRatio ?? 0) * 100)}%)</span>
+                              : <span style={{ color: '#f87171' }}>⚠️ Key insights 未覆蓋完整逐字稿 ({Math.round((cmsPreview.transcriptCoverageRatio ?? 0) * 100)}%)</span>
+                            }
+                            {cmsPreview.coverageWarning && (
+                              <div style={{ color: '#fbbf24', marginTop: 4 }}>{cmsPreview.coverageWarning}</div>
+                            )}
+                            {cmsPreview.keyInsightsUpdatedAt && (
+                              <div style={{ color: '#666', marginTop: 2 }}>更新: {new Date(cmsPreview.keyInsightsUpdatedAt).toLocaleDateString()}</div>
+                            )}
                           </div>
                           {Array.isArray(cmsPreview.key_insights) && cmsPreview.key_insights.length > 0 ? (
                             cmsPreview.key_insights.map((ki: string, i: number) => (

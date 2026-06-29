@@ -162,13 +162,21 @@ export async function POST(req: NextRequest) {
 
   // Chunked key_insights 抽取
   const CHUNK_SIZE = 7000
-  const MAX_CHUNKS = 5  // 最多 5 chunks = 35,000 chars（成本控制）
+  // 動態計算 totalChunks：transcript <= 80,000 字 → 100% coverage；> 80,000 字 → partial with warning
+  const MAX_CHARS_FULL = 80000
+  const totalChunks = Math.ceil(fullTranscript.length / CHUNK_SIZE)
+  const isPartial = transcriptLength > MAX_CHARS_FULL
+  const maxChunks = isPartial ? Math.ceil(MAX_CHARS_FULL / CHUNK_SIZE) : totalChunks
+  const coverageMode = isPartial ? 'partial_with_warning' : 'full'
+  const coverageWarning = isPartial
+    ? `⚠️ 本次 key insights 僅覆蓋 ${Math.round((maxChunks / totalChunks) * 100)}% 逐字稿，可能遺漏後段內容`
+    : null
   const chunks: string[] = []
-  for (let i = 0; i < fullTranscript.length && chunks.length < MAX_CHUNKS; i += CHUNK_SIZE) {
+  for (let i = 0; i < fullTranscript.length && chunks.length < maxChunks; i += CHUNK_SIZE) {
     chunks.push(fullTranscript.slice(i, i + CHUNK_SIZE))
   }
-  const transcriptCoverageRatio = Math.min(1, (chunks.length * CHUNK_SIZE) / transcriptLength)
   const chunksProcessed = chunks.length
+  const transcriptCoverageRatio = Math.min(1, Math.round((chunksProcessed / totalChunks) * 100) / 100)
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const MODEL = 'claude-sonnet-4-5'
@@ -241,8 +249,11 @@ export async function POST(req: NextRequest) {
         sourceQuality: 'youtube_transcript',
         insightExtractionMode: 'chunked_full_transcript',
         chunksProcessed,
+        totalChunks,
         chunkSize: CHUNK_SIZE,
-        transcriptCoverageRatio: Math.round(transcriptCoverageRatio * 100) / 100,
+        transcriptCoverageRatio,
+        coverageMode,
+        coverageWarning,
         keyInsightsCount: keyInsights.length,
         enrichmentError: null,
       }
