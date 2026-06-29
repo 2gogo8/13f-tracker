@@ -204,7 +204,8 @@ export default function ExpertsPage() {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        setCmsMsg(`✅ 草稿生成完成：${data.draftTitle}`);
+        const warningPart = data.freshnessWarning ? ` | ${data.freshnessWarning}` : '';
+        setCmsMsg(`✅ 草稿生成完成：${data.draftTitle}${warningPart}`);
         setDraftResult(data);
         fetchCmsData();
       } else {
@@ -1005,6 +1006,15 @@ export default function ExpertsPage() {
                           {onlyExpertName && <span style={{ fontSize: '11px', background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 格式異常</span>}
                         </div>
                         <div style={{ fontSize: '12px', color: '#888', marginBottom: '4px' }}>{metaParts}</div>
+                        {(() => {
+                          const date = ins.publish_date || ins.sourceDate
+                          const { label, color, daysAgo } = getFreshnessBadge(date)
+                          return (
+                            <span className={`text-xs ${color}`} style={{ marginBottom: '4px', display: 'inline-block' }}>
+                              {label} {date ? `(${date}${daysAgo !== null ? `, ${daysAgo}天前` : ''})` : ''}
+                            </span>
+                          )
+                        })()}
                         <div style={{ fontSize: '12px', color: '#555' }}>{String(snippet).slice(0, 150)}{String(snippet).length > 150 ? '…' : ''}</div>
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -1052,6 +1062,14 @@ AI CapEx 外溢｜晶片、電力、冷卻、土地、光纖、伺服器
                       <div style={{ fontSize: '12px', color: '#888' }}>
                         sourceDate: {s.sourceDate || 'n/a'} | tags: {(s.tags || []).join(', ')}
                       </div>
+                      {(() => {
+                        const { label, color, daysAgo } = getFreshnessBadge(s.sourceDate)
+                        return (
+                          <span className={`text-xs ${color}`} style={{ display: 'inline-block', marginTop: '2px' }}>
+                            {label} {s.sourceDate ? `(${s.sourceDate}${daysAgo !== null ? `, ${daysAgo}天前` : ''})` : ''}
+                          </span>
+                        )
+                      })()}
                       {s.lintErrors?.length > 0 && (
                         <div style={{ fontSize: '12px', color: '#e53e3e', marginTop: '4px' }}>lint: {s.lintErrors.join(', ')}</div>
                       )}
@@ -1679,6 +1697,23 @@ AI CapEx 外溢｜晶片、電力、冷卻、土地、光纖、伺服器
       )}
     </div>
   );
+}
+
+/* ────── Freshness Badge Helper ────── */
+
+function getFreshnessBadge(sourceDate: string | null | undefined): { label: string; color: string; daysAgo: number | null } {
+  if (!sourceDate) return { label: '❓ 無日期', color: 'text-gray-400', daysAgo: null }
+  try {
+    const date = new Date(sourceDate)
+    const now = new Date()
+    const daysAgo = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+    if (daysAgo <= 7) return { label: '🟢 最新素材', color: 'text-green-400', daysAgo }
+    if (daysAgo <= 30) return { label: '🟡 近期素材', color: 'text-yellow-400', daysAgo }
+    if (daysAgo <= 90) return { label: '🟠 偏舊素材', color: 'text-orange-400', daysAgo }
+    return { label: '🔴 歷史素材', color: 'text-red-400', daysAgo }
+  } catch {
+    return { label: '❓ 無日期', color: 'text-gray-400', daysAgo: null }
+  }
 }
 
 /* ────── Expert Card Component ────── */

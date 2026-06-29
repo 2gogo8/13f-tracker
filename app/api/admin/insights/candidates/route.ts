@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const newExpertInsights = await db
     .collection('expert_insights')
     .find(expertFilter)
-    .sort({ createdAt: -1 })
+    .sort({ publish_date: -1, createdAt: -1 })
     .limit(limit)
     .toArray();
 
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
   const candidateSummaries = await db
     .collection('summaries')
     .find(candidateFilter)
-    .sort({ createdAt: -1 })
+    .sort({ sourceDate: -1, createdAt: -1 })
     .limit(limit)
     .toArray();
 

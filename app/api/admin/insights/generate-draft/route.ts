@@ -103,6 +103,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'source_type=no_match，此素材不適合成稿' }, { status: 400 });
   }
 
+  // sourceDate 新鮮度 gate
+  const sourceDateValue = (raw?.publish_date as string) || (summary?.createdAt as string) || null;
+  let daysOld: number | null = null;
+  if (sourceDateValue) {
+    try {
+      const date = new Date(sourceDateValue);
+      const now = new Date();
+      daysOld = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    } catch {
+      daysOld = null;
+    }
+  }
+
+  if (daysOld !== null && daysOld > 90) {
+    return NextResponse.json(
+      { error: `這是歷史素材（${daysOld} 天前），請確認是否仍要使用`, freshnessBlock: true, daysOld },
+      { status: 400 }
+    );
+  }
+
+  const freshnessWarning = daysOld !== null && daysOld > 30
+    ? `⚠️ 此素材為 ${daysOld} 天前的訪談，請確認資訊是否仍有效`
+    : null;
+
   // 抓近期 5 篇已上架文章
   const recentArticles = await db.collection('summaries')
     .find(
@@ -290,5 +314,7 @@ JG 觀點候選：
     relatedRecentArticles: parsed.relatedRecentArticles ?? [],
     generatedAt: generatedAt.toISOString(),
     model: MODEL,
+    freshnessWarning,
+    daysOld,
   });
 }
