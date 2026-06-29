@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clearCachePattern } from '@/lib/redis-cache';
 import { isRedisEnabled } from '@/lib/redis';
-
-const ADMIN_KEY = process.env.NEXT_PUBLIC_ADMIN_KEY || 'jg2026admin';
+import { checkAdminStatus } from '@/lib/admin';
 
 export async function POST(req: NextRequest) {
-  const { key } = await req.json().catch(() => ({})) as { key?: string };
-  if (key !== ADMIN_KEY) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Accept either a valid admin session OR the server-side ADMIN_KEY header
+  const authHeader = req.headers.get('Authorization') || '';
+  const keyFromHeader = authHeader.replace('Bearer ', '').trim();
+  const serverAdminKey = process.env.ADMIN_KEY;
+  const headerOk = serverAdminKey && keyFromHeader === serverAdminKey;
+
+  if (!headerOk) {
+    const auth = await checkAdminStatus();
+    if (auth.status === 'unauthenticated') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (auth.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   if (!isRedisEnabled) {

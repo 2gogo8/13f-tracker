@@ -1,8 +1,13 @@
 export const maxDuration = 10;
 import { NextResponse } from 'next/server';
 import { getStats, getTopSymbols, resetStats } from '@/lib/api-stats';
+import { checkAdminStatus } from '@/lib/admin';
 
 export async function GET() {
+  const auth = await checkAdminStatus();
+  if (auth.status === 'unauthenticated') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (auth.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   const stats = getStats();
   const topSymbols = getTopSymbols(20);
   
@@ -41,6 +46,10 @@ export async function GET() {
 }
 
 export async function POST() {
+  const auth = await checkAdminStatus();
+  if (auth.status === 'unauthenticated') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (auth.status === 'forbidden') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   resetStats();
   return NextResponse.json({ success: true, message: '統計已重置' });
 }
