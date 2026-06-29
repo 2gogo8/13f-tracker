@@ -101,6 +101,17 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+
+  // 新資料（video_queue 同步來的）→ 必須是 enriched
+  const enrichmentStatus = (raw as Record<string, unknown>)?.enrichmentStatus as string || ''
+  const isVideoQueueSource = ((raw as Record<string, unknown>)?.syncedFrom === 'video_queue' || sourceType === 'video_queue')
+  const hasOldStyleContent = validKI.length > 0 || ts.length > 50
+  if (isVideoQueueSource && enrichmentStatus !== 'enriched' && !hasOldStyleContent) {
+    return NextResponse.json(
+      { error: '此素材尚未補逐字稿 / key insights，請先按「補充逐字稿」', enrichmentBlock: true },
+      { status: 400 }
+    );
+  }
   if (!hasTopic) {
     return NextResponse.json({ error: 'topic 空白' }, { status: 400 });
   }

@@ -85,6 +85,7 @@ export default function ExpertsPage() {
   const [channelsLoading, setChannelsLoading] = useState(false);
   const [newChannelUrl, setNewChannelUrl] = useState('');
   const [addingChannel, setAddingChannel] = useState(false);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkInput, setBulkInput] = useState('');
@@ -1027,7 +1028,49 @@ export default function ExpertsPage() {
                           {hasTranscript && <span style={{ fontSize: '11px', background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: '4px' }}>🔵 transcript</span>}
                           {onlyExpertName && <span style={{ fontSize: '11px', background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 格式異常</span>}
                           {ins.enrichmentStatus === 'needs_transcript_or_insights' && (
-                            <span style={{ fontSize: '11px', background: '#431407', color: '#fb923c', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 需補逐字稿</span>
+                            <>
+                              <span style={{ fontSize: '11px', background: '#431407', color: '#fb923c', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 需補逐字稿</span>
+                              <button
+                                onClick={async () => {
+                                  setEnrichingId(ins._id)
+                                  try {
+                                    const res = await fetch('/api/admin/insights/enrich-video', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ expertInsightId: ins._id })
+                                    })
+                                    const data = await res.json()
+                                    if (data.ok) {
+                                      setCmsMsg(`✅ 已補 ${data.keyInsightsCount} 條 key insights`)
+                                      fetchCmsData()
+                                    } else {
+                                      const reason = data.enrichmentStatus === 'transcript_unavailable' ? '無可用字幕'
+                                        : data.enrichmentStatus === 'irrelevant' ? '影片不相關'
+                                        : '補充失敗：' + (data.reason || data.error || '未知錯誤')
+                                      setCmsMsg(`⚠️ ${reason}`)
+                                      fetchCmsData()
+                                    }
+                                  } catch {
+                                    setCmsMsg('⚠️ 網路錯誤')
+                                  } finally {
+                                    setEnrichingId(null)
+                                  }
+                                }}
+                                disabled={enrichingId === ins._id}
+                                style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '4px', background: '#1d4ed8', color: '#fff', border: 'none', cursor: enrichingId === ins._id ? 'wait' : 'pointer', opacity: enrichingId === ins._id ? 0.6 : 1 }}
+                              >
+                                {enrichingId === ins._id ? '補充中...' : '🔍 補充逐字稿'}
+                              </button>
+                            </>
+                          )}
+                          {ins.enrichmentStatus === 'enriched' && (
+                            <span style={{ fontSize: '11px', background: '#052e16', color: '#4ade80', padding: '1px 6px', borderRadius: '4px' }}>✅ 已補 key insights</span>
+                          )}
+                          {ins.enrichmentStatus === 'transcript_unavailable' && (
+                            <span style={{ fontSize: '11px', background: '#450a0a', color: '#f87171', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 無可用字幕</span>
+                          )}
+                          {ins.enrichmentStatus === 'irrelevant' && (
+                            <span style={{ fontSize: '11px', background: '#1f2937', color: '#9ca3af', padding: '1px 6px', borderRadius: '4px' }}>⏭️ 影片不相關</span>
                           )}
                           {ins.source_type === 'video_queue' && (
                             <span style={{ fontSize: '11px', background: '#1e3a5f', color: '#60a5fa', padding: '1px 6px', borderRadius: '4px' }}>📡 頻道同步</span>
