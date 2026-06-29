@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   // 2. Parse body
   const body = await req.json();
-  const { summaryId } = body;
+  const { summaryId, marketDirections } = body;
   if (!summaryId) {
     return NextResponse.json({ error: 'summaryId required' }, { status: 400 });
   }
@@ -52,21 +52,27 @@ export async function POST(req: NextRequest) {
   }
 
   // 6. 取 rawExpertInsight
-  const raw = summary.rawExpertInsight as Record<string, any> | null | undefined;
+  const raw = summary.rawExpertInsight as Record<string, unknown> | null | undefined;
 
   // 可生成條件驗證
-  const ki: string[] = raw?.key_insights || [];
-  const ts: string = raw?.transcript_sample || '';
-  const topic: string = raw?.topic || summary.topic || '';
-  const expertName: string = raw?.expert_name || summary.expertName || '';
-  const expertRole: string = raw?.expert_role || raw?.expert_title || '';
-  const expertOrg: string = raw?.expert_org || raw?.expert_institution || '';
-  const channel: string = raw?.channel || raw?.source_channel || '';
-  const sourceType: string = raw?.source_type || '';
-  const ticker: string = raw?.ticker || summary.ticker || '';
-  const title: string = raw?.title || raw?.video_title || summary.title || '';
-  const publishDate: string = raw?.publish_date || raw?.sourceDate || summary.sourceDate || '';
-  const sourceUrl: string = raw?.source_url || raw?.url || summary.sourceUrl || '';
+  const ki: string[] = (raw?.key_insights as string[]) || [];
+  const ts: string = (raw?.transcript_sample as string) || '';
+  const topic: string = (raw?.topic as string) || (summary.topic as string) || '';
+  const expertName: string = (raw?.expert_name as string) || (summary.expertName as string) || '';
+  const expertRole: string = (raw?.expert_role as string) || (raw?.expert_title as string) || '';
+  const expertOrg: string = (raw?.expert_org as string) || (raw?.expert_institution as string) || '';
+  const channel: string = (raw?.channel as string) || (raw?.source_channel as string) || '';
+  const sourceType: string = (raw?.source_type as string) || '';
+  const ticker: string = (raw?.ticker as string) || (summary.ticker as string) || '';
+  const title: string = (raw?.title as string) || (raw?.video_title as string) || (summary.title as string) || '';
+  const sourceUrl: string = (raw?.source_url as string) || (raw?.url as string) || (summary.sourceUrl as string) || '';
+
+  // sourceDate 修正
+  const sourceDate =
+    (raw?.publish_date as string) ||
+    (summary?.createdAt as string) ||
+    new Date().toISOString().split('T')[0];
+  const sourceDateFallback = !raw?.publish_date;
 
   // 過濾無效 key_insights
   const validKI = ki.filter((s: string) =>
@@ -93,18 +99,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'source_type=no_match，此素材不適合成稿' }, { status: 400 });
   }
 
+  // 抓近期 5 篇已上架文章
+  const recentArticles = await db.collection('summaries')
+    .find(
+      { alphaReady: true },
+      { projection: { _id: 1, jgTitle: 1, title: 1, topic: 1, tags: 1, articleType: 1, publishedAt: 1 } }
+    )
+    .sort({ publishedAt: -1 })
+    .limit(5)
+    .toArray();
+
   // 建構 Prompt
   const kiText = validKI.map((k, i) => `${i + 1}. ${k}`).join('\n');
   const tsSection = ts.length > 50 ? `\n訪談片段：\n${ts.slice(0, 800)}` : '';
-
   const expertLine = [expertName, expertRole, expertOrg].filter(Boolean).join('，');
-  const prompt = `你是一個財經研究助理，負責整理專家訪談素材成短研究筆記。
+  const mdirList = (marketDirections as string[] | undefined);
 
-素材資訊：
+  const systemPrompt = `你是一個財經研究助理。你必須只回傳一個 valid JSON object，不加任何解釋文字、markdown code block、或前後文。`;
+
+  const userPrompt = `素材資訊：
 - 標題：${title || topic}
 - 專家：${expertLine || '（未知）'}
 - 頻道：${channel || '（未知）'}
-- 日期：${publishDate || '（未知）'}
+- 日期：${sourceDate || '（未知）'}
 - 主題標的：${ticker ? ticker + ' / ' : ''}${topic}
 - 來源連結：${sourceUrl || '（未提供）'}
 
@@ -112,62 +129,108 @@ export async function POST(req: NextRequest) {
 ${kiText}
 ${tsSection}
 
+近期市場方向（admin 輸入）：
+${mdirList?.length ? mdirList.map((d, i) => `${i + 1}. ${d}`).join('\n') : '（未提供）'}
+
+最近已上架文章（供聯想參考）：
+${recentArticles.length > 0
+  ? recentArticles.map(a => `- 標題：${(a.jgTitle as string) || (a.title as string) || '未知'} | 主題：${(a.topic as string) || '—'} | 標籤：${((a.tags as string[]) || []).join(', ') || '—'} | 日期：${(a.publishedAt as string) || '—'}`).join('\n')
+  : '（無已上架文章）'}
+
 ---
 
-請生成一篇 600-900 中文字的短研究筆記，格式如下，不要偏離：
+請生成以下格式的 JSON object，只回傳 JSON，不加任何額外文字：
 
-# {建議標題}
+{
+  "suggestedTitle": "建議標題（繁體中文）",
+  "articleDraft": "完整文章草稿（markdown 格式，見下方格式說明）",
+  "selectedMarketDirection": "最相關的市場方向（字串），若 fitScore < 70 則為 null",
+  "marketDirectionFitScore": 0,
+  "marketDirectionReason": "為什麼這則素材符合或不符合市場方向（1-2 句）",
+  "relatedRecentArticles": [],
+  "jgAngleCandidates": []
+}
+
+欄位規則：
+- marketDirectionFitScore 是 0-100 的數字
+- marketDirectionFitScore < 70 → selectedMarketDirection 必須是 null
+- relatedRecentArticles 中每個 item 格式：{"id": "文章 _id 字串", "title": "文章標題", "fitScore": 數字, "reason": "為什麼相關（1 句）"}
+- 只有 fitScore >= 70 的 related articles 才放進 relatedRecentArticles
+- 沒有明確關聯 → relatedRecentArticles: []
+- jgAngleCandidates：3 條候選觀點（1-2 句），只能是候選，不是正式 JG 觀點
+- 不可新增原文沒有的數字
+- 不可給買賣建議
+
+articleDraft 格式（固定格式，markdown，用 \\n 換行）：
+# {標題}
 
 ## 一、這則素材在講什麼
-
 （根據素材整理這位專家說了什麼，只整理，不評論，不新增原文沒有的數字）
 
 ## 二、為什麼這件事對投資人重要
-
 （從市場角度說明這則訊息的意義，不給買賣建議）
 
-## 三、【JG 觀點待補】
+## 三、可能的 JG 觀點方向
 
-請補上你對這則素材的反市場觀點：市場忽略了什麼？共識哪裡可能太滿？這件事跟資本流向有什麼關係？
+市場方向連結：
+（說明這則素材與近期市場方向的關聯，若無明確關聯則說明為何）
+
+近期文章聯想：
+（說明與近期已上架文章的關聯，若無則說明）
+
+JG 觀點候選：
+
+1. （候選觀點 1）
+2. （候選觀點 2）
+3. （候選觀點 3）
+
+【JG 觀點待補】
+請從上面候選方向中選一個，改寫成正式 JG 判斷。
 
 ## 四、接下來觀察什麼
-
 （列出 2-3 個後續值得追蹤的觀察指標或事件）
 
----
-限制：
-- 不要新增原文沒有的公司財務數字
-- 不要給買賣建議
-- 不要寫影片口吻（大家好、歡迎回來、記得按讚、訂閱）
-- 第三段只放 placeholder 文字「【JG 觀點待補】」，不要自行補 JG 觀點
-- 只用以上素材資訊，不要外部知識補充`;
+禁止出現於 articleDraft：「JG 認為」「我的觀點是」買賣建議、影片口吻（大家好、歡迎回來、記得按讚、訂閱）`;
 
   // 呼叫 Anthropic LLM
   const anthropic = getAnthropicClient();
   const MODEL = 'claude-sonnet-4-5';
 
-  let draftTitle = title || topic;
-  let draftBody = '';
-
   const msg = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 2500,
-    messages: [{ role: 'user', content: prompt }],
+    max_tokens: 3000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
   });
 
-  const rawText = (msg.content[0] as { text: string }).text.trim();
+  const rawLLMText = (msg.content[0] as { text: string }).text.trim();
 
-  // 解析 title (# 開頭的第一行)
-  const lines = rawText.split('\n');
+  // JSON parse try/catch
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(rawLLMText);
+  } catch {
+    // 不覆蓋任何 DB 欄位
+    return NextResponse.json(
+      { ok: false, error: 'json_parse_failed', raw: rawLLMText.slice(0, 500) },
+      { status: 502 }
+    );
+  }
+
+  // 解析 title 和 body from JSON
+  const draftTitle = (parsed.suggestedTitle as string) || title || topic;
+  const articleDraft = (parsed.articleDraft as string) || '';
+
+  // 從 articleDraft 解析 body（去掉第一行 # 標題）
+  const draftLines = articleDraft.split('\n');
   let bodyStart = 0;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith('# ')) {
-      draftTitle = lines[i].replace(/^# /, '').trim();
+  for (let i = 0; i < draftLines.length; i++) {
+    if (draftLines[i].startsWith('# ')) {
       bodyStart = i + 1;
       break;
     }
   }
-  draftBody = lines.slice(bodyStart).join('\n').trim();
+  const draftBody = draftLines.slice(bodyStart).join('\n').trim();
 
   // 寫回 summaries
   const today = new Date().toISOString().split('T')[0];
@@ -192,8 +255,16 @@ ${tsSection}
         generatedAt,
         generatedBy: 'ai',
         model: MODEL,
-        promptVersion: 'v1.0',
+        promptVersion: 'v2.0',
         updatedAt: generatedAt.toISOString(),
+        sourceDate,
+        sourceDateFallback,
+        marketDirectionInput: marketDirections || [],
+        selectedMarketDirection: parsed.selectedMarketDirection ?? null,
+        marketDirectionFitScore: parsed.marketDirectionFitScore ?? 0,
+        marketDirectionReason: parsed.marketDirectionReason ?? '',
+        relatedRecentArticles: parsed.relatedRecentArticles ?? [],
+        jgAngleCandidates: parsed.jgAngleCandidates ?? [],
         // status: 'candidate' — 不改
         // alphaReady: false — 不改
       },
@@ -205,6 +276,10 @@ ${tsSection}
     summaryId,
     draftTitle,
     draftBody,
+    selectedMarketDirection: parsed.selectedMarketDirection ?? null,
+    marketDirectionFitScore: parsed.marketDirectionFitScore ?? 0,
+    jgAngleCandidates: parsed.jgAngleCandidates ?? [],
+    relatedRecentArticles: parsed.relatedRecentArticles ?? [],
     generatedAt: generatedAt.toISOString(),
     model: MODEL,
   });

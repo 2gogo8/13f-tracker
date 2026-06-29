@@ -62,6 +62,8 @@ export default function ExpertsPage() {
   const [cmsEditMeta, setCmsEditMeta] = useState<Record<string, any>>({});
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [marketDirectionsText, setMarketDirectionsText] = useState('');
+  const [draftResult, setDraftResult] = useState<Record<string, any> | null>(null);
 
   // Usage analytics state
   const [usageData, setUsageData] = useState<any>(null);
@@ -191,16 +193,22 @@ export default function ExpertsPage() {
   const handleGenerateDraft = async (summaryId: string) => {
     setGeneratingDraftId(summaryId);
     setDraftError(null);
+    setDraftResult(null);
     setCmsMsg(null);
     try {
+      const marketDirections = marketDirectionsText
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
       const res = await fetch('/api/admin/insights/generate-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ summaryId }),
+        body: JSON.stringify({ summaryId, marketDirections }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
         setCmsMsg(`✅ 草稿生成完成：${data.draftTitle}`);
+        setDraftResult(data);
         fetchCmsData();
       } else {
         setDraftError(data.error || '生成失敗');
@@ -817,6 +825,30 @@ export default function ExpertsPage() {
             )}
             {cmsError && <div style={{ color: 'red', marginBottom: '12px' }}>❌ {cmsError}</div>}
             {draftError && <div style={{ padding: '10px 16px', borderRadius: '8px', marginBottom: '12px', background: '#fff5f5', border: '1px solid #fc8181', fontSize: '14px', color: '#c53030' }}>❌ 草稿生成失敗：{draftError} <button onClick={() => setDraftError(null)} style={{ marginLeft: '8px', border: 'none', background: 'none', cursor: 'pointer', color: '#888' }}>×</button></div>}
+            {draftResult && (
+              <div style={{ padding: '12px 16px', borderRadius: '8px', marginBottom: '12px', background: '#f0fff4', border: '1px solid #68d391', fontSize: '13px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <strong>📊 生成結果摘要</strong>
+                  <button onClick={() => setDraftResult(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#888' }}>×</button>
+                </div>
+                {draftResult.selectedMarketDirection && (
+                  <div style={{ marginBottom: '6px' }}>🧭 <strong>市場方向</strong>：{draftResult.selectedMarketDirection}（符合度 {draftResult.marketDirectionFitScore}）</div>
+                )}
+                {Array.isArray(draftResult.jgAngleCandidates) && draftResult.jgAngleCandidates.length > 0 && (
+                  <div style={{ marginBottom: '6px' }}>
+                    💡 <strong>JG 觀點候選</strong>：
+                    <ol style={{ margin: '4px 0 0 0', paddingLeft: '18px' }}>
+                      {draftResult.jgAngleCandidates.map((c: string, i: number) => <li key={i}>{c}</li>)}
+                    </ol>
+                  </div>
+                )}
+                {Array.isArray(draftResult.relatedRecentArticles) && draftResult.relatedRecentArticles.length > 0 && (
+                  <div>
+                    🔗 <strong>相關近期文章</strong>：{draftResult.relatedRecentArticles.map((a: any) => `${a.title}（${a.fitScore}）`).join('、')}
+                  </div>
+                )}
+              </div>
+            )}
             {cmsLoading && <div style={{ color: '#888', marginBottom: '12px' }}>載入中…</div>}
 
             {/* Preview modal */}
@@ -995,6 +1027,20 @@ export default function ExpertsPage() {
               <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '12px', borderBottom: '2px solid #e5e5e5', paddingBottom: '6px' }}>
                 B. 候選文章 ({cmsData?.candidateSummaries.length ?? 0})
               </h3>
+              <div className="mb-3" style={{ marginBottom: '12px' }}>
+                <label style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>近期市場方向（可選，供生成草稿參考）</label>
+                <textarea
+                  value={marketDirectionsText}
+                  onChange={e => setMarketDirectionsText(e.target.value)}
+                  placeholder={`AI 電力瓶頃｜AI 數據中心、電網、燃料電池、能源基礎設施
+AI CapEx 外溢｜晶片、電力、冷卻、土地、光纖、伺服器
+私募市場破牆｜SpaceX、IPO、財富轉移
+市場創高但個股沒漲｜集中度、資金擁擠、選股落差
+比特幣資產負債表化｜MSTR、企業財庫、數位信用`}
+                  rows={4}
+                  style={{ width: '100%', fontSize: '13px', background: '#1f2937', color: '#f9fafb', border: '1px solid #4b5563', borderRadius: '6px', padding: '8px 12px', resize: 'vertical', fontFamily: 'inherit' }}
+                />
+              </div>
               {!cmsData?.candidateSummaries.length && !cmsLoading && (
                 <div style={{ color: '#888', fontSize: '14px' }}>無候選文章</div>
               )}
