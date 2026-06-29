@@ -1072,6 +1072,9 @@ export default function ExpertsPage() {
                           {ins.enrichmentStatus === 'irrelevant' && (
                             <span style={{ fontSize: '11px', background: '#1f2937', color: '#9ca3af', padding: '1px 6px', borderRadius: '4px' }}>⏭️ 影片不相關</span>
                           )}
+                          {ins.enrichmentStatus === 'transcript_too_short' && (
+                            <span style={{ fontSize: '11px', background: '#7f1d1d', color: '#fca5a5', padding: '1px 6px', borderRadius: '4px' }}>⚠️ 逐字稿太短，不適合成稿</span>
+                          )}
                           {ins.source_type === 'video_queue' && (
                             <span style={{ fontSize: '11px', background: '#1e3a5f', color: '#60a5fa', padding: '1px 6px', borderRadius: '4px' }}>📡 頻道同步</span>
                           )}

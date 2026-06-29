@@ -102,6 +102,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // transcript_too_short 防呆：短影片不能成稿
+  if ((raw as Record<string, unknown>)?.enrichmentStatus === 'transcript_too_short') {
+    return NextResponse.json(
+      { error: '逐字稿太短，不適合成稿', enrichmentBlock: true },
+      { status: 400 }
+    );
+  }
+
   // 新資料（video_queue 同步來的）→ 必須是 enriched
   const enrichmentStatus = (raw as Record<string, unknown>)?.enrichmentStatus as string || ''
   const isVideoQueueSource = ((raw as Record<string, unknown>)?.syncedFrom === 'video_queue' || sourceType === 'video_queue')

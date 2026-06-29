@@ -78,6 +78,44 @@ export async function POST(req: NextRequest) {
   const transcriptSample = fullTranscript.slice(0, 600)
   const transcriptForLLM = fullTranscript.slice(0, 7000)
   const transcriptLength = fullTranscript.length
+  const transcriptSegments = transcriptLines.length
+
+  // 短內容 gate
+  const titleLower = title.toLowerCase()
+  const isTitleShort = /\b(shorts?|clip|highlight|trailer|teaser)\b/.test(titleLower)
+  const isUrlShort = (doc.source_url as string || '').includes('/shorts/')
+
+  const isTooShort =
+    isUrlShort ||
+    isTitleShort ||
+    transcriptSegments < 50 ||
+    transcriptLength < 3000
+
+  if (isTooShort) {
+    await db.collection('expert_insights').updateOne(
+      { _id: new ObjectId(expertInsightId) },
+      {
+        $set: {
+          enrichmentStatus: 'transcript_too_short',
+          transcriptLength,
+          transcriptSegments,
+          skippedReason: 'transcript_too_short',
+          enrichedAt: now,
+          transcriptFetchedAt: now,
+        }
+      }
+    )
+    return NextResponse.json(
+      {
+        ok: false,
+        enrichmentStatus: 'transcript_too_short',
+        reason: 'transcript_too_short',
+        transcriptLength,
+        transcriptSegments,
+      },
+      { status: 400 }
+    )
+  }
 
   // LLM 抽 key_insights
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
