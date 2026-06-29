@@ -65,22 +65,57 @@ export async function GET(req: NextRequest) {
 
   const sectionAEmpty = newExpertInsights.length === 0;
 
-  // B. Candidate summaries
-  const candidateFilter: Record<string, unknown> = { status: 'candidate' };
-  if (q) {
-    candidateFilter['$or'] = [
-      { title: { $regex: q, $options: 'i' } },
-      { jgTitle: { $regex: q, $options: 'i' } },
-      { topic: { $regex: q, $options: 'i' } },
-    ];
-  }
+  // ── B. Candidate summaries — split into new (B) and historical (B2) ──
+  const ninetyDaysAgo = new Date();
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().split('T')[0];
 
-  const candidateSummaries = await db
+  const candidateBaseFilter: Record<string, unknown> = { status: 'candidate', alphaReady: false };
+  const searchFilter = q
+    ? {
+        $or: [
+          { title: { $regex: q, $options: 'i' } },
+          { jgTitle: { $regex: q, $options: 'i' } },
+          { topic: { $regex: q, $options: 'i' } },
+        ],
+      }
+    : {};
+
+  // B 區主列表：最新候選（有 sourceType=video_queue、sourceDate 在 30 天內、未 archived）
+  const newCandidates = await db
     .collection('summaries')
-    .find(candidateFilter)
-    .sort({ sourceDate: -1, createdAt: -1 })
+    .find({
+      ...candidateBaseFilter,
+      ...searchFilter,
+      sourceType: 'video_queue',
+      sourceDate: { $exists: true, $nin: [null, 'n/a'], $gte: thirtyDaysAgoStr },
+      draftStatus: { $ne: 'archived' },
+    })
+    .sort({ sourceDate: -1 })
     .limit(limit)
     .toArray();
+
+  // B2 區：歷史候選（非 video_queue、或 sourceDate 太舊、或缺 sourceDate）
+  const historicalCandidates = await db
+    .collection('summaries')
+    .find({
+      ...candidateBaseFilter,
+      ...searchFilter,
+      $or: [
+        { sourceType: { $ne: 'video_queue' } },
+        { sourceType: { $exists: false } },
+        { sourceDate: { $lt: ninetyDaysAgoStr } },
+        { sourceDate: { $exists: false } },
+        { sourceDate: null },
+        { sourceDate: 'n/a' },
+      ],
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .toArray();
+
+  // Also keep backward-compatible candidateSummaries (all candidates combined)
+  const candidateSummaries = [...newCandidates, ...historicalCandidates];
 
   // C. Published summaries
   const publishedFilter: Record<string, unknown> = { status: 'published', alphaReady: true };
@@ -126,6 +161,14 @@ export async function GET(req: NextRequest) {
     newExpertInsights,
     sectionAIrrelevantCount: irrelevantCount,
     ...(sectionAEmpty ? { sectionAEmpty: true, sectionAEmptyReason: 'no_recent_insights' } : {}),
+    // B 區分拆
+    sectionB: newCandidates,
+    sectionBCount: newCandidates.length,
+    sectionBEmpty: newCandidates.length === 0,
+    sectionBEmptyReason: newCandidates.length === 0 ? 'no_recent_video_queue_candidates' : null,
+    sectionB2: historicalCandidates,
+    sectionB2Count: historicalCandidates.length,
+    // 向下相容
     candidateSummaries,
     publishedSummaries,
     archivedRejectedUnpublished: [

@@ -50,6 +50,11 @@ export default function ExpertsPage() {
   const [cmsData, setCmsData] = useState<{
     newExpertInsights: any[];
     candidateSummaries: any[];
+    sectionB: any[];
+    sectionBEmpty: boolean;
+    sectionBEmptyReason: string | null;
+    sectionB2: any[];
+    sectionB2Count: number;
     publishedSummaries: any[];
     archivedRejectedUnpublished: any[];
   } | null>(null);
@@ -1247,7 +1252,47 @@ export default function ExpertsPage() {
                       </div>
                       <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
-                        <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={btnStyle('#0070f3')}>轉成候選</button>
+                        {ins.enrichmentStatus === 'enriched' && (ins.key_insights?.length > 0 || ins.keyInsights?.length > 0) ? (
+                          <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={btnStyle('#16a34a')}>➡️ 轉成最新候選</button>
+                        ) : ins.enrichmentStatus === 'transcript_too_short' ? (
+                          <span style={{ fontSize: '11px', color: '#ef4444', padding: '4px 8px', alignSelf: 'center' }}>⚠️ 內容太短，不適合成稿</span>
+                        ) : ins.enrichmentStatus === 'transcript_unavailable' ? (
+                          <span style={{ fontSize: '11px', color: '#ef4444', padding: '4px 8px', alignSelf: 'center' }}>⚠️ 無字幕，不可成稿</span>
+                        ) : ins.enrichmentStatus === 'irrelevant' ? (
+                          <span style={{ fontSize: '11px', color: '#9ca3af', padding: '4px 8px', alignSelf: 'center' }}>⏭️ 不相關</span>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              setEnrichingId(ins._id)
+                              try {
+                                const res = await fetch('/api/admin/insights/enrich-video', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ expertInsightId: ins._id })
+                                })
+                                const data = await res.json()
+                                if (data.ok) {
+                                  setCmsMsg(`✅ 已補 ${data.keyInsightsCount} 條 key insights`)
+                                  fetchCmsData()
+                                } else {
+                                  const reason = data.enrichmentStatus === 'transcript_unavailable' ? '無可用字幕'
+                                    : data.enrichmentStatus === 'irrelevant' ? '影片不相關'
+                                    : '補充失敗：' + (data.reason || data.error || '未知錯誤')
+                                  setCmsMsg(`⚠️ ${reason}`)
+                                  fetchCmsData()
+                                }
+                              } catch {
+                                setCmsMsg('⚠️ 網路錯誤')
+                              } finally {
+                                setEnrichingId(null)
+                              }
+                            }}
+                            disabled={enrichingId === ins._id}
+                            style={{ ...btnStyle('#1d4ed8'), opacity: enrichingId === ins._id ? 0.6 : 1, cursor: enrichingId === ins._id ? 'wait' : 'pointer' }}
+                          >
+                            {enrichingId === ins._id ? '讀取中...' : '🔍 先讀取影片內容'}
+                          </button>
+                        )}
                         <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
                         <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
                       </div>
@@ -1257,10 +1302,10 @@ export default function ExpertsPage() {
               })}
             </section>
 
-            {/* B. Candidate summaries */}
+            {/* B. 最新候選文章 */}
             <section style={{ marginBottom: '32px' }}>
               <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '12px', borderBottom: '2px solid #e5e5e5', paddingBottom: '6px' }}>
-                B. 候選文章 ({cmsData?.candidateSummaries.length ?? 0})
+                B. 最新候選文章 ({cmsData?.sectionB?.length ?? 0})
               </h3>
               <div className="mb-3" style={{ marginBottom: '12px' }}>
                 <label style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>近期市場方向（可選，供生成草稿參考）</label>
@@ -1276,10 +1321,12 @@ AI CapEx 外溢｜晶片、電力、冷卻、土地、光纖、伺服器
                   style={{ width: '100%', fontSize: '13px', background: '#1f2937', color: '#f9fafb', border: '1px solid #4b5563', borderRadius: '6px', padding: '8px 12px', resize: 'vertical', fontFamily: 'inherit' }}
                 />
               </div>
-              {!cmsData?.candidateSummaries.length && !cmsLoading && (
-                <div style={{ color: '#888', fontSize: '14px' }}>無候選文章</div>
+              {cmsData?.sectionBEmpty && !cmsLoading && (
+                <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
+                  目前沒有最新候選。請先在 A 區推薦影片讀取內容後，轉成最新候選。
+                </div>
               )}
-              {cmsData?.candidateSummaries.map((s: any) => (
+              {cmsData?.sectionB?.map((s: any) => (
                 <div key={s._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -1320,6 +1367,44 @@ AI CapEx 外溢｜晶片、電力、冷卻、土地、光纖、伺服器
                   </div>
                 </div>
               ))}
+
+              {/* B2 區：歷史候選 */}
+              {(cmsData?.sectionB2?.length ?? 0) > 0 && (
+                <details style={{ marginTop: '16px' }}>
+                  <summary style={{ fontSize: '14px', color: '#9ca3af', cursor: 'pointer', padding: '8px 0', userSelect: 'none' }}>
+                    🗄️ 歷史候選 / 舊測試資料 ({cmsData?.sectionB2Count ?? 0} 筆)
+                  </summary>
+                  <div style={{ marginTop: '8px' }}>
+                    {cmsData?.sectionB2?.map((s: any) => (
+                      <div key={s._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fafaf8' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: '#666' }}>
+                              {s.jgTitle || s.title || s.articleTitle}
+                              <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px' }}>（歷史）</span>
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#888' }}>
+                              sourceDate: {s.sourceDate || 'n/a'} | sourceType: {s.sourceType || 'n/a'} | tags: {(s.tags || []).join(', ')}
+                            </div>
+                            {(() => {
+                              const { label, color, daysAgo } = getFreshnessBadge(s.sourceDate)
+                              return (
+                                <span className={`text-xs ${color}`} style={{ display: 'inline-block', marginTop: '2px' }}>
+                                  {label} {s.sourceDate ? `(${s.sourceDate}${daysAgo !== null ? `, ${daysAgo}天前` : ''})` : ''}
+                                </span>
+                              )
+                            })()}
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                            <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </section>
 
             {/* C. Published summaries */}
