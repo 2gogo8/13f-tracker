@@ -60,6 +60,8 @@ export default function ExpertsPage() {
   const [cmsPreviewLoading, setCmsPreviewLoading] = useState(false);
   const [cmsEditId, setCmsEditId] = useState<string | null>(null);
   const [cmsEditMeta, setCmsEditMeta] = useState<Record<string, any>>({});
+  const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   // Usage analytics state
   const [usageData, setUsageData] = useState<any>(null);
@@ -183,6 +185,30 @@ export default function ExpertsPage() {
       }
     } catch {
       setCmsMsg('❌ 網路錯誤');
+    }
+  };
+
+  const handleGenerateDraft = async (summaryId: string) => {
+    setGeneratingDraftId(summaryId);
+    setDraftError(null);
+    setCmsMsg(null);
+    try {
+      const res = await fetch('/api/admin/insights/generate-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summaryId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setCmsMsg(`✅ 草稿生成完成：${data.draftTitle}`);
+        fetchCmsData();
+      } else {
+        setDraftError(data.error || '生成失敗');
+      }
+    } catch {
+      setDraftError('網路錯誤，請重試');
+    } finally {
+      setGeneratingDraftId(null);
     }
   };
 
@@ -790,6 +816,7 @@ export default function ExpertsPage() {
               </div>
             )}
             {cmsError && <div style={{ color: 'red', marginBottom: '12px' }}>❌ {cmsError}</div>}
+            {draftError && <div style={{ padding: '10px 16px', borderRadius: '8px', marginBottom: '12px', background: '#fff5f5', border: '1px solid #fc8181', fontSize: '14px', color: '#c53030' }}>❌ 草稿生成失敗：{draftError} <button onClick={() => setDraftError(null)} style={{ marginLeft: '8px', border: 'none', background: 'none', cursor: 'pointer', color: '#888' }}>×</button></div>}
             {cmsLoading && <div style={{ color: '#888', marginBottom: '12px' }}>載入中…</div>}
 
             {/* Preview modal */}
@@ -988,6 +1015,14 @@ export default function ExpertsPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                      <button
+                        disabled={s.draftStatus === 'draft_ready' || generatingDraftId === s._id}
+                        onClick={() => handleGenerateDraft(s._id)}
+                        style={{ ...btnStyle(s.draftStatus === 'draft_ready' ? '#38a169' : '#805ad5'), opacity: (s.draftStatus === 'draft_ready' || generatingDraftId === s._id) ? 0.6 : 1, cursor: (s.draftStatus === 'draft_ready' || generatingDraftId === s._id) ? 'not-allowed' : 'pointer' }}
+                        title={s.draftStatus === 'draft_ready' ? '已有草稿，可直接上架或編輯' : '呼叫 AI 生成研究筆記草稿'}
+                      >
+                        {s.draftStatus === 'draft_ready' ? '✅ 已有草稿' : generatingDraftId === s._id ? '生成中…' : '✍️ 生成草稿'}
+                      </button>
                       <button onClick={() => cmsAction('/api/admin/insights/publish', { summaryId: s._id }, '已上架')} style={btnStyle('#28a745')}>上架</button>
                       <button onClick={() => { setCmsEditId(s._id); setCmsEditMeta({ jgTitle: s.jgTitle || '', displaySection: s.displaySection || '', articleType: s.articleType || '', sortOrder: s.sortOrder ?? 0, isPinned: !!s.isPinned, tags: s.tags || [] }); }} style={btnStyle('#0070f3')}>編輯</button>
                       <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
