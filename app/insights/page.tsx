@@ -227,9 +227,11 @@ function renderMarkdown(raw: string) {
   });
 }
 
+const TYPEWRITER_BATCH = 5; // process N chars per rAF → ~5x speedup
+
 function charDelay(c: string) {
-  if ([',', '，', '、'].includes(c)) return 80;
-  if (['.', '。', '?', '？', '!', '！'].includes(c)) return 150;
+  if ([',', '，', '、'].includes(c)) return 20;  // was 80
+  if (['.', '。', '?', '？', '!', '！'].includes(c)) return 40;  // was 150
   return 4;
 }
 
@@ -260,6 +262,7 @@ export default function InsightsPage() {
   const [displayed, setDisplayed] = useState('');
   const [charIdx, setCharIdx] = useState(0);
   const [pageDone, setPageDone] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [navPage, setNavPage] = useState(0);
@@ -376,11 +379,14 @@ export default function InsightsPage() {
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    setDisplayed(''); setCharIdx(0); setPageDone(false);
+    setDisplayed(''); setCharIdx(0);
+    // Only page 1 (pageIdx===0) gets the typewriter effect; pages 2+ show instantly
+    setPageDone(pageIdx > 0);
   }, [topicIdx, pageIdx]);
 
   useEffect(() => {
     setPageIdx(0);
+    setShowAll(false); // reset on topic change
     // Track article view when user switches topics
     if (authStatus === 'authenticated' && summaries[topicIdx]) {
       const s = summaries[topicIdx];
@@ -393,20 +399,23 @@ export default function InsightsPage() {
   }, [topicIdx]);
 
   useEffect(() => {
-    if (pageDone || !pages[pageIdx]) return;
-    const current = pages[pageIdx];
-    if (charIdx >= current.length) { setPageDone(true); return; }
-    const c = current[charIdx];
+    if (pageDone || pageIdx > 0) return; // Only typewrite page 1
+    // Typewriter zone = first 2 paragraphs of pages[0]
+    const twParas = (pages[0] || '').split(/\n\n+/).filter(Boolean);
+    const twZone = twParas.slice(0, 2).join('\n\n');
+    if (!twZone || charIdx >= twZone.length) { setPageDone(true); return; }
+    const c = twZone[charIdx];
     const delay = charDelay(c);
-    // Use setTimeout for punctuation pauses, requestAnimationFrame for fast chars
-    // This prevents background-tab throttling for normal characters
     if (delay <= 4) {
+      // Batch multiple chars per animation frame for speed
       const raf = requestAnimationFrame(() => {
-        setDisplayed(d => d + c);
-        setCharIdx(i => i + 1);
+        const end = Math.min(charIdx + TYPEWRITER_BATCH, twZone.length);
+        setDisplayed(twZone.slice(0, end));
+        setCharIdx(end);
       });
       return () => cancelAnimationFrame(raf);
     } else {
+      // Punctuation pause — single char
       timerRef.current = setTimeout(() => {
         setDisplayed(d => d + c);
         setCharIdx(i => i + 1);
@@ -417,9 +426,20 @@ export default function InsightsPage() {
 
   const skipPage = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    const cur = pages[pageIdx] || '';
-    setDisplayed(cur); setCharIdx(cur.length); setPageDone(true);
+    if (pageIdx === 0) {
+      const twParas = (pages[0] || '').split(/\n\n+/).filter(Boolean);
+      const twZone = twParas.slice(0, 2).join('\n\n');
+      setDisplayed(twZone);
+      setCharIdx(twZone.length);
+    }
+    setPageDone(true);
   }, [pageIdx, pages]);
+
+  const skipAll = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setShowAll(true);
+    setPageDone(true);
+  }, []);
 
   const nextPage = useCallback(() => {
     if (pageIdx < pages.length - 1) setPageIdx(p => p + 1);
@@ -550,7 +570,7 @@ export default function InsightsPage() {
 
           {/* Content */}
           <div
-            onClick={!pageDone ? skipPage : undefined}
+            onClick={!pageDone && !showAll ? skipPage : undefined}
             className={isMobile ? 'mobile-reader' : ''}
             style={{
               flex: isMobile ? undefined : 1,
@@ -559,18 +579,55 @@ export default function InsightsPage() {
               height: isMobile && mobileBodyHeight > 100 ? `${mobileBodyHeight}px` : undefined,
               minHeight: isMobile ? '200px' : undefined,
               maxHeight: isMobile ? '600px' : undefined,
-              cursor: !pageDone ? 'pointer' : 'default',
+              cursor: !pageDone && !showAll ? 'pointer' : 'default',
               display: 'flex', flexDirection: 'column',
             }}
           >
             <div style={{ flex: 1 }}>
-              {renderMarkdown(displayed)}
-              {!pageDone && (
-                <span style={{
-                  display: 'inline-block', width: '2px', height: '18px',
-                  background: '#c0202a', animation: 'cursor-blink 0.8s step-end infinite',
-                  verticalAlign: 'text-bottom', marginLeft: '2px',
-                }} />
+              {showAll ? (
+                // 立即顯示全文 — render entire article at once, no pagination
+                renderMarkdown(articleContent)
+              ) : pageIdx === 0 ? (
+                <>
+                  {renderMarkdown(displayed)}
+                  {!pageDone && (
+                    <>
+                      <span style={{
+                        display: 'inline-block', width: '2px', height: '18px',
+                        background: '#c0202a', animation: 'cursor-blink 0.8s step-end infinite',
+                        verticalAlign: 'text-bottom', marginLeft: '2px',
+                      }} />
+                      {' '}
+                      <button
+                        onClick={e => { e.stopPropagation(); skipAll(); }}
+                        style={{
+                          display: 'inline',
+                          background: 'none', border: 'none',
+                          color: '#aaa', fontSize: '12px',
+                          cursor: 'pointer', textDecoration: 'underline',
+                          fontFamily: '"Noto Sans TC", sans-serif',
+                          padding: '0 2px', letterSpacing: '0.02em',
+                          verticalAlign: 'text-bottom',
+                        }}
+                      >
+                        立即顯示全文
+                      </button>
+                    </>
+                  )}
+                  {pageDone && (() => {
+                    // Body zone — paragraphs 3+ fade in after typewriter finishes
+                    const twParas = (pages[0] || '').split(/\n\n+/).filter(Boolean);
+                    const restContent = twParas.slice(2).join('\n\n');
+                    return restContent ? (
+                      <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
+                        {renderMarkdown(restContent)}
+                      </div>
+                    ) : null;
+                  })()}
+                </>
+              ) : (
+                // Pages 2+: show instantly, no typewriter
+                renderMarkdown(pages[pageIdx] || '')
               )}
             </div>
             {/* Bottom spacer */}
@@ -674,6 +731,7 @@ export default function InsightsPage() {
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes live-dot { 0%,100%{opacity:1} 50%{opacity:0.25} }
         @keyframes cta-pulse { 0%,100%{box-shadow:0 2px 12px rgba(192,32,42,0.35)} 50%{box-shadow:0 4px 20px rgba(192,32,42,0.6)} }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
         button:focus { outline: none; }
         ::-webkit-scrollbar { display: none; }
         @media (max-width: 1099px) {
@@ -901,7 +959,7 @@ export default function InsightsPage() {
         )}
 
         {/* ── Prev / Next page buttons ── */}
-        {pageDone && !loading && summaries.length > 0 && (pageIdx > 0 || !isLastPage || (isLastPage && isMobile)) && (
+        {!showAll && pageDone && !loading && summaries.length > 0 && (pageIdx > 0 || !isLastPage || (isLastPage && isMobile)) && (
           <div style={{
             position: isMobile ? 'relative' : 'fixed',
             bottom: isMobile ? 'auto' : 0,
@@ -930,6 +988,20 @@ export default function InsightsPage() {
                 transition: 'border-color 0.2s',
               }}>
                 ◀ 上一頁
+              </button>
+            )}
+            {/* 立即顯示全文 in nav bar (multi-page articles) */}
+            {pages.length > 1 && (
+              <button onClick={skipAll} style={{
+                background: '#ffffff', color: '#8a8a8f',
+                border: '1.5px solid #e3ddd2', borderRadius: '4px',
+                padding: '11px 20px',
+                fontFamily: '"Noto Sans TC", sans-serif',
+                fontSize: '13px', fontWeight: 500,
+                letterSpacing: '0.04em', cursor: 'pointer',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+              }}>
+                展開全文
               </button>
             )}
             {/* Next page */}
