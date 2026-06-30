@@ -997,9 +997,9 @@ export default function ExpertsPage() {
                       {/* Tab: draft */}
                       {previewTab === 'draft' && (
                         <div>
-                          {(cmsPreview.article || cmsPreview.body) ? (
+                          {(cmsPreview.articleDraft || cmsPreview.article || cmsPreview.body) ? (
                             <div style={{ fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', background: '#f8f8f8', padding: '12px', borderRadius: '6px' }}>
-                              {cmsPreview.article || cmsPreview.body}
+                              {cmsPreview.articleDraft || cmsPreview.article || cmsPreview.body}
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1013,15 +1013,15 @@ export default function ExpertsPage() {
                                   <strong>📌 標的</strong>：ticker={cmsPreview.ticker || cmsPreview.topic_ticker || '—'} | topic={cmsPreview.topic || '—'}{cmsPreview.url ? <> | <a href={cmsPreview.url} target="_blank" rel="noreferrer" style={{ color: '#0070f3' }}>來源連結</a></> : null}
                                 </div>
                               )}
-                              {cmsPreview.transcript_sample && (
+                              {(cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample) && (
                                 <div style={{ background: '#f8f8f8', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
                                   <strong>📝 Transcript（前段）</strong>
                                   <div style={{ marginTop: '6px', whiteSpace: 'pre-wrap', lineHeight: 1.6, maxHeight: '200px', overflowY: 'auto', color: '#444' }}>
-                                    {String(cmsPreview.transcript_sample).slice(0, 600)}{String(cmsPreview.transcript_sample).length > 600 ? '…' : ''}
+                                    {String(cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample).slice(0, 600)}{String(cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample).length > 600 ? '…' : ''}
                                   </div>
                                 </div>
                               )}
-                              {!cmsPreview.key_insights?.length && !cmsPreview.transcript_sample && !cmsPreview.article && !cmsPreview.body && (
+                              {!(cmsPreview.key_insights?.length || cmsPreview.rawExpertInsight?.key_insights?.length) && !(cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample) && !cmsPreview.article && !cmsPreview.body && !cmsPreview.articleDraft && (
                                 <div style={{ color: '#aaa', fontSize: '13px', padding: '12px', textAlign: 'center' }}>(無文章內容、無 key_insights、無 transcript_sample)</div>
                               )}
                             </div>
@@ -1030,36 +1030,54 @@ export default function ExpertsPage() {
                       )}
 
                       {/* Tab: insights */}
-                      {previewTab === 'insights' && (
+                      {previewTab === 'insights' && (() => {
+                        const kiList = Array.isArray(cmsPreview.key_insights) && cmsPreview.key_insights.length > 0
+                          ? cmsPreview.key_insights
+                          : Array.isArray(cmsPreview.rawExpertInsight?.key_insights) && cmsPreview.rawExpertInsight.key_insights.length > 0
+                            ? cmsPreview.rawExpertInsight.key_insights
+                            : [];
+                        const kiCount = cmsPreview.keyInsightsCount || kiList.length || 0;
+                        const extractionMode = cmsPreview.insightExtractionMode || cmsPreview.rawExpertInsight?.insightExtractionMode || 'unknown';
+                        const coverageRatio = cmsPreview.transcriptCoverageRatio ?? cmsPreview.rawExpertInsight?.transcriptCoverageRatio ?? 0;
+                        const coverageWarning = cmsPreview.coverageWarning || cmsPreview.rawExpertInsight?.coverageWarning;
+                        const transcriptSegments = cmsPreview.transcriptSegments ?? cmsPreview.rawExpertInsight?.transcriptSegments;
+                        return (
                         <div>
                           <div style={{ fontSize: 12, marginBottom: 8 }}>
                             <span style={{ color: '#888' }}>
-                              {cmsPreview.keyInsightsCount || cmsPreview.key_insights?.length || 0} 條 | 模式: {cmsPreview.insightExtractionMode || 'unknown'}
-                              {' | '}chunks: {cmsPreview.chunksProcessed || 'N/A'}/{cmsPreview.totalChunks || 'N/A'}
+                              {kiCount} 條 | 模式: {extractionMode}
+                              {transcriptSegments != null && <>{' | '}segments: {transcriptSegments}</>}
                             </span>
                             {' '}
-                            {(cmsPreview.transcriptCoverageRatio ?? 0) >= 0.95
-                              ? <span style={{ color: '#4ade80' }}>✅ Key insights 已覆蓋完整逐字稿 ({Math.round((cmsPreview.transcriptCoverageRatio ?? 0) * 100)}%)</span>
-                              : <span style={{ color: '#f87171' }}>⚠️ Key insights 未覆蓋完整逐字稿 ({Math.round((cmsPreview.transcriptCoverageRatio ?? 0) * 100)}%)</span>
+                            {coverageRatio >= 0.95
+                              ? <span style={{ color: '#4ade80' }}>✅ Key insights 已覆蓋完整逐字稿 ({Math.round(coverageRatio * 100)}%)</span>
+                              : <span style={{ color: '#f87171' }}>⚠️ Key insights 未覆蓋完整逐字稿 ({Math.round(coverageRatio * 100)}%)</span>
                             }
-                            {cmsPreview.coverageWarning && (
-                              <div style={{ color: '#fbbf24', marginTop: 4 }}>{cmsPreview.coverageWarning}</div>
+                            {coverageWarning && (
+                              <div style={{ color: '#fbbf24', marginTop: 4 }}>{coverageWarning}</div>
                             )}
                             {cmsPreview.keyInsightsUpdatedAt && (
                               <div style={{ color: '#666', marginTop: 2 }}>更新: {new Date(cmsPreview.keyInsightsUpdatedAt).toLocaleDateString()}</div>
                             )}
                           </div>
-                          {Array.isArray(cmsPreview.key_insights) && cmsPreview.key_insights.length > 0 ? (
-                            cmsPreview.key_insights.map((ki: string, i: number) => (
+                          {kiList.length > 0 ? (
+                            kiList.map((ki: Record<string, unknown> | string, i: number) => {
+                              const text = typeof ki === 'string' ? ki : (ki as Record<string, unknown>).insight as string || JSON.stringify(ki);
+                              const topic = typeof ki !== 'string' ? (ki as Record<string, unknown>).topic as string : undefined;
+                              const tickers = typeof ki !== 'string' && Array.isArray((ki as Record<string, unknown>).tickers) ? ((ki as Record<string, unknown>).tickers as string[]).join(', ') : undefined;
+                              return (
                               <div key={i} style={{ marginBottom: 8, padding: '8px', background: '#fffbeb', borderRadius: 4, fontSize: 13 }}>
-                                <span style={{ color: '#c9a84c', marginRight: 8, fontWeight: 700 }}>{i + 1}.</span>{ki}
+                                <span style={{ color: '#c9a84c', marginRight: 8, fontWeight: 700 }}>{i + 1}.</span>{text}
+                                {(topic || tickers) && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>{topic && <span>📌 {topic}</span>}{tickers && <span style={{ marginLeft: 8 }}>🏷️ {tickers}</span>}</div>}
                               </div>
-                            ))
+                              );
+                            })
                           ) : (
                             <div style={{ color: '#aaa', fontSize: 13, padding: 12, textAlign: 'center' }}>(無 key_insights)</div>
                           )}
                         </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Tab: transcript */}
                       {previewTab === 'transcript' && (
@@ -1076,13 +1094,13 @@ export default function ExpertsPage() {
                               </div>
                             </div>
                           )}
-                          {!transcriptLoading && !transcriptError && !transcriptData && cmsPreview?.transcript_sample && (
+                          {!transcriptLoading && !transcriptError && !transcriptData && (cmsPreview?.transcript_sample || cmsPreview?.rawExpertInsight?.transcript_sample) && (
                             <div>
                               <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Transcript Sample（前 600 字）</div>
-                              <div style={{ fontSize: 13, color: '#444', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>{cmsPreview.transcript_sample}</div>
+                              <div style={{ fontSize: 13, color: '#444', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>{cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample}</div>
                             </div>
                           )}
-                          {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && (
+                          {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && !cmsPreview?.rawExpertInsight?.transcript_sample && (
                             <div style={{ color: '#aaa', fontSize: 13, padding: 12, textAlign: 'center' }}>(無逐字稿資料)</div>
                           )}
                         </div>
@@ -1101,14 +1119,15 @@ export default function ExpertsPage() {
                           )}
                           <div style={{ color: '#888', fontSize: 12 }}>
                             <div>youtube_id: {cmsPreview?.youtube_id || 'N/A'}</div>
-                            <div>channel: {cmsPreview?.channel || 'N/A'}</div>
-                            <div>video_title: {cmsPreview?.video_title || cmsPreview?.title || 'N/A'}</div>
+                            <div>channel: {cmsPreview?.channel || cmsPreview?.sourceChannel || 'N/A'}</div>
+                            <div>video_title: {cmsPreview?.video_title || cmsPreview?.sourceTitle || cmsPreview?.title || 'N/A'}</div>
                             <div>publish_date: {cmsPreview?.publish_date || cmsPreview?.sourceDate || 'N/A'}</div>
-                            <div>sourceExpertInsightId: {cmsPreview?.sourceExpertInsightId || cmsPreview?._id || 'N/A'}</div>
+                            <div>sourceExpertInsightId: {cmsPreview?.sourceExpertInsightId || cmsPreview?.expertInsightId || 'N/A'}</div>
                             <div>enrichmentModel: {cmsPreview?.enrichmentModel || 'N/A'}</div>
-                            <div>insightExtractionMode: {cmsPreview?.insightExtractionMode || 'N/A'}</div>
+                            <div>insightExtractionMode: {cmsPreview?.insightExtractionMode || cmsPreview?.rawExpertInsight?.insightExtractionMode || 'N/A'}</div>
                             <div>transcriptStored: {cmsPreview?.transcriptStored ? 'Yes' : 'No'}</div>
-                            <div>transcriptLength: {cmsPreview?.transcriptLength?.toLocaleString() || 'N/A'}</div>
+                            <div>transcriptLength: {(cmsPreview?.transcriptLength || cmsPreview?.rawExpertInsight?.transcriptLength)?.toLocaleString() || 'N/A'}</div>
+                            <div>transcriptRef: {cmsPreview?.transcriptRef || 'N/A'}</div>
                           </div>
                         </div>
                       )}
