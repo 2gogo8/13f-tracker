@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { normalizeSummary } from '@/lib/insights/normalizeSummary';
 
 interface Interview {
   date: string;
@@ -1013,123 +1014,103 @@ export default function ExpertsPage() {
                         ))}
                       </div>
 
-                      {/* Tab: draft */}
-                      {previewTab === 'draft' && (
+                      {/* Tab: draft — uses normalizeSummary */}
+                      {previewTab === 'draft' && (() => {
+                        const norm = normalizeSummary(cmsPreview);
+                        return (
                         <div>
-                          {/* Priority: editedArticleDraft → cleanArticleDraft → articleDraft */}
-                          {(() => {
-                            const draftContent = cmsPreview.editedArticleDraft || cmsPreview.cleanArticleDraft || cmsPreview.articleDraft || cmsPreview.article || cmsPreview.body;
-                            const draftSource = cmsPreview.editedArticleDraft ? '✏️ editedArticleDraft' : cmsPreview.cleanArticleDraft ? '🧹 cleanArticleDraft' : cmsPreview.articleDraft ? '📝 articleDraft (raw)' : cmsPreview.publishedArticle ? '🔴 publishedArticle' : cmsPreview.article ? '📄 article' : cmsPreview.body ? '📄 body' : null;
-                            if (draftContent) return (
-                              <div>
-                                {draftSource && <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>顯示來源：{draftSource}</div>}
-                                {editingDraftId === cmsPreview._id ? (
-                                  <div>
-                                    {editingContentSource
-                                      ? <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>目前編輯來源：{editingContentSource}</div>
-                                      : <div style={{ fontSize: '12px', color: '#ef4444', background: '#fff5f5', padding: '8px 12px', borderRadius: '6px', marginBottom: '8px', border: '1px solid #fecaca' }}>找不到可編輯正文</div>
-                                    }
-                                    <textarea
-                                      value={editingDraftText}
-                                      onChange={e => setEditingDraftText(e.target.value)}
-                                      rows={20}
-                                      style={{ width: '100%', fontSize: '13px', lineHeight: 1.6, fontFamily: 'monospace', border: '1px solid #ccc', borderRadius: '6px', padding: '10px', resize: 'vertical', boxSizing: 'border-box' }}
-                                    />
-                                    {draftSaveMsg && <div style={{ marginTop: '6px', fontSize: '12px', color: draftSaveMsg.startsWith('✅') ? '#22c55e' : draftSaveMsg.startsWith('⚠️') ? '#f59e0b' : '#ef4444' }}>{draftSaveMsg}</div>}
-                                    {draftWarning && <div style={{ marginTop: '6px', fontSize: '12px', color: '#f59e0b', background: '#fffbeb', padding: '6px 10px', borderRadius: '4px', border: '1px solid #fde68a' }}>{draftWarning}</div>}
-                                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                                      <button
-                                        disabled={savingDraft || !editingContentSource}
-                                        onClick={async () => {
-                                          // Empty content guard
-                                          if (!editingDraftText.trim()) {
-                                            setDraftSaveMsg('❌ 草稿內容不能為空');
-                                            return;
-                                          }
-                                          setSavingDraft(true); setDraftSaveMsg(null); setDraftWarning(null);
-                                          try {
-                                            const r = await fetch('/api/admin/insights/save-draft', {
-                                              method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ summary_id: cmsPreview._id, editedArticleDraft: editingDraftText }),
-                                            });
-                                            const d = await r.json();
-                                            if (d.ok) {
-                                              const msg = d.warning ? `✅ 已儲存 ⚠️ ${d.warning}` : '✅ 草稿已儲存';
-                                              // Check for TODO / placeholder warnings
-                                              if (/【JG 觀點待補】|TODO/i.test(editingDraftText)) {
-                                                setDraftWarning('⚠️ 此草稿仍含後台提示（【JG 觀點待補】或 TODO），不能發佈');
-                                              }
-                                              setDraftSaveMsg(msg);
-                                              // Update local preview cache
-                                              setCmsPreview((prev: any) => ({ ...prev, editedArticleDraft: editingDraftText }));
-                                              // Update cmsData list so reopening preview shows latest
-                                              setCmsData((prev: any) => {
-                                                if (!prev) return prev;
-                                                const updateList = (list: any[]) => list?.map((item: any) => item._id === cmsPreview._id ? { ...item, editedArticleDraft: editingDraftText } : item);
-                                                return {
-                                                  ...prev,
-                                                  sectionB: updateList(prev.sectionB),
-                                                  sectionB2: updateList(prev.sectionB2),
-                                                  publishedSummaries: updateList(prev.publishedSummaries),
-                                                  unpublishedSummaries: updateList(prev.unpublishedSummaries),
-                                                };
-                                              });
-                                              setEditingDraftId(null);
-                                              fetchCmsData();
-                                            } else {
-                                              setDraftSaveMsg(`❌ ${d.error}`);
+                          {norm.displayDraft ? (
+                            <div>
+                              {norm.displayDraftSource && <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>顯示來源：{norm.displayDraftSource}</div>}
+                              {norm.warnings.length > 0 && <div style={{ fontSize: '12px', color: '#f59e0b', marginBottom: '6px' }}>⚠️ {norm.warnings.join('; ')}</div>}
+                              {editingDraftId === cmsPreview._id ? (
+                                <div>
+                                  {editingContentSource
+                                    ? <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>目前編輯來源：{editingContentSource}</div>
+                                    : <div style={{ fontSize: '12px', color: '#ef4444', background: '#fff5f5', padding: '8px 12px', borderRadius: '6px', marginBottom: '8px', border: '1px solid #fecaca' }}>找不到可編輯正文</div>
+                                  }
+                                  <textarea
+                                    value={editingDraftText}
+                                    onChange={e => setEditingDraftText(e.target.value)}
+                                    rows={20}
+                                    style={{ width: '100%', fontSize: '13px', lineHeight: 1.6, fontFamily: 'monospace', border: '1px solid #ccc', borderRadius: '6px', padding: '10px', resize: 'vertical', boxSizing: 'border-box' }}
+                                  />
+                                  {draftSaveMsg && <div style={{ marginTop: '6px', fontSize: '12px', color: draftSaveMsg.startsWith('✅') ? '#22c55e' : draftSaveMsg.startsWith('⚠️') ? '#f59e0b' : '#ef4444' }}>{draftSaveMsg}</div>}
+                                  {draftWarning && <div style={{ marginTop: '6px', fontSize: '12px', color: '#f59e0b', background: '#fffbeb', padding: '6px 10px', borderRadius: '4px', border: '1px solid #fde68a' }}>{draftWarning}</div>}
+                                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                    <button
+                                      disabled={savingDraft || !norm.canEdit}
+                                      onClick={async () => {
+                                        if (!editingDraftText.trim()) {
+                                          setDraftSaveMsg('❌ 草稿內容不能為空');
+                                          return;
+                                        }
+                                        setSavingDraft(true); setDraftSaveMsg(null); setDraftWarning(null);
+                                        try {
+                                          const r = await fetch('/api/admin/insights/save-draft', {
+                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ summary_id: cmsPreview._id, editedArticleDraft: editingDraftText }),
+                                          });
+                                          const d = await r.json();
+                                          if (d.ok) {
+                                            const msg = d.warning ? `✅ 已儲存 ⚠️ ${d.warning}` : '✅ 草稿已儲存';
+                                            if (/【JG 觀點待補】|TODO/i.test(editingDraftText)) {
+                                              setDraftWarning('⚠️ 此草稿仍含後台提示（【JG 觀點待補】或 TODO），不能發佈');
                                             }
-                                          } catch { setDraftSaveMsg('❌ 網路錯誤'); }
-                                          finally { setSavingDraft(false); }
-                                        }}
-                                        style={{ padding: '6px 14px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
-                                      >{savingDraft ? '儲存中...' : '💾 儲存草稿'}</button>
-                                      <button onClick={() => { setEditingDraftId(null); setEditingContentSource(null); setDraftSaveMsg(null); setDraftWarning(null); }} style={{ padding: '6px 14px', background: '#e5e7eb', color: '#555', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>取消</button>
-                                    </div>
+                                            setDraftSaveMsg(msg);
+                                            setCmsPreview((prev: any) => ({ ...prev, editedArticleDraft: editingDraftText }));
+                                            setCmsData((prev: any) => {
+                                              if (!prev) return prev;
+                                              const updateList = (list: any[]) => list?.map((item: any) => item._id === cmsPreview._id ? { ...item, editedArticleDraft: editingDraftText } : item);
+                                              return {
+                                                ...prev,
+                                                sectionB: updateList(prev.sectionB),
+                                                sectionB2: updateList(prev.sectionB2),
+                                                publishedSummaries: updateList(prev.publishedSummaries),
+                                                unpublishedSummaries: updateList(prev.unpublishedSummaries),
+                                              };
+                                            });
+                                            setEditingDraftId(null);
+                                            fetchCmsData();
+                                          } else {
+                                            setDraftSaveMsg(`❌ ${d.error}`);
+                                          }
+                                        } catch { setDraftSaveMsg('❌ 網路錯誤'); }
+                                        finally { setSavingDraft(false); }
+                                      }}
+                                      style={{ padding: '6px 14px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
+                                    >{savingDraft ? '儲存中...' : '💾 儲存草稿'}</button>
+                                    <button onClick={() => { setEditingDraftId(null); setEditingContentSource(null); setDraftSaveMsg(null); setDraftWarning(null); }} style={{ padding: '6px 14px', background: '#e5e7eb', color: '#555', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>取消</button>
                                   </div>
-                                ) : (
-                                  <div>
-                                    <div style={{ fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', background: '#f8f8f8', padding: '12px', borderRadius: '6px' }}>
-                                      {draftContent}
-                                    </div>
-                                    {draftSaveMsg && <div style={{ marginTop: '6px', fontSize: '12px', color: '#22c55e' }}>{draftSaveMsg}</div>}
-                                    <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                      <button
-                                        onClick={() => {
-                                          const initialContent =
-                                            cmsPreview.editedArticleDraft ||
-                                            cmsPreview.cleanArticleDraft ||
-                                            cmsPreview.articleDraft ||
-                                            cmsPreview.publishedArticle ||
-                                            cmsPreview.article ||
-                                            cmsPreview.body ||
-                                            '';
-                                          const contentSource =
-                                            cmsPreview.editedArticleDraft ? 'editedArticleDraft' :
-                                            cmsPreview.cleanArticleDraft ? 'cleanArticleDraft' :
-                                            cmsPreview.articleDraft ? 'articleDraft' :
-                                            cmsPreview.publishedArticle ? 'publishedArticle' :
-                                            cmsPreview.article ? 'article' :
-                                            cmsPreview.body ? 'body' :
-                                            null;
-                                          setEditingDraftId(cmsPreview._id);
-                                          setEditingDraftText(initialContent);
-                                          setEditingContentSource(contentSource);
-                                          setDraftSaveMsg(null);
-                                          setDraftWarning(null);
-                                        }}
-                                        style={{ padding: '6px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
-                                      >✏️ 編輯草稿</button>
-                                    </div>
+                                </div>
+                              ) : (
+                                <div>
+                                  <div style={{ fontSize: '14px', lineHeight: 1.7, whiteSpace: 'pre-wrap', maxHeight: '400px', overflowY: 'auto', background: '#f8f8f8', padding: '12px', borderRadius: '6px' }}>
+                                    {norm.displayDraft}
                                   </div>
-                                )}
-                              </div>
-                            );
-                            return null;
-                          })()}
-                          {/* Fallback for expert_insights without article draft */}
-                          {!(cmsPreview.editedArticleDraft || cmsPreview.cleanArticleDraft || cmsPreview.articleDraft || cmsPreview.article || cmsPreview.body) && (
+                                  {draftSaveMsg && <div style={{ marginTop: '6px', fontSize: '12px', color: '#22c55e' }}>{draftSaveMsg}</div>}
+                                  <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                    <button
+                                      onClick={() => {
+                                        setEditingDraftId(cmsPreview._id);
+                                        setEditingDraftText(norm.editableContent);
+                                        setEditingContentSource(norm.editableContentSource);
+                                        setDraftSaveMsg(null);
+                                        setDraftWarning(null);
+                                      }}
+                                      style={{ padding: '6px 14px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+                                    >✏️ 編輯草稿</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {norm.warnings.length > 0 && (
+                                <div style={{ fontSize: '12px', color: '#ef4444', background: '#fff5f5', padding: '8px 12px', borderRadius: '6px', border: '1px solid #fecaca' }}>
+                                  {norm.warnings.join('; ')}
+                                </div>
+                              )}
                               {(cmsPreview.expert_name || cmsPreview.expert_org || cmsPreview.expert_role || cmsPreview.expert_title) && (
                                 <div style={{ background: '#f0f4ff', padding: '10px 12px', borderRadius: '6px', fontSize: '13px' }}>
                                   <strong>👤 專家</strong>：{[cmsPreview.expert_name, cmsPreview.expert_role || cmsPreview.expert_title, cmsPreview.expert_org || cmsPreview.expert_institution].filter(Boolean).join(' / ')}
@@ -1148,21 +1129,19 @@ export default function ExpertsPage() {
                                   </div>
                                 </div>
                               )}
-                              {!(cmsPreview.key_insights?.length || cmsPreview.rawExpertInsight?.key_insights?.length) && !(cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample) && (
+                              {!norm.keyInsights.length && !(cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample) && (
                                 <div style={{ color: '#aaa', fontSize: '13px', padding: '12px', textAlign: 'center' }}>(無文章內容、無 key_insights、無 transcript_sample)</div>
                               )}
                             </div>
                           )}
                         </div>
-                      )}
+                        );
+                      })()}
 
-                      {/* Tab: insights */}
+                      {/* Tab: insights — uses normalizeSummary */}
                       {previewTab === 'insights' && (() => {
-                        const kiList = Array.isArray(cmsPreview.key_insights) && cmsPreview.key_insights.length > 0
-                          ? cmsPreview.key_insights
-                          : Array.isArray(cmsPreview.rawExpertInsight?.key_insights) && cmsPreview.rawExpertInsight.key_insights.length > 0
-                            ? cmsPreview.rawExpertInsight.key_insights
-                            : [];
+                        const norm = normalizeSummary(cmsPreview);
+                        const kiList = norm.keyInsights;
                         const kiCount = cmsPreview.keyInsightsCount || kiList.length || 0;
                         const extractionMode = cmsPreview.insightExtractionMode || cmsPreview.rawExpertInsight?.insightExtractionMode || 'unknown';
                         const coverageRatio = cmsPreview.transcriptCoverageRatio ?? cmsPreview.rawExpertInsight?.transcriptCoverageRatio ?? 0;
@@ -1233,31 +1212,37 @@ export default function ExpertsPage() {
                         </div>
                       )}
 
-                      {/* Tab: source */}
-                      {previewTab === 'source' && (
+                      {/* Tab: source — uses normalizeSummary */}
+                      {previewTab === 'source' && (() => {
+                        const norm = normalizeSummary(cmsPreview);
+                        return (
                         <div style={{ fontSize: 13 }}>
-                          {cmsPreview?.youtube_id && (
+                          {norm.youtubeId && (
                             <div style={{ marginBottom: 8 }}>
-                              <a href={`https://www.youtube.com/watch?v=${cmsPreview.youtube_id}`} target="_blank" rel="noopener noreferrer"
+                              <a href={`https://www.youtube.com/watch?v=${norm.youtubeId}`} target="_blank" rel="noopener noreferrer"
                                 style={{ color: '#0070f3', textDecoration: 'underline' }}>
                                 ▶ 在 YouTube 觀看原影片
                               </a>
                             </div>
                           )}
                           <div style={{ color: '#888', fontSize: 12 }}>
-                            <div>youtube_id: {cmsPreview?.youtube_id || 'N/A'}</div>
-                            <div>channel: {cmsPreview?.channel || cmsPreview?.sourceChannel || 'N/A'}</div>
-                            <div>video_title: {cmsPreview?.video_title || cmsPreview?.sourceTitle || cmsPreview?.title || 'N/A'}</div>
-                            <div>publish_date: {cmsPreview?.publish_date || cmsPreview?.sourceDate || 'N/A'}</div>
+                            <div>youtube_id: {norm.youtubeId || 'N/A'}</div>
+                            <div>channel: {norm.displayChannel || 'N/A'}</div>
+                            <div>source: {norm.displaySource || 'N/A'}</div>
+                            <div>sourceDate: {norm.displaySourceDate || 'N/A'}</div>
                             <div>sourceExpertInsightId: {cmsPreview?.sourceExpertInsightId || cmsPreview?.expertInsightId || 'N/A'}</div>
                             <div>enrichmentModel: {cmsPreview?.enrichmentModel || 'N/A'}</div>
                             <div>insightExtractionMode: {cmsPreview?.insightExtractionMode || cmsPreview?.rawExpertInsight?.insightExtractionMode || 'N/A'}</div>
-                            <div>transcriptStored: {cmsPreview?.transcriptStored ? 'Yes' : 'No'}</div>
-                            <div>transcriptLength: {(cmsPreview?.transcriptLength || cmsPreview?.rawExpertInsight?.transcriptLength)?.toLocaleString() || 'N/A'}</div>
-                            <div>transcriptRef: {cmsPreview?.transcriptRef || 'N/A'}</div>
+                            <div>transcriptAvailable: {norm.transcriptAvailable ? 'Yes' : 'No'}</div>
+                            <div>transcriptLength: {norm.transcriptLength?.toLocaleString() || 'N/A'}</div>
+                            <div>transcriptSource: {norm.transcriptSource || 'N/A'}</div>
+                            {norm.transcriptMetadataWarnings.length > 0 && (
+                              <div style={{ color: '#f59e0b', marginTop: 4 }}>⚠️ {norm.transcriptMetadataWarnings.join('; ')}</div>
+                            )}
                           </div>
                         </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
