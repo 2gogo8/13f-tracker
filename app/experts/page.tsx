@@ -1683,9 +1683,9 @@ export default function ExpertsPage() {
                             <span>📅 {s.sourceDate || 'n/a'}</span>
                             <span>📡 {s.sourceChannel || s.source || s.channel || 'n/a'}</span>
                             <span>status: {s.status || 'unknown'}</span>
-                            {s.jgFitScore != null && (
-                              <span style={{ color: s.jgFitScore >= 75 ? '#16a34a' : s.jgFitScore >= 50 ? '#d97706' : '#9ca3af', fontWeight: 700 }}>
-                                🎯 {s.jgFitScore}分
+                            {s.investmentRelevanceScore != null && (
+                              <span style={{ color: s.investmentRelevanceScore >= 60 ? '#16a34a' : s.investmentRelevanceScore >= 30 ? '#d97706' : '#9ca3af', fontWeight: 700 }}>
+                                📊 投:{s.investmentRelevanceScore} 值:{s.topicValueScore ?? '-'} 品:{s.editorialFitScore ?? '-'}
                               </span>
                             )}
                           </div>
@@ -1762,7 +1762,11 @@ export default function ExpertsPage() {
                             <span>draftStatus: {s.draftStatus || 'n/a'}</span>
                             <span>publishReadiness: {s.publishReadiness || 'n/a'}</span>
                             <span>articleDecision: {s.articleDecision || 'n/a'}</span>
-                            {s.articleWorthinessScore != null && <span>worthiness: {s.articleWorthinessScore}</span>}
+                            {s.investmentRelevanceScore != null && (
+                              <span style={{ fontWeight: 700, color: '#0369a1' }}>
+                                📊 投:{s.investmentRelevanceScore} 值:{s.topicValueScore ?? '-'} 品:{s.editorialFitScore ?? '-'} (合計:{(s.topicValueScore || 0) + (s.editorialFitScore || 0)})
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '11px', color: '#888', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                             {s.cleanArticleDraft && <span style={{ color: '#22c55e' }}>✅ cleanDraft</span>}

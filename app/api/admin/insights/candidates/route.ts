@@ -7,10 +7,10 @@ import { classifySummaryBucket } from '@/lib/insights/normalizeSummary';
  * GET /api/admin/insights/candidates
  *
  * Returns 6 buckets for the /experts CMS view (new flow):
- *   rawMaterial    – low-signal raw scans, jgFitScore < 50, no triage signal
- *   topicCandidate – has title+date, or KI/transcript, or jgFitScore >= 75, or articleDecision set
+ *   rawMaterial    – investmentRelevanceScore < 30 or no triage signal
+ *   topicCandidate – investmentRelevanceScore >= 60
  *   draftCandidate – status=candidate + alphaReady=false + clean/edited draft
- *   needsReview    – blocker phrase / explicit blocker / status contradiction / jgFitScore 50-74
+ *   needsReview    – blocker phrase / explicit blocker / investmentRelevanceScore 30-59
  *   published      – status=published + alphaReady=true + publishedArticle
  *   invalid        – no content at all
  *
@@ -68,14 +68,22 @@ export async function GET(req: NextRequest) {
     buckets[bucket].push(doc);
   }
 
-  // Sort topicCandidate by jgFitScore desc, then sourceDate desc
+  // Sort topicCandidate by sourceDate desc (newest first), then investmentRelevanceScore desc
   (buckets.topicCandidate as Array<Record<string, unknown>>).sort((a, b) => {
-    const scoreA = typeof a.jgFitScore === 'number' ? a.jgFitScore : 0;
-    const scoreB = typeof b.jgFitScore === 'number' ? b.jgFitScore : 0;
-    if (scoreB !== scoreA) return scoreB - scoreA;
     const dateA = String(a.sourceDate || a.createdAt || '');
     const dateB = String(b.sourceDate || b.createdAt || '');
-    return dateB.localeCompare(dateA);
+    const dateCmp = dateB.localeCompare(dateA);
+    if (dateCmp !== 0) return dateCmp;
+    const scoreA = typeof a.investmentRelevanceScore === 'number' ? a.investmentRelevanceScore : 0;
+    const scoreB = typeof b.investmentRelevanceScore === 'number' ? b.investmentRelevanceScore : 0;
+    return scoreB - scoreA;
+  });
+
+  // Sort draftCandidate by (topicValueScore + editorialFitScore) desc
+  (buckets.draftCandidate as Array<Record<string, unknown>>).sort((a, b) => {
+    const combinedA = (typeof a.topicValueScore === 'number' ? a.topicValueScore : 0) + (typeof a.editorialFitScore === 'number' ? a.editorialFitScore : 0);
+    const combinedB = (typeof b.topicValueScore === 'number' ? b.topicValueScore : 0) + (typeof b.editorialFitScore === 'number' ? b.editorialFitScore : 0);
+    return combinedB - combinedA;
   });
 
   // Apply per-bucket limit

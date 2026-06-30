@@ -10,7 +10,8 @@ import { runAutoTriage } from '@/lib/insights/autoTriage';
  * Idempotent — safe to re-run; always overwrites triage fields.
  *
  * Triage fields written:
- *   jgFitScore, topicCandidateStatus, articleDecision (if not already set),
+ *   investmentRelevanceScore, topicValueScore, editorialFitScore,
+ *   topicCandidateStatus, articleDecision (if not already set),
  *   suggestedUse, matchedThemes, matchedStocks, triageReason, triagedAt
  */
 export async function POST(req: NextRequest) {
@@ -57,7 +58,9 @@ export async function POST(req: NextRequest) {
           transcriptRef: 1,
           transcriptLength: 1,
           articleDecision: 1,
-          jgFitScore: 1,
+          investmentRelevanceScore: 1,
+          topicValueScore: 1,
+          editorialFitScore: 1,
           suggestedUse: 1,
           blocker: 1,
         },
@@ -74,13 +77,15 @@ export async function POST(req: NextRequest) {
 
     // Don't override manually set articleDecision unless force=true
     const existingDecision = doc.articleDecision as string | undefined;
-    const manuallySet = existingDecision && doc.jgFitScore == null; // was set before triage ran
+    const manuallySet = existingDecision && doc.investmentRelevanceScore == null; // was set before triage ran
     const articleDecisionToWrite = (manuallySet && !force)
       ? existingDecision
       : triage.articleDecision;
 
     const update: Record<string, unknown> = {
-      jgFitScore: triage.jgFitScore,
+      investmentRelevanceScore: triage.investmentRelevanceScore,
+      topicValueScore: triage.topicValueScore,
+      editorialFitScore: triage.editorialFitScore,
       topicCandidateStatus: triage.topicCandidateStatus,
       articleDecision: articleDecisionToWrite,
       suggestedUse: triage.suggestedUse,
@@ -99,7 +104,9 @@ export async function POST(req: NextRequest) {
     results.push({
       id: String(doc._id),
       title: docTitle.slice(0, 60),
-      jgFitScore: triage.jgFitScore,
+      investmentRelevanceScore: triage.investmentRelevanceScore,
+      topicValueScore: triage.topicValueScore,
+      editorialFitScore: triage.editorialFitScore,
       topicCandidateStatus: triage.topicCandidateStatus,
       articleDecision: articleDecisionToWrite,
       matchedThemes: triage.matchedThemes,

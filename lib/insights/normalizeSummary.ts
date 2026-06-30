@@ -11,11 +11,10 @@
  *
  * rawMaterial     → topicCandidate → draftCandidate → published
  *
- * 1. rawMaterial      – low-signal raw scans, jgFitScore < 50, no title/content
- * 2. topicCandidate   – has title+date, or content/KI/transcript, or jgFitScore >= 75,
- *                       or articleDecision set — ready to evaluate, NOT yet draft
+ * 1. rawMaterial      – investmentRelevanceScore < 30 and no substantial content
+ * 2. topicCandidate   – investmentRelevanceScore >= 60 (investment-related)
  * 3. draftCandidate   – status=candidate + alphaReady=false + has cleanArticleDraft/editedArticleDraft
- * 4. needsReview      – has blocker phrases, or jgFitScore 50-74, or status contradiction
+ * 4. needsReview      – has blocker phrases, or investmentRelevanceScore 30-59, or status contradiction
  * 5. published        – status=published + alphaReady=true + publishedArticle present
  * 6. invalid          – no content at all, cannot process
  */
@@ -111,33 +110,30 @@ export function classifySummaryBucket(doc: Record<string, any>): SummaryBucket {
     return 'draftCandidate';
   }
 
-  // 2. TopicCandidate — meets any positive signal (checked BEFORE score-based needsReview):
-  //    - has title + date (strong positive signal regardless of score)
-  //    - has any KI/transcript
-  //    - jgFitScore >= 75
-  //    - articleDecision is set
-  const jgFitScore = typeof doc.jgFitScore === 'number' ? doc.jgFitScore : null;
-  const hasJgScore = jgFitScore !== null;
-  const articleDecision = doc.articleDecision;
-  const hasArticleDecision = !!(articleDecision &&
-    ['draft_candidate', 'material_only', 'needs_review'].includes(articleDecision));
+  // 2. TopicCandidate — investmentRelevanceScore >= 60
+  const irScore = typeof doc.investmentRelevanceScore === 'number' ? doc.investmentRelevanceScore : null;
 
-  const isTopicCandidate =
-    (hasTitle && hasDate) ||
-    (hasKI || hasTranscript) ||
-    (hasJgScore && jgFitScore! >= 75) ||
-    hasArticleDecision;
-
-  if (isTopicCandidate) {
+  if (irScore !== null && irScore >= 60) {
     return 'topicCandidate';
   }
 
-  // Score-based needsReview (only if no topicCandidate positive signal)
-  if (hasJgScore && jgFitScore! >= 50 && jgFitScore! < 75) {
+  // needsReview: borderline investment relevance (30-59)
+  if (irScore !== null && irScore >= 30) {
     return 'needsReview';
   }
 
-  // 1. RawMaterial — everything else: legacy-only content, unknown status, no triage signal
+  // Fallback for untriaged docs: use legacy signals
+  if (irScore === null) {
+    // Legacy: has title + date, or KI/transcript, or articleDecision set
+    const articleDecision = doc.articleDecision;
+    const hasArticleDecision = !!(articleDecision &&
+      ['draft_candidate', 'material_only', 'needs_review'].includes(articleDecision));
+    if ((hasTitle && hasDate) || hasKI || hasTranscript || hasArticleDecision) {
+      return 'topicCandidate';
+    }
+  }
+
+  // 1. RawMaterial — investmentRelevanceScore < 30 or no triage signal
   return 'rawMaterial';
 }
 
