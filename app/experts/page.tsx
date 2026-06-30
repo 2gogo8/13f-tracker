@@ -65,6 +65,7 @@ export default function ExpertsPage() {
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editingDraftText, setEditingDraftText] = useState<string>('');
   const [draftWarning, setDraftWarning] = useState<string | null>(null);
+  const [editingContentSource, setEditingContentSource] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [draftSaveMsg, setDraftSaveMsg] = useState<string | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
@@ -323,6 +324,7 @@ export default function ExpertsPage() {
     // Reset draft editing state when switching articles
     setEditingDraftId(null);
     setEditingDraftText('');
+    setEditingContentSource(null);
     setDraftSaveMsg(null);
     setDraftWarning(null);
     try {
@@ -1017,12 +1019,16 @@ export default function ExpertsPage() {
                           {/* Priority: editedArticleDraft → cleanArticleDraft → articleDraft */}
                           {(() => {
                             const draftContent = cmsPreview.editedArticleDraft || cmsPreview.cleanArticleDraft || cmsPreview.articleDraft || cmsPreview.article || cmsPreview.body;
-                            const draftSource = cmsPreview.editedArticleDraft ? '✏️ editedArticleDraft' : cmsPreview.cleanArticleDraft ? '🧹 cleanArticleDraft' : cmsPreview.articleDraft ? '📝 articleDraft (raw)' : null;
+                            const draftSource = cmsPreview.editedArticleDraft ? '✏️ editedArticleDraft' : cmsPreview.cleanArticleDraft ? '🧹 cleanArticleDraft' : cmsPreview.articleDraft ? '📝 articleDraft (raw)' : cmsPreview.publishedArticle ? '🔴 publishedArticle' : cmsPreview.article ? '📄 article' : cmsPreview.body ? '📄 body' : null;
                             if (draftContent) return (
                               <div>
                                 {draftSource && <div style={{ fontSize: '11px', color: '#888', marginBottom: '6px' }}>顯示來源：{draftSource}</div>}
                                 {editingDraftId === cmsPreview._id ? (
                                   <div>
+                                    {editingContentSource
+                                      ? <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px' }}>目前編輯來源：{editingContentSource}</div>
+                                      : <div style={{ fontSize: '12px', color: '#ef4444', background: '#fff5f5', padding: '8px 12px', borderRadius: '6px', marginBottom: '8px', border: '1px solid #fecaca' }}>找不到可編輯正文</div>
+                                    }
                                     <textarea
                                       value={editingDraftText}
                                       onChange={e => setEditingDraftText(e.target.value)}
@@ -1033,7 +1039,7 @@ export default function ExpertsPage() {
                                     {draftWarning && <div style={{ marginTop: '6px', fontSize: '12px', color: '#f59e0b', background: '#fffbeb', padding: '6px 10px', borderRadius: '4px', border: '1px solid #fde68a' }}>{draftWarning}</div>}
                                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                                       <button
-                                        disabled={savingDraft}
+                                        disabled={savingDraft || !editingContentSource}
                                         onClick={async () => {
                                           // Empty content guard
                                           if (!editingDraftText.trim()) {
@@ -1078,7 +1084,7 @@ export default function ExpertsPage() {
                                         }}
                                         style={{ padding: '6px 14px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '13px' }}
                                       >{savingDraft ? '儲存中...' : '💾 儲存草稿'}</button>
-                                      <button onClick={() => { setEditingDraftId(null); setDraftSaveMsg(null); setDraftWarning(null); }} style={{ padding: '6px 14px', background: '#e5e7eb', color: '#555', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>取消</button>
+                                      <button onClick={() => { setEditingDraftId(null); setEditingContentSource(null); setDraftSaveMsg(null); setDraftWarning(null); }} style={{ padding: '6px 14px', background: '#e5e7eb', color: '#555', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>取消</button>
                                     </div>
                                   </div>
                                 ) : (
@@ -1090,9 +1096,25 @@ export default function ExpertsPage() {
                                     <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                       <button
                                         onClick={() => {
-                                          const initialContent = cmsPreview.editedArticleDraft || cmsPreview.cleanArticleDraft || cmsPreview.articleDraft || '';
+                                          const initialContent =
+                                            cmsPreview.editedArticleDraft ||
+                                            cmsPreview.cleanArticleDraft ||
+                                            cmsPreview.articleDraft ||
+                                            cmsPreview.publishedArticle ||
+                                            cmsPreview.article ||
+                                            cmsPreview.body ||
+                                            '';
+                                          const contentSource =
+                                            cmsPreview.editedArticleDraft ? 'editedArticleDraft' :
+                                            cmsPreview.cleanArticleDraft ? 'cleanArticleDraft' :
+                                            cmsPreview.articleDraft ? 'articleDraft' :
+                                            cmsPreview.publishedArticle ? 'publishedArticle' :
+                                            cmsPreview.article ? 'article' :
+                                            cmsPreview.body ? 'body' :
+                                            null;
                                           setEditingDraftId(cmsPreview._id);
                                           setEditingDraftText(initialContent);
+                                          setEditingContentSource(contentSource);
                                           setDraftSaveMsg(null);
                                           setDraftWarning(null);
                                         }}
