@@ -80,7 +80,9 @@ export default function ExpertsPage() {
   const [cmsMsg, setCmsMsg] = useState<string | null>(null);
   const [cmsPreview, setCmsPreview] = useState<any | null>(null);
   const [cmsPreviewLoading, setCmsPreviewLoading] = useState(false);
-  const [previewTab, setPreviewTab] = useState<'draft' | 'insights' | 'transcript' | 'source'>('draft');
+  const [previewTab, setPreviewTab] = useState<'draft' | 'insights' | 'insightsV2' | 'transcript' | 'source'>('draft');
+  const [generatingV2Id, setGeneratingV2Id] = useState<string | null>(null);
+  const [v2SortMode, setV2SortMode] = useState<'score' | 'position'>('score');
   const [transcriptData, setTranscriptData] = useState<{fullTranscript: string, transcriptLength?: number, fetchedAt: string, expiresAt: string} | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
@@ -997,7 +999,7 @@ export default function ExpertsPage() {
                       )}
                       {/* Tab navigation */}
                       <div style={{ display: 'flex', gap: 8, marginBottom: 12, borderBottom: '1px solid #ddd', paddingBottom: 8 }}>
-                        {(['draft', 'insights', 'transcript', 'source'] as const).map(tab => (
+                        {(['draft', 'insights', 'insightsV2', 'transcript', 'source'] as const).map(tab => (
                           <button
                             key={tab}
                             onClick={() => {
@@ -1012,7 +1014,7 @@ export default function ExpertsPage() {
                               color: previewTab === tab ? '#000' : '#666', border: 'none', fontWeight: previewTab === tab ? 700 : 400,
                             }}
                           >
-                            {tab === 'draft' ? '📝 草稿' : tab === 'insights' ? '🔑 Key Insights' : tab === 'transcript' ? '📄 Transcript' : '🔗 Source'}
+                            {tab === 'draft' ? '📝 草稿' : tab === 'insights' ? '🔑 Key Insights' : tab === 'insightsV2' ? '🔬 V2 全文洞察' : tab === 'transcript' ? '📄 Transcript' : '🔗 Source'}
                           </button>
                         ))}
                       </div>
@@ -1188,6 +1190,111 @@ export default function ExpertsPage() {
                             })
                           ) : (
                             <div style={{ color: '#aaa', fontSize: 13, padding: 12, textAlign: 'center' }}>(無 key_insights)</div>
+                          )}
+                        </div>
+                        );
+                      })()}
+
+                      {/* Tab: Key Insights V2 */}
+                      {previewTab === 'insightsV2' && (() => {
+                        const v2List: any[] = cmsPreview?.keyInsightsV2 || [];
+                        const cr = cmsPreview?.coverageReport as { transcriptCharLength?: number; totalChunks?: number; processedChunks?: number; skippedChunks?: number; coveragePercent?: number; maxUncoveredGap?: number } | undefined;
+                        const sorted = [...v2List].sort((a, b) => {
+                          if (v2SortMode === 'position') return (a.sourceCharStart ?? 0) - (b.sourceCharStart ?? 0);
+                          return ((b.investmentRelevanceScore ?? 0) + (b.importanceScore ?? 0)) - ((a.investmentRelevanceScore ?? 0) + (a.importanceScore ?? 0));
+                        });
+                        return (
+                        <div>
+                          {/* Coverage Report */}
+                          {cr && (
+                            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12 }}>
+                              <div style={{ fontWeight: 700, marginBottom: 4, color: '#166534' }}>📊 Coverage Report</div>
+                              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#333' }}>
+                                <span>Transcript: {(cr.transcriptCharLength ?? 0).toLocaleString()} chars</span>
+                                <span>Chunks: {cr.processedChunks ?? 0}/{cr.totalChunks ?? 0}</span>
+                                <span style={{ fontWeight: 700, color: (cr.coveragePercent ?? 0) >= 90 ? '#16a34a' : '#d97706' }}>Coverage: {cr.coveragePercent ?? 0}%</span>
+                                {(cr.skippedChunks ?? 0) > 0 && <span style={{ color: '#dc2626' }}>Skipped: {cr.skippedChunks}</span>}
+                                {(cr.maxUncoveredGap ?? 0) > 500 && <span style={{ color: '#d97706' }}>Max gap: {(cr.maxUncoveredGap ?? 0).toLocaleString()} chars</span>}
+                              </div>
+                            </div>
+                          )}
+                          {/* Sort toggle + regenerate */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button onClick={() => setV2SortMode('score')} style={{ padding: '3px 10px', fontSize: 11, borderRadius: 4, border: 'none', cursor: 'pointer', background: v2SortMode === 'score' ? '#c9a84c' : '#eee', color: v2SortMode === 'score' ? '#000' : '#666', fontWeight: v2SortMode === 'score' ? 700 : 400 }}>📊 依分數排序</button>
+                              <button onClick={() => setV2SortMode('position')} style={{ padding: '3px 10px', fontSize: 11, borderRadius: 4, border: 'none', cursor: 'pointer', background: v2SortMode === 'position' ? '#c9a84c' : '#eee', color: v2SortMode === 'position' ? '#000' : '#666', fontWeight: v2SortMode === 'position' ? 700 : 400 }}>📄 依逐字稿順序</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <span style={{ fontSize: 12, color: '#888' }}>{v2List.length} 條 insights</span>
+                              <button
+                                disabled={generatingV2Id === cmsPreview?._id}
+                                onClick={async () => {
+                                  const id = cmsPreview?._id;
+                                  if (!id) return;
+                                  setGeneratingV2Id(id);
+                                  setCmsMsg(null);
+                                  try {
+                                    const res = await fetch('/api/admin/insights/generate-key-insights-v2', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ summaryId: id }),
+                                    });
+                                    const data = await res.json();
+                                    if (data.ok) {
+                                      setCmsMsg(`✅ Key Insights V2: ${data.insightsCount} 條, coverage ${data.coverageReport?.coveragePercent}%`);
+                                      // Refresh preview
+                                      const previewRes = await fetch(`/api/admin/insights/preview?id=${id}`);
+                                      const previewData = await previewRes.json();
+                                      if (previewData.ok) setCmsPreview(previewData.summary || previewData.doc);
+                                    } else {
+                                      setCmsMsg(`❌ ${data.error || 'V2 生成失敗'}`);
+                                    }
+                                  } catch { setCmsMsg('❌ 網路錯誤'); }
+                                  finally { setGeneratingV2Id(null); }
+                                }}
+                                style={{ padding: '4px 12px', fontSize: 11, borderRadius: 4, border: 'none', cursor: generatingV2Id === cmsPreview?._id ? 'wait' : 'pointer', background: '#7c3aed', color: '#fff', fontWeight: 600, opacity: generatingV2Id === cmsPreview?._id ? 0.6 : 1 }}
+                              >
+                                {generatingV2Id === cmsPreview?._id ? '⏳ 產生中...' : '🔬 重新產生 V2'}
+                              </button>
+                            </div>
+                          </div>
+                          {cmsPreview?.keyInsightsV2GeneratedAt && (
+                            <div style={{ fontSize: 11, color: '#888', marginBottom: 8 }}>產生於: {new Date(cmsPreview.keyInsightsV2GeneratedAt).toLocaleString()}</div>
+                          )}
+                          {/* Insight cards */}
+                          {sorted.length > 0 ? sorted.map((ins: any, i: number) => (
+                            <details key={i} style={{ marginBottom: 8, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                              <summary style={{ padding: '10px 14px', cursor: 'pointer', background: '#fefce8', fontSize: 13, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                <span style={{ color: '#c9a84c', fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: 600 }}>{ins.insightTitle}</div>
+                                  <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>{ins.zhSummary}</div>
+                                  <div style={{ fontSize: 11, color: '#888', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ color: ins.investmentRelevanceScore >= 70 ? '#16a34a' : ins.investmentRelevanceScore >= 40 ? '#d97706' : '#9ca3af' }}>投資相關: {ins.investmentRelevanceScore}</span>
+                                    <span>重要性: {ins.importanceScore}</span>
+                                    <span>Chunk {(ins.chunkIndex ?? 0) + 1}/{ins.totalChunks}</span>
+                                    {ins.tickers?.length > 0 && <span style={{ color: '#f59e0b' }}>🏷️ {ins.tickers.join(', ')}</span>}
+                                  </div>
+                                </div>
+                              </summary>
+                              <div style={{ padding: '10px 14px', background: '#f9fafb', fontSize: 12 }}>
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontWeight: 600, color: '#374151', marginBottom: 4 }}>📝 原始逐字稿段落</div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 1.6, background: '#fff', padding: 10, borderRadius: 4, border: '1px solid #e5e7eb', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 200, overflowY: 'auto', color: '#333' }}>
+                                    {ins.sourceExcerpt}
+                                  </div>
+                                  <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4 }}>位置: chars {(ins.sourceCharStart ?? 0).toLocaleString()}–{(ins.sourceCharEnd ?? 0).toLocaleString()}{ins.timestampStart && ` | ⏱ ${ins.timestampStart}–${ins.timestampEnd || '?'}`}</div>
+                                </div>
+                                {ins.whyItMatters && <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 600, color: '#374151' }}>💡 為什麼重要: </span><span style={{ color: '#555' }}>{ins.whyItMatters}</span></div>}
+                                {ins.suggestedArticleAngle && <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 600, color: '#374151' }}>✍️ 文章角度: </span><span style={{ color: '#555' }}>{ins.suggestedArticleAngle}</span></div>}
+                                {ins.companies?.length > 0 && <div style={{ fontSize: 11, color: '#6b7280' }}>🏢 {ins.companies.join(', ')}</div>}
+                                {ins.topicTags?.length > 0 && <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>🏷️ {ins.topicTags.join(', ')}</div>}
+                              </div>
+                            </details>
+                          )) : (
+                            <div style={{ color: '#aaa', fontSize: 13, padding: 16, textAlign: 'center', background: '#f9fafb', borderRadius: 8, border: '1px dashed #e5e5e5' }}>
+                              尚未產生 Key Insights V2。點擊「🔬 重新產生 V2」開始。
+                            </div>
                           )}
                         </div>
                         );
@@ -1714,6 +1821,31 @@ export default function ExpertsPage() {
                         </div>
                         <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                          <button
+                            disabled={generatingV2Id === s._id}
+                            onClick={async () => {
+                              setGeneratingV2Id(s._id);
+                              setCmsMsg(null);
+                              try {
+                                const res = await fetch('/api/admin/insights/generate-key-insights-v2', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ summaryId: s._id }),
+                                });
+                                const data = await res.json();
+                                if (data.ok) {
+                                  setCmsMsg(`✅ V2 Insights: ${data.insightsCount} 條, coverage ${data.coverageReport?.coveragePercent}%`);
+                                  fetchCmsData();
+                                } else {
+                                  setCmsMsg(`❌ ${data.error || 'V2 生成失敗'}`);
+                                }
+                              } catch { setCmsMsg('❌ 網路錯誤'); }
+                              finally { setGeneratingV2Id(null); }
+                            }}
+                            style={{ ...btnStyle('#7c3aed'), opacity: generatingV2Id === s._id ? 0.6 : 1 }}
+                          >
+                            {generatingV2Id === s._id ? '⏳ V2...' : '🔬 V2 Insights'}
+                          </button>
                           <button
                             disabled={generatingDraftId === s._id}
                             onClick={() => handleGenerateDraft(s._id)}
