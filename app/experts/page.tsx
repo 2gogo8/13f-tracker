@@ -1724,8 +1724,24 @@ export default function ExpertsPage() {
                                 </div>
                                 <div style={{ fontSize: '11px', color: '#888' }}>sourceDate: {s.sourceDate || 'n/a'} | sourceType: {s.sourceType || 'n/a'}</div>
                               </div>
-                              <div style={{ display: 'flex', gap: '6px' }}>
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                                 <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                                <button
+                                  disabled={publishingId === s._id}
+                                  onClick={async () => {
+                                    setPublishingId(s._id); setCmsMsg(null);
+                                    try {
+                                      const r = await fetch('/api/admin/insights/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summaryId: s._id }) });
+                                      const d = await r.json();
+                                      if (d.ok) { setCmsMsg('✅ 已發佈上架'); fetchCmsData(); }
+                                      else setCmsMsg(`❌ ${d.error || '發佈失敗'}`);
+                                    } catch { setCmsMsg('❌ 網路錯誤'); }
+                                    finally { setPublishingId(null); }
+                                  }}
+                                  style={{ ...btnStyle('#28a745'), opacity: publishingId === s._id ? 0.6 : 1 }}
+                                >{publishingId === s._id ? '發佈中...' : '🚀 發佈'}</button>
+                                <button onClick={() => { setCmsEditId(s._id); setCmsEditMeta({ jgTitle: s.jgTitle || '', displaySection: s.displaySection || '', articleType: s.articleType || '', sortOrder: s.sortOrder ?? 0, isPinned: !!s.isPinned, tags: s.tags || [] }); }} style={btnStyle('#0070f3')}>Meta</button>
+                                <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
                                 <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
                               </div>
                             </div>

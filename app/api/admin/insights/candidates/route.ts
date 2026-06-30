@@ -81,39 +81,36 @@ export async function GET(req: NextRequest) {
       }
     : {};
 
-  // B 區主列表：最新候選（有 sourceType=video_queue、sourceDate 在 30 天內、未 archived）
-  // 加過濾：只接受 draft_candidate 或尚未判斷（undefined/null）
+  // B 區主列表：所有近期候選（sourceDate 在 90 天內、或無 sourceDate 但 createdAt 在 90 天內）
+  // 不再限制 sourceType，讓所有 candidate 都能在主區顯示
   const newCandidates = await db
     .collection('summaries')
     .find({
       ...candidateBaseFilter,
       ...searchFilter,
-      sourceType: 'video_queue',
-      sourceDate: { $exists: true, $nin: [null, 'n/a'], $gte: thirtyDaysAgoStr },
       draftStatus: { $ne: 'archived' },
       $or: [
-        { articleDecision: 'draft_candidate' },
-        { articleDecision: { $exists: false } },
-        { articleDecision: null },
+        { sourceDate: { $exists: true, $nin: [null, 'n/a'], $gte: ninetyDaysAgoStr } },
+        { sourceDate: { $exists: false }, createdAt: { $gte: ninetyDaysAgo } },
+        { sourceDate: null, createdAt: { $gte: ninetyDaysAgo } },
+        { sourceDate: 'n/a', createdAt: { $gte: ninetyDaysAgo } },
       ],
     })
-    .sort({ sourceDate: -1 })
+    .sort({ sourceDate: -1, createdAt: -1 })
     .limit(limit)
     .toArray();
 
-  // B2 區：歷史候選（非 video_queue、或 sourceDate 太舊、或缺 sourceDate）
+  // B2 區：歷史候選（sourceDate 超過 90 天、且 createdAt 也超過 90 天）
   const historicalCandidates = await db
     .collection('summaries')
     .find({
       ...candidateBaseFilter,
       ...searchFilter,
-      $or: [
-        { sourceType: { $ne: 'video_queue' } },
-        { sourceType: { $exists: false } },
-        { sourceDate: { $lt: ninetyDaysAgoStr } },
-        { sourceDate: { $exists: false } },
-        { sourceDate: null },
-        { sourceDate: 'n/a' },
+      $nor: [
+        { sourceDate: { $exists: true, $nin: [null, 'n/a'], $gte: ninetyDaysAgoStr } },
+        { sourceDate: { $exists: false }, createdAt: { $gte: ninetyDaysAgo } },
+        { sourceDate: null, createdAt: { $gte: ninetyDaysAgo } },
+        { sourceDate: 'n/a', createdAt: { $gte: ninetyDaysAgo } },
       ],
     })
     .sort({ createdAt: -1 })
