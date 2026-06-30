@@ -1199,6 +1199,7 @@ export default function ExpertsPage() {
                       {previewTab === 'insightsV2' && (() => {
                         const v2List: any[] = cmsPreview?.keyInsightsV2 || [];
                         const cr = cmsPreview?.coverageReport as { transcriptCharLength?: number; totalChunks?: number; processedChunks?: number; skippedChunks?: number; coveragePercent?: number; maxUncoveredGap?: number } | undefined;
+                        const jobStatus = cmsPreview?.keyInsightsV2Status as string | undefined;
                         const sorted = [...v2List].sort((a, b) => {
                           if (v2SortMode === 'position') return (a.sourceCharStart ?? 0) - (b.sourceCharStart ?? 0);
                           return ((b.investmentRelevanceScore ?? 0) + (b.importanceScore ?? 0)) - ((a.investmentRelevanceScore ?? 0) + (a.importanceScore ?? 0));
@@ -1206,16 +1207,31 @@ export default function ExpertsPage() {
                         return (
                         <div>
                           {/* Coverage Report */}
-                          {cr && (
+                          {(cr || cmsPreview?.transcriptCharLength) && (
                             <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', marginBottom: 12, fontSize: 12 }}>
-                              <div style={{ fontWeight: 700, marginBottom: 4, color: '#166534' }}>📊 Coverage Report</div>
-                              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#333' }}>
-                                <span>Transcript: {(cr.transcriptCharLength ?? 0).toLocaleString()} chars</span>
-                                <span>Chunks: {cr.processedChunks ?? 0}/{cr.totalChunks ?? 0}</span>
-                                <span style={{ fontWeight: 700, color: (cr.coveragePercent ?? 0) >= 90 ? '#16a34a' : '#d97706' }}>Coverage: {cr.coveragePercent ?? 0}%</span>
-                                {(cr.skippedChunks ?? 0) > 0 && <span style={{ color: '#dc2626' }}>Skipped: {cr.skippedChunks}</span>}
-                                {(cr.maxUncoveredGap ?? 0) > 500 && <span style={{ color: '#d97706' }}>Max gap: {(cr.maxUncoveredGap ?? 0).toLocaleString()} chars</span>}
+                              <div style={{ fontWeight: 700, marginBottom: 4, color: '#166534', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>📊 Coverage Report</span>
+                                {jobStatus && (
+                                  <span style={{
+                                    padding: '1px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                                    background: jobStatus === 'completed' ? '#dcfce7' : jobStatus === 'running' ? '#dbeafe' : jobStatus === 'partial' ? '#fef3c7' : jobStatus === 'failed' ? '#fee2e2' : '#f3f4f6',
+                                    color: jobStatus === 'completed' ? '#166534' : jobStatus === 'running' ? '#1e40af' : jobStatus === 'partial' ? '#92400e' : jobStatus === 'failed' ? '#991b1b' : '#374151',
+                                  }}>
+                                    {jobStatus.toUpperCase()}
+                                  </span>
+                                )}
                               </div>
+                              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: '#333' }}>
+                                <span>Transcript: {(cmsPreview?.transcriptCharLength ?? cr?.transcriptCharLength ?? 0).toLocaleString()} chars</span>
+                                <span>Chunks: {cmsPreview?.processedChunks ?? cr?.processedChunks ?? 0}/{cmsPreview?.totalChunks ?? cr?.totalChunks ?? 0}</span>
+                                <span style={{ fontWeight: 700, color: (cmsPreview?.coveragePercent ?? cr?.coveragePercent ?? 0) >= 90 ? '#16a34a' : '#d97706' }}>Coverage: {cmsPreview?.coveragePercent ?? cr?.coveragePercent ?? 0}%</span>
+                                <span>Insights: {cmsPreview?.insightsCount ?? v2List.length}</span>
+                                {((cmsPreview?.failedChunks ?? 0) > 0 || (cr?.skippedChunks ?? 0) > 0) && <span style={{ color: '#dc2626' }}>Failed: {cmsPreview?.failedChunks ?? 0}</span>}
+                                {cmsPreview?.modelUsed && <span style={{ color: '#6b7280' }}>Model: {cmsPreview.modelUsed}</span>}
+                              </div>
+                              {cmsPreview?.lastError && (
+                                <div style={{ marginTop: 4, fontSize: 11, color: '#dc2626' }}>⚠️ {cmsPreview.lastError}</div>
+                              )}
                             </div>
                           )}
                           {/* Sort toggle + regenerate */}
@@ -1256,6 +1272,37 @@ export default function ExpertsPage() {
                               >
                                 {generatingV2Id === cmsPreview?._id ? '⏳ 產生中...' : '🔬 重新產生 V2'}
                               </button>
+                              {(jobStatus === 'partial' || jobStatus === 'failed') && (
+                                <button
+                                  disabled={generatingV2Id === cmsPreview?._id}
+                                  onClick={async () => {
+                                    const id = cmsPreview?._id;
+                                    if (!id) return;
+                                    setGeneratingV2Id(id);
+                                    setCmsMsg(null);
+                                    try {
+                                      const res = await fetch('/api/admin/insights/continue-key-insights-v2', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ summaryId: id }),
+                                      });
+                                      const data = await res.json();
+                                      if (data.ok) {
+                                        setCmsMsg(`✅ V2 繼續處理: ${data.insightsCount} 條`);
+                                        const previewRes = await fetch(`/api/admin/insights/preview?id=${id}`);
+                                        const previewData = await previewRes.json();
+                                        if (previewData.ok) setCmsPreview(previewData.summary || previewData.doc);
+                                      } else {
+                                        setCmsMsg(`❌ ${data.error || '繼續處理失敗'}`);
+                                      }
+                                    } catch { setCmsMsg('❌ 網路錯誤'); }
+                                    finally { setGeneratingV2Id(null); }
+                                  }}
+                                  style={{ padding: '4px 12px', fontSize: 11, borderRadius: 4, border: 'none', cursor: generatingV2Id === cmsPreview?._id ? 'wait' : 'pointer', background: '#d97706', color: '#fff', fontWeight: 600, opacity: generatingV2Id === cmsPreview?._id ? 0.6 : 1 }}
+                                >
+                                  {generatingV2Id === cmsPreview?._id ? '⏳...' : '🔄 繼續處理'}
+                                </button>
+                              )}
                             </div>
                           </div>
                           {cmsPreview?.keyInsightsV2GeneratedAt && (
@@ -1773,6 +1820,53 @@ export default function ExpertsPage() {
                       }}
                       style={{ marginLeft: '12px', padding: '3px 10px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                     >🤖 重跟 Auto-triage</button>
+                    <button
+                      disabled={!!generatingV2Id}
+                      onClick={async () => {
+                        setGeneratingV2Id('batch');
+                        setCmsMsg(null);
+                        try {
+                          const res = await fetch('/api/admin/insights/batch-key-insights-v2', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mode: 'all_with_transcript' }),
+                          });
+                          const data = await res.json();
+                          if (data.ok) {
+                            const summary = data.results?.map((r: any) => `${r.summaryId.slice(-6)}: ${r.status} (${r.insightsCount})`).join(' | ');
+                            setCmsMsg(`✅ 批次 V2 完成：${data.totalProcessed} 篇 | ${summary}`);
+                            fetchCmsData();
+                          } else {
+                            setCmsMsg(`❌ ${data.error || '批次處理失敗'}`);
+                          }
+                        } catch { setCmsMsg('❌ 網路錯誤'); }
+                        finally { setGeneratingV2Id(null); }
+                      }}
+                      style={{ marginLeft: '6px', padding: '3px 10px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '4px', cursor: generatingV2Id ? 'wait' : 'pointer', fontSize: '12px', fontWeight: 600, opacity: generatingV2Id ? 0.6 : 1 }}
+                    >{generatingV2Id === 'batch' ? '⏳ 批次處理中...' : '🔬 批次產生 V2（有 transcript）'}</button>
+                    <button
+                      disabled={!!generatingV2Id}
+                      onClick={async () => {
+                        setGeneratingV2Id('batch-failed');
+                        setCmsMsg(null);
+                        try {
+                          const res = await fetch('/api/admin/insights/batch-key-insights-v2', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mode: 'failed_only' }),
+                          });
+                          const data = await res.json();
+                          if (data.ok) {
+                            setCmsMsg(`✅ 重處理完成：${data.totalProcessed} 篇`);
+                            fetchCmsData();
+                          } else {
+                            setCmsMsg(`❌ ${data.error || '重處理失敗'}`);
+                          }
+                        } catch { setCmsMsg('❌ 網路錯誤'); }
+                        finally { setGeneratingV2Id(null); }
+                      }}
+                      style={{ marginLeft: '6px', padding: '3px 10px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '4px', cursor: generatingV2Id ? 'wait' : 'pointer', fontSize: '12px', fontWeight: 600, opacity: generatingV2Id ? 0.6 : 1 }}
+                    >{generatingV2Id === 'batch-failed' ? '⏳...' : '🔄 重處理失敗/部分完成'}</button>
                   </div>
                   {(!cmsData?.topicCandidate?.length) && !cmsLoading && (
                     <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
@@ -1805,11 +1899,27 @@ export default function ExpertsPage() {
                           {s.suggestedUse && (
                             <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>💡 {s.suggestedUse}</div>
                           )}
-                          <div style={{ fontSize: '11px', color: '#888', display: 'flex', gap: '8px', marginTop: '4px' }}>
+                          <div style={{ fontSize: '11px', color: '#888', display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
                             {(s.key_insights?.length || s.keyInsights?.length) && <span style={{ color: '#16a34a' }}>🔑 keyInsights</span>}
-                            {s.transcriptStored && <span style={{ color: '#2563eb' }}>📄 transcript</span>}
+                            {(s.transcriptStored || s.youtube_id || s.rawExpertInsight?.youtube_id) && <span style={{ color: '#2563eb' }}>📄 transcript</span>}
                             {s.cleanArticleDraft && <span style={{ color: '#7c3aed' }}>✨ cleanDraft</span>}
                             {s.editedArticleDraft && <span style={{ color: '#be185d' }}>✏️ editedDraft</span>}
+                            {/* V2 Job Status Badge */}
+                            {s.keyInsightsV2Status && s.keyInsightsV2Status !== 'not_started' && (
+                              <span style={{
+                                color: s.keyInsightsV2Status === 'completed' ? '#16a34a' : s.keyInsightsV2Status === 'running' ? '#2563eb' : s.keyInsightsV2Status === 'partial' ? '#d97706' : s.keyInsightsV2Status === 'failed' ? '#dc2626' : '#9ca3af',
+                                fontWeight: 600,
+                              }}>
+                                🔬 V2:{s.keyInsightsV2Status}
+                                {s.insightsCount != null && ` (${s.insightsCount})`}
+                                {s.coveragePercent != null && ` ${s.coveragePercent}%`}
+                                {s.processedChunks != null && s.totalChunks != null && ` [${s.processedChunks}/${s.totalChunks}]`}
+                                {(s.failedChunks ?? 0) > 0 && ` ⚠️${s.failedChunks}failed`}
+                              </span>
+                            )}
+                            {!s.keyInsightsV2Status && (s.keyInsightsV2Count ?? 0) > 0 && (
+                              <span style={{ color: '#16a34a', fontWeight: 600 }}>🔬 V2:{s.keyInsightsV2Count}條</span>
+                            )}
                           </div>
                           {s.articleDecision && (
                             <div style={{ fontSize: '11px', marginTop: '4px' }}>
@@ -1844,8 +1954,35 @@ export default function ExpertsPage() {
                             }}
                             style={{ ...btnStyle('#7c3aed'), opacity: generatingV2Id === s._id ? 0.6 : 1 }}
                           >
-                            {generatingV2Id === s._id ? '⏳ V2...' : '🔬 V2 Insights'}
+                            {generatingV2Id === s._id ? '⏳ V2...' : '🔬 產生 V2'}
                           </button>
+                          {(s.keyInsightsV2Status === 'partial' || s.keyInsightsV2Status === 'failed') && (
+                            <button
+                              disabled={generatingV2Id === s._id}
+                              onClick={async () => {
+                                setGeneratingV2Id(s._id);
+                                setCmsMsg(null);
+                                try {
+                                  const res = await fetch('/api/admin/insights/continue-key-insights-v2', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ summaryId: s._id }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.ok) {
+                                    setCmsMsg(`✅ V2 繼續處理: ${data.insightsCount} 條`);
+                                    fetchCmsData();
+                                  } else {
+                                    setCmsMsg(`❌ ${data.error || '繼續處理失敗'}`);
+                                  }
+                                } catch { setCmsMsg('❌ 網路錯誤'); }
+                                finally { setGeneratingV2Id(null); }
+                              }}
+                              style={{ ...btnStyle('#d97706'), opacity: generatingV2Id === s._id ? 0.6 : 1 }}
+                            >
+                              {generatingV2Id === s._id ? '⏳...' : '🔄 繼續 V2'}
+                            </button>
+                          )}
                           <button
                             disabled={generatingDraftId === s._id}
                             onClick={() => handleGenerateDraft(s._id)}
