@@ -6,6 +6,18 @@
  * and old-style (article/body) documents.
  */
 
+/**
+ * 6-bucket classification for /experts CMS view.
+ *
+ * 1. rawMaterial  – legacy article/body, unknown-status docs, video_queue/expert_insights summaries
+ * 2. candidate    – status=candidate, has editedDraft/cleanDraft/articleDraft, no blocker phrase
+ * 3. needsReview  – blocker phrase in editable drafts, explicit blocker field, status contradiction
+ * 4. published    – status=published + alphaReady=true + publishedArticle present
+ * 5. unpublished  – status=unpublished (retains publishedArticle)
+ * 6. invalid      – no content at all, cannot publish
+ */
+export type SummaryBucket = 'rawMaterial' | 'candidate' | 'needsReview' | 'published' | 'unpublished' | 'invalid';
+
 export interface NormalizedSummary {
   id: string
   displayTitle: string
@@ -42,6 +54,59 @@ export interface NormalizedSummary {
   transcriptLength: number | null
   transcriptSource: string | null
   transcriptMetadataWarnings: string[]
+}
+
+// ── 6-Bucket Classifier ────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function classifySummaryBucket(doc: Record<string, any>): SummaryBucket {
+  const status = doc.status || 'unknown';
+
+  // 4. Published — strict gate
+  if (status === 'published' && doc.alphaReady === true &&
+      typeof doc.publishedArticle === 'string' && doc.publishedArticle.trim().length > 0) {
+    return 'published';
+  }
+
+  // 5. Unpublished
+  if (status === 'unpublished') {
+    return 'unpublished';
+  }
+
+  // Content availability
+  const hasDraftContent = !!(doc.editedArticleDraft || doc.cleanArticleDraft || doc.articleDraft);
+  const hasLegacyContent = !!(doc.article || doc.body);
+  const hasAnyContent = hasDraftContent || hasLegacyContent;
+
+  // 6. Invalid — no content at all
+  if (!hasAnyContent) {
+    return 'invalid';
+  }
+
+  // Blocker phrase check — only in editable drafts (editedArticleDraft / cleanArticleDraft)
+  const editableText = (doc.editedArticleDraft || '') + ' ' + (doc.cleanArticleDraft || '');
+  const BLOCK_PHRASES = [
+    '【JG 觀點待補】', '《JG 觀點待補》', 'TODO', 'reviewer note',
+    'internal instruction', '請 JG', '請從上面候選方向', '改寫成正式 JG 判斷', '後台操作指令',
+  ];
+  const hasBlockerPhrase = BLOCK_PHRASES.some(p => editableText.includes(p));
+  const hasExplicitBlocker = !!doc.blocker;
+
+  // Status contradiction: claims published but gate fails
+  const isContradiction =
+    status === 'published' && (!doc.alphaReady || !(doc.publishedArticle?.trim()));
+
+  // 3. NeedsReview — blocker phrases, explicit blocker, or status contradiction
+  if (hasBlockerPhrase || hasExplicitBlocker || isContradiction) {
+    return 'needsReview';
+  }
+
+  // 2. Candidate — status=candidate with actual draft content (not only legacy)
+  if (status === 'candidate' && hasDraftContent) {
+    return 'candidate';
+  }
+
+  // 1. RawMaterial — everything else: legacy-only content, unknown status, etc.
+  return 'rawMaterial';
 }
 
 // Warning / block phrases that prevent publishing

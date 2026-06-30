@@ -49,19 +49,20 @@ export default function ExpertsPage() {
 
   // CMS state
   const [cmsData, setCmsData] = useState<{
-    newExpertInsights: any[];
-    candidateSummaries: any[];
-    sectionB: any[];
-    sectionBEmpty: boolean;
-    sectionBEmptyReason: string | null;
-    sectionB2: any[];
-    sectionB2Count: number;
-    publishedSummaries: any[];
-    unpublishedSummaries: any[];
-    archivedRejectedUnpublished: any[];
+    // 6-bucket CMS
+    rawMaterial: any[]; rawMaterialCount: number; rawMaterialExpertCount: number; rawMaterialIrrelevantCount: number;
+    candidate: any[]; candidateCount: number;
+    needsReview: any[]; needsReviewCount: number;
+    published: any[]; publishedCount: number;
+    unpublished: any[]; unpublishedCount: number;
+    invalid: any[]; invalidCount: number;
+    // backward compat
+    newExpertInsights: any[]; sectionB: any[]; sectionBEmpty: boolean; publishedSummaries: any[];
+    unpublishedSummaries: any[]; archivedRejectedUnpublished: any[]; candidateSummaries: any[];
+    sectionB2: any[]; sectionB2Count: number; sectionBEmptyReason: string | null;
   } | null>(null);
-  // Article management sub-tab
-  const [articleTab, setArticleTab] = useState<'candidates' | 'published' | 'unpublished'>('candidates');
+  // Article management sub-tab (6-bucket)
+  const [articleTab, setArticleTab] = useState<'rawMaterial' | 'candidate' | 'needsReview' | 'published' | 'unpublished' | 'invalid'>('rawMaterial');
   // Draft editing state
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editingDraftText, setEditingDraftText] = useState<string>('');
@@ -1064,8 +1065,13 @@ export default function ExpertsPage() {
                                               const updateList = (list: any[]) => list?.map((item: any) => item._id === cmsPreview._id ? { ...item, editedArticleDraft: editingDraftText } : item);
                                               return {
                                                 ...prev,
+                                                rawMaterial: updateList(prev.rawMaterial),
+                                                candidate: updateList(prev.candidate),
+                                                needsReview: updateList(prev.needsReview),
+                                                published: updateList(prev.published),
+                                                unpublished: updateList(prev.unpublished),
+                                                invalid: updateList(prev.invalid),
                                                 sectionB: updateList(prev.sectionB),
-                                                sectionB2: updateList(prev.sectionB2),
                                                 publishedSummaries: updateList(prev.publishedSummaries),
                                                 unpublishedSummaries: updateList(prev.unpublishedSummaries),
                                               };
@@ -1619,13 +1625,20 @@ export default function ExpertsPage() {
               })}
             </section>
 
-            {/* ── 文章管理三 Tab ── */}
+            {/* ── 文章管理 6 Tab ── */}
             <div style={{ marginTop: '8px' }}>
               {/* Sub-tab switcher */}
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', borderBottom: '2px solid #e5e5e5', paddingBottom: '0' }}>
-                {([['candidates', `📝 候選/草稿 (${cmsData?.sectionB?.length ?? 0})`], ['published', `✅ 已上架 (${cmsData?.publishedSummaries?.length ?? 0})`], ['unpublished', `🚫 已下架 (${cmsData?.unpublishedSummaries?.length ?? 0})`]] as const).map(([tab, label]) => (
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '2px solid #e5e5e5', paddingBottom: '0', flexWrap: 'wrap' }}>
+                {([
+                  ['rawMaterial', `📦 素材庫 (${cmsData?.rawMaterialCount ?? 0})`],
+                  ['candidate',   `📝 候選/草稿 (${cmsData?.candidateCount ?? 0})`],
+                  ['needsReview', `⚠️ 需審核 (${cmsData?.needsReviewCount ?? 0})`],
+                  ['published',   `✅ 已上架 (${cmsData?.publishedCount ?? 0})`],
+                  ['unpublished', `🚫 已下架 (${cmsData?.unpublishedCount ?? 0})`],
+                  ['invalid',     `❌ 壞資料 (${cmsData?.invalidCount ?? 0})`],
+                ] as const).map(([tab, label]) => (
                   <button key={tab} onClick={() => setArticleTab(tab as any)}
-                    style={{ padding: '7px 16px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '13px',
+                    style={{ padding: '7px 14px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '12px',
                       background: articleTab === tab ? '#fff' : 'transparent',
                       color: articleTab === tab ? '#c0202a' : '#888',
                       borderBottom: articleTab === tab ? '2px solid #c0202a' : '2px solid transparent',
@@ -1635,7 +1648,7 @@ export default function ExpertsPage() {
               </div>
 
               {/* ── 候選/草稿文章 ── */}
-              {articleTab === 'candidates' && (
+              {articleTab === 'candidate' && (
                 <section style={{ marginBottom: '32px' }}>
                   <div className="mb-3" style={{ marginBottom: '12px' }}>
                     <label style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>近期市場方向（可選，供生成草稿參考）</label>
@@ -1647,12 +1660,12 @@ export default function ExpertsPage() {
                       style={{ width: '100%', fontSize: '13px', background: '#1f2937', color: '#f9fafb', border: '1px solid #4b5563', borderRadius: '6px', padding: '8px 12px', resize: 'vertical', fontFamily: 'inherit' }}
                     />
                   </div>
-                  {cmsData?.sectionBEmpty && !cmsLoading && (
+                  {(!cmsData?.candidate?.length) && !cmsLoading && (
                     <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
-                      目前沒有最新候選。請先在 A 區推薦影片讀取內容後，轉成最新候選。
+                      目前沒有候選草稿。請先在素材庫中將 expert_insight 轉為候選。
                     </div>
                   )}
-                  {cmsData?.sectionB?.map((s: any) => (
+                  {(cmsData?.candidate ?? []).map((s: any) => (
                     <div key={s._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1707,87 +1720,47 @@ export default function ExpertsPage() {
                     </div>
                   ))}
 
-                  {/* B2 歷史候選 */}
-                  {(cmsData?.sectionB2?.length ?? 0) > 0 && (
-                    <details style={{ marginTop: '16px' }}>
-                      <summary style={{ fontSize: '14px', color: '#9ca3af', cursor: 'pointer', padding: '8px 0', userSelect: 'none' }}>
-                        🗄️ 歷史候選 ({cmsData?.sectionB2Count ?? 0} 筆)
-                      </summary>
-                      <div style={{ marginTop: '8px' }}>
-                        {cmsData?.sectionB2?.map((s: any) => (
-                          <div key={s._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fafaf8' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: '#666' }}>
-                                  {s.jgTitle || s.title || s.articleTitle}
-                                  <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px' }}>（歷史）</span>
-                                </div>
-                                <div style={{ fontSize: '11px', color: '#888' }}>sourceDate: {s.sourceDate || 'n/a'} | sourceType: {s.sourceType || 'n/a'}</div>
-                              </div>
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
-                                <button
-                                  disabled={publishingId === s._id}
-                                  onClick={async () => {
-                                    setPublishingId(s._id); setCmsMsg(null);
-                                    try {
-                                      const r = await fetch('/api/admin/insights/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summaryId: s._id }) });
-                                      const d = await r.json();
-                                      if (d.ok) { setCmsMsg('✅ 已發佈上架'); fetchCmsData(); }
-                                      else setCmsMsg(`❌ ${d.error || '發佈失敗'}`);
-                                    } catch { setCmsMsg('❌ 網路錯誤'); }
-                                    finally { setPublishingId(null); }
-                                  }}
-                                  style={{ ...btnStyle('#28a745'), opacity: publishingId === s._id ? 0.6 : 1 }}
-                                >{publishingId === s._id ? '發佈中...' : '🚀 發佈'}</button>
-                                <button onClick={() => { setCmsEditId(s._id); setCmsEditMeta({ jgTitle: s.jgTitle || '', displaySection: s.displaySection || '', articleType: s.articleType || '', sortOrder: s.sortOrder ?? 0, isPinned: !!s.isPinned, tags: s.tags || [] }); }} style={btnStyle('#0070f3')}>Meta</button>
-                                <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
-                                <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
-                  )}
+                </section>
+              )}
 
-                  {/* Archived/rejected */}
-                  {(cmsData?.archivedRejectedUnpublished?.length ?? 0) > 0 && (
-                    <details style={{ marginTop: '16px' }}>
-                      <summary style={{ fontSize: '14px', color: '#9ca3af', cursor: 'pointer', padding: '8px 0', userSelect: 'none' }}>
-                        🗃️ 已拒絕/封存 ({cmsData?.archivedRejectedUnpublished?.length ?? 0} 筆)
-                      </summary>
-                      <div style={{ marginTop: '8px' }}>
-                        {cmsData?.archivedRejectedUnpublished?.map((s: any) => (
-                          <div key={`${s._source}-${s._id}`} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{s.jgTitle || s.title || s.articleTitle}</div>
-                                <div style={{ fontSize: '11px', color: '#888' }}>
-                                  status: <span style={{ color: s.status === 'rejected' ? '#dc3545' : '#6c757d' }}>{s.status}</span>
-                                  {s.reviewNote && ` | ${s.reviewNote}`}
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <button onClick={() => openPreview(s._id, s._source === 'expert_insight' ? 'expert_insight' : 'summary')} style={btnStyle('#6c757d')}>Preview</button>
-                                <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, type: s._source === 'expert_insight' ? 'expert_insight' : 'summary', action: 'restore' }, '已恢復為候選')} style={btnStyle('#0070f3')}>恢復</button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </details>
+              {/* ── 需審核 (needsReview) ── */}
+              {articleTab === 'needsReview' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <div style={{ marginBottom: '12px', fontSize: '13px', color: '#f59e0b', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 14px' }}>
+                    ⚠️ 這些文章包含《JG 觀點待補》、blocker 或狀態矛盾，需要人工確認後才能發布。
+                  </div>
+                  {(!cmsData?.needsReview?.length) && !cmsLoading && (
+                    <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>無需審核項目</div>
                   )}
+                  {(cmsData?.needsReview ?? []).map((s: any) => (
+                    <div key={s._id} style={{ border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', marginBottom: '8px', background: '#fffbeb' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{s.jgTitle || s.title || s.articleTitle || s.topic || '(no title)'}</div>
+                          <div style={{ fontSize: '11px', color: '#856404' }}>status: {s.status || 'unknown'} | alphaReady: {String(!!s.alphaReady)} | publishReadiness: {s.publishReadiness || 'n/a'}</div>
+                          {s.blocker && <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '3px' }}>🚫 Blocker: {s.blocker}</div>}
+                          {(s.editedArticleDraft || s.cleanArticleDraft) && ['【JG 觀點待補】', '《JG 觀點待補》', 'TODO'].some(p => ((s.editedArticleDraft || '') + (s.cleanArticleDraft || '')).includes(p)) && (
+                            <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '3px' }}>🚫 草稿含《JG 觀點待補》/TODO，需補完後才可發布</div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap' }}>
+                          <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                          <button onClick={() => { setCmsEditId(s._id); setCmsEditMeta({ jgTitle: s.jgTitle || '', displaySection: s.displaySection || '', articleType: s.articleType || '', sortOrder: s.sortOrder ?? 0, isPinned: !!s.isPinned, tags: s.tags || [] }); }} style={btnStyle('#0070f3')}>Meta</button>
+                          <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </section>
               )}
 
               {/* ── 已上架文章 ── */}
               {articleTab === 'published' && (
                 <section style={{ marginBottom: '32px' }}>
-                  {!cmsData?.publishedSummaries?.length && !cmsLoading && (
-                    <div style={{ color: '#888', fontSize: '14px', padding: '20px', textAlign: 'center' }}>無已上架文章</div>
+                  {!cmsData?.published?.length && !cmsLoading && (
+                    <div style={{ color: '#888', fontSize: '14px', padding: '20px', textAlign: 'center' }}>無已上架文章（需 status=published + alphaReady=true + publishedArticle 有內容）</div>
                   )}
-                  {cmsData?.publishedSummaries?.map((s: any) => (
+                  {(cmsData?.published ?? []).map((s: any) => (
                     <div key={s._id} style={{ border: '1px solid #d4edda', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#f0fff4' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1854,10 +1827,10 @@ export default function ExpertsPage() {
               {/* ── 已下架文章 ── */}
               {articleTab === 'unpublished' && (
                 <section style={{ marginBottom: '32px' }}>
-                  {!cmsData?.unpublishedSummaries?.length && !cmsLoading && (
+                  {!cmsData?.unpublished?.length && !cmsLoading && (
                     <div style={{ color: '#888', fontSize: '14px', padding: '20px', textAlign: 'center' }}>無已下架文章</div>
                   )}
-                  {cmsData?.unpublishedSummaries?.map((s: any) => (
+                  {(cmsData?.unpublished ?? []).map((s: any) => (
                     <div key={s._id} style={{ border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fffbeb' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1895,6 +1868,32 @@ export default function ExpertsPage() {
                             }}
                             style={{ ...btnStyle('#28a745'), opacity: publishingId === s._id ? 0.6 : 1 }}
                           >{publishingId === s._id ? '發佈中...' : '🚀 重新發佈'}</button>
+                          <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {/* ── 壞資料 (invalid) ── */}
+              {articleTab === 'invalid' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <div style={{ marginBottom: '12px', fontSize: '13px', color: '#ef4444', background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 14px' }}>
+                    ❌ 這些文件沒有任何正文內容（editedDraft / cleanDraft / articleDraft / article / body 皆空），無法發布。
+                  </div>
+                  {(!cmsData?.invalid?.length) && !cmsLoading && (
+                    <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>無壞資料</div>
+                  )}
+                  {(cmsData?.invalid ?? []).map((s: any) => (
+                    <div key={s._id} style={{ border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '8px', background: '#fff5f5' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: '#dc2626' }}>{s.jgTitle || s.title || s.topic || '(no title)'}</div>
+                          <div style={{ fontSize: '11px', color: '#9ca3af' }}>status: {s.status || 'unknown'} | 無任何正文內容</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
                           <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
                         </div>
                       </div>

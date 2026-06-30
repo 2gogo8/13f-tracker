@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkAdminStatus } from '@/lib/admin';
 import getClientPromise from '@/lib/mongodb';
+import { classifySummaryBucket } from '@/lib/insights/normalizeSummary';
 
+/**
+ * GET /api/admin/insights/candidates
+ *
+ * Returns 6 buckets for the /experts CMS view:
+ *   rawMaterial  – legacy/unknown summaries + expert_insights raw material
+ *   candidate    – status=candidate, has draft content, no blocker
+ *   needsReview  – blocker phrase / explicit blocker / status contradiction
+ *   published    – status=published + alphaReady=true + publishedArticle
+ *   unpublished  – status=unpublished
+ *   invalid      – no content at all
+ *
+ * Each bucket is sorted by sourceDate desc (rawMaterial) or publishedAt/createdAt desc.
+ * Max 20 items per bucket (configurable via ?limit=N).
+ */
 export async function GET(req: NextRequest) {
   const authResult = await checkAdminStatus();
   if (authResult.status === 'unauthenticated') {
@@ -12,13 +27,48 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const limit = Math.min(parseInt(searchParams.get('limit') || '30', 10), 100);
+  const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100);
   const q = searchParams.get('q') || '';
 
   const client = await getClientPromise();
   const db = client.db('13f-tracker');
 
-  // A. New expert_insights (status=new or no status), 30-day filter
+  // ── Build search filter ──
+  const searchFilter = q
+    ? {
+        $or: [
+          { jgTitle: { $regex: q, $options: 'i' } },
+          { title: { $regex: q, $options: 'i' } },
+          { topic: { $regex: q, $options: 'i' } },
+          { articleTitle: { $regex: q, $options: 'i' } },
+        ],
+      }
+    : {};
+
+  // ── Fetch all summaries (lightweight projection for classification) ──
+  const allSummaries = await db
+    .collection('summaries')
+    .find(searchFilter)
+    .sort({ sourceDate: -1, publishedAt: -1, createdAt: -1 })
+    .toArray();
+
+  // ── Classify into 6 buckets ──
+  const buckets: Record<string, unknown[]> = {
+    rawMaterial: [],
+    candidate: [],
+    needsReview: [],
+    published: [],
+    unpublished: [],
+    invalid: [],
+  };
+
+  for (const doc of allSummaries) {
+    const bucket = classifySummaryBucket(doc as Record<string, unknown>);
+    buckets[bucket].push(doc);
+  }
+
+  // ── Append expert_insights to rawMaterial ──
+  // Include non-irrelevant expert_insights as raw material candidates
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
@@ -36,164 +86,84 @@ export async function GET(req: NextRequest) {
     ],
   };
   if (q) {
-    (expertFilter['$and'] as unknown[]).push(
-      { $or: [{ title: { $regex: q, $options: 'i' } }, { topic: { $regex: q, $options: 'i' } }] }
-    );
+    (expertFilter['$and'] as unknown[]).push({
+      $or: [
+        { title: { $regex: q, $options: 'i' } },
+        { topic: { $regex: q, $options: 'i' } },
+      ],
+    });
   }
 
-  const sectionADocs = await db
+  const expertInsights = await db
     .collection('expert_insights')
     .find(expertFilter)
     .sort({ publish_date: -1, createdAt: -1 })
-    .limit(limit)
+    .limit(50)
     .toArray();
 
-  // 按 triageStatus 排序：recommended > needs_review > low_priority > 未評分 > irrelevant
-  // 再按 priorityScore desc，再按 publish_date desc
-  const triageOrder: Record<string, number> = { recommended: 0, needs_review: 1, low_priority: 2, irrelevant: 4 };
-
-  const sorted = [...sectionADocs].sort((a, b) => {
+  // Triage order for expert_insights
+  const triageOrder: Record<string, number> = {
+    recommended: 0,
+    needs_review: 1,
+    low_priority: 2,
+    irrelevant: 4,
+  };
+  const sortedExperts = [...expertInsights].sort((a, b) => {
     const aOrder = triageOrder[a.triageStatus as string] ?? 3;
     const bOrder = triageOrder[b.triageStatus as string] ?? 3;
     if (aOrder !== bOrder) return aOrder - bOrder;
-    if ((b.priorityScore || 0) !== (a.priorityScore || 0)) return (b.priorityScore || 0) - (a.priorityScore || 0);
-    return (b.publish_date || '') > (a.publish_date || '') ? 1 : -1;
+    return (b.priorityScore || 0) - (a.priorityScore || 0);
   });
 
-  const irrelevantCount = sorted.filter(d => d.triageStatus === 'irrelevant').length;
-  const newExpertInsights = sorted.filter(d => d.triageStatus !== 'irrelevant');
+  const irrelevantCount = sortedExperts.filter(d => d.triageStatus === 'irrelevant').length;
+  const filteredExperts = sortedExperts.filter(d => d.triageStatus !== 'irrelevant');
 
-  const sectionAEmpty = newExpertInsights.length === 0;
+  // Mark expert_insights with _source tag, prepend to rawMaterial
+  const taggedExperts = filteredExperts.map(d => ({ ...d, _source: 'expert_insight' }));
+  const taggedSummaryRaw = (buckets.rawMaterial as unknown[]).map(d => ({
+    ...(d as object),
+    _source: 'summary',
+  }));
 
-  // ── B. Candidate summaries — split into new (B) and historical (B2) ──
-  const ninetyDaysAgo = new Date();
-  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-  const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().split('T')[0];
+  // rawMaterial: experts first (sorted by triage), then legacy summaries (sorted by sourceDate)
+  const combinedRawMaterial = [...taggedExperts, ...taggedSummaryRaw];
 
-  const candidateBaseFilter: Record<string, unknown> = { status: 'candidate', alphaReady: false };
-  const searchFilter = q
-    ? {
-        $or: [
-          { title: { $regex: q, $options: 'i' } },
-          { jgTitle: { $regex: q, $options: 'i' } },
-          { topic: { $regex: q, $options: 'i' } },
-        ],
-      }
-    : {};
-
-  // B 區主列表：所有近期候選（sourceDate 在 90 天內、或無 sourceDate 但 createdAt 在 90 天內）
-  // 不再限制 sourceType，讓所有 candidate 都能在主區顯示
-  const newCandidates = await db
-    .collection('summaries')
-    .find({
-      ...candidateBaseFilter,
-      ...searchFilter,
-      draftStatus: { $ne: 'archived' },
-      $or: [
-        { sourceDate: { $exists: true, $nin: [null, 'n/a'], $gte: ninetyDaysAgoStr } },
-        { sourceDate: { $exists: false }, createdAt: { $gte: ninetyDaysAgo } },
-        { sourceDate: null, createdAt: { $gte: ninetyDaysAgo } },
-        { sourceDate: 'n/a', createdAt: { $gte: ninetyDaysAgo } },
-      ],
-    })
-    .sort({ sourceDate: -1, createdAt: -1 })
-    .limit(limit)
-    .toArray();
-
-  // B2 區：歷史候選（sourceDate 超過 90 天、且 createdAt 也超過 90 天）
-  const historicalCandidates = await db
-    .collection('summaries')
-    .find({
-      ...candidateBaseFilter,
-      ...searchFilter,
-      $nor: [
-        { sourceDate: { $exists: true, $nin: [null, 'n/a'], $gte: ninetyDaysAgoStr } },
-        { sourceDate: { $exists: false }, createdAt: { $gte: ninetyDaysAgo } },
-        { sourceDate: null, createdAt: { $gte: ninetyDaysAgo } },
-        { sourceDate: 'n/a', createdAt: { $gte: ninetyDaysAgo } },
-      ],
-    })
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .toArray();
-
-  // Also keep backward-compatible candidateSummaries (all candidates combined)
-  const candidateSummaries = [...newCandidates, ...historicalCandidates];
-
-  // C. Published summaries
-  const publishedFilter: Record<string, unknown> = { status: 'published', alphaReady: true };
-  if (q) {
-    publishedFilter['$or'] = [
-      { title: { $regex: q, $options: 'i' } },
-      { jgTitle: { $regex: q, $options: 'i' } },
-      { topic: { $regex: q, $options: 'i' } },
-    ];
-  }
-
-  const publishedSummaries = await db
-    .collection('summaries')
-    .find(publishedFilter)
-    .sort({ publishedAt: -1 })
-    .limit(limit)
-    .toArray();
-
-  // D. Unpublished summaries (separate from rejected/archived)
-  const unpublishedFilter: Record<string, unknown> = { status: 'unpublished' };
-  if (q) {
-    unpublishedFilter['$or'] = [
-      { title: { $regex: q, $options: 'i' } },
-      { jgTitle: { $regex: q, $options: 'i' } },
-      { topic: { $regex: q, $options: 'i' } },
-    ];
-  }
-  const unpublishedSummaries = await db
-    .collection('summaries')
-    .find(unpublishedFilter)
-    .sort({ unpublishedAt: -1 })
-    .limit(limit)
-    .toArray();
-
-  // E. Rejected / archived
-  const archivedFilter: Record<string, unknown> = {
-    status: { $in: ['rejected', 'archived'] },
+  // Apply per-bucket limit
+  const limitedBuckets = {
+    rawMaterial: combinedRawMaterial.slice(0, limit),
+    candidate: (buckets.candidate as unknown[]).slice(0, limit),
+    needsReview: (buckets.needsReview as unknown[]).slice(0, limit),
+    published: (buckets.published as unknown[]).slice(0, limit),
+    unpublished: (buckets.unpublished as unknown[]).slice(0, limit),
+    invalid: (buckets.invalid as unknown[]).slice(0, limit),
   };
-  if (q) {
-    archivedFilter['$or'] = [
-      { title: { $regex: q, $options: 'i' } },
-      { jgTitle: { $regex: q, $options: 'i' } },
-      { topic: { $regex: q, $options: 'i' } },
-    ];
-  }
-
-  const [archivedSummaries, archivedInsights] = await Promise.all([
-    db.collection('summaries').find(archivedFilter).sort({ updatedAt: -1 }).limit(limit).toArray(),
-    db
-      .collection('expert_insights')
-      .find({ status: { $in: ['rejected', 'archived'] } })
-      .sort({ updatedAt: -1 })
-      .limit(limit)
-      .toArray(),
-  ]);
 
   return NextResponse.json({
     ok: true,
-    newExpertInsights,
+    // 6 buckets
+    rawMaterial: limitedBuckets.rawMaterial,
+    rawMaterialCount: combinedRawMaterial.length,
+    rawMaterialExpertCount: filteredExperts.length,
+    rawMaterialIrrelevantCount: irrelevantCount,
+    candidate: limitedBuckets.candidate,
+    candidateCount: (buckets.candidate as unknown[]).length,
+    needsReview: limitedBuckets.needsReview,
+    needsReviewCount: (buckets.needsReview as unknown[]).length,
+    published: limitedBuckets.published,
+    publishedCount: (buckets.published as unknown[]).length,
+    unpublished: limitedBuckets.unpublished,
+    unpublishedCount: (buckets.unpublished as unknown[]).length,
+    invalid: limitedBuckets.invalid,
+    invalidCount: (buckets.invalid as unknown[]).length,
+    // Backward compatibility aliases
+    newExpertInsights: filteredExperts,
     sectionAIrrelevantCount: irrelevantCount,
-    ...(sectionAEmpty ? { sectionAEmpty: true, sectionAEmptyReason: 'no_recent_insights' } : {}),
-    // B 區分拆
-    sectionB: newCandidates,
-    sectionBCount: newCandidates.length,
-    sectionBEmpty: newCandidates.length === 0,
-    sectionBEmptyReason: newCandidates.length === 0 ? 'no_recent_video_queue_candidates' : null,
-    sectionB2: historicalCandidates,
-    sectionB2Count: historicalCandidates.length,
-    // 向下相容
-    candidateSummaries,
-    publishedSummaries,
-    unpublishedSummaries,
-    archivedRejectedUnpublished: [
-      ...archivedSummaries.map(d => ({ ...d, _source: 'summary' })),
-      ...archivedInsights.map(d => ({ ...d, _source: 'expert_insight' })),
-    ],
+    sectionB: buckets.candidate,
+    sectionBCount: (buckets.candidate as unknown[]).length,
+    sectionBEmpty: (buckets.candidate as unknown[]).length === 0,
+    candidateSummaries: buckets.candidate,
+    publishedSummaries: buckets.published,
+    unpublishedSummaries: buckets.unpublished,
+    archivedRejectedUnpublished: [],
   });
 }
