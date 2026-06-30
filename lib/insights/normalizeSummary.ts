@@ -7,16 +7,19 @@
  */
 
 /**
- * 6-bucket classification for /experts CMS view.
+ * 6-bucket classification for /experts CMS view (new flow).
  *
- * 1. rawMaterial  – legacy article/body, unknown-status docs, video_queue/expert_insights summaries
- * 2. candidate    – status=candidate, has editedDraft/cleanDraft/articleDraft, no blocker phrase
- * 3. needsReview  – blocker phrase in editable drafts, explicit blocker field, status contradiction
- * 4. published    – status=published + alphaReady=true + publishedArticle present
- * 5. unpublished  – status=unpublished (retains publishedArticle)
- * 6. invalid      – no content at all, cannot publish
+ * rawMaterial     → topicCandidate → draftCandidate → published
+ *
+ * 1. rawMaterial      – low-signal raw scans, jgFitScore < 50, no title/content
+ * 2. topicCandidate   – has title+date, or content/KI/transcript, or jgFitScore >= 75,
+ *                       or articleDecision set — ready to evaluate, NOT yet draft
+ * 3. draftCandidate   – status=candidate + alphaReady=false + has cleanArticleDraft/editedArticleDraft
+ * 4. needsReview      – has blocker phrases, or jgFitScore 50-74, or status contradiction
+ * 5. published        – status=published + alphaReady=true + publishedArticle present
+ * 6. invalid          – no content at all, cannot process
  */
-export type SummaryBucket = 'rawMaterial' | 'candidate' | 'needsReview' | 'published' | 'unpublished' | 'invalid';
+export type SummaryBucket = 'rawMaterial' | 'topicCandidate' | 'draftCandidate' | 'needsReview' | 'published' | 'invalid';
 
 export interface NormalizedSummary {
   id: string
@@ -56,29 +59,31 @@ export interface NormalizedSummary {
   transcriptMetadataWarnings: string[]
 }
 
-// ── 6-Bucket Classifier ────────────────────────────────────────────────────
+// ── 6-Bucket Classifier (new flow) ─────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function classifySummaryBucket(doc: Record<string, any>): SummaryBucket {
   const status = doc.status || 'unknown';
 
-  // 4. Published — strict gate
+  // 5. Published — strict gate
   if (status === 'published' && doc.alphaReady === true &&
       typeof doc.publishedArticle === 'string' && doc.publishedArticle.trim().length > 0) {
     return 'published';
-  }
-
-  // 5. Unpublished
-  if (status === 'unpublished') {
-    return 'unpublished';
   }
 
   // Content availability
   const hasDraftContent = !!(doc.editedArticleDraft || doc.cleanArticleDraft || doc.articleDraft);
   const hasLegacyContent = !!(doc.article || doc.body);
   const hasAnyContent = hasDraftContent || hasLegacyContent;
+  const hasKI = !!((
+    Array.isArray(doc.key_insights) && doc.key_insights.length > 0) ||
+    (Array.isArray(doc.keyInsights) && doc.keyInsights.length > 0));
+  const hasTranscript = !!(doc.transcriptStored || doc.transcriptRef ||
+    (typeof doc.transcriptLength === 'number' && doc.transcriptLength > 0));
+  const hasTitle = !!(doc.jgTitle || doc.video_title || doc.title || doc.articleTitle || doc.topic);
+  const hasDate = !!(doc.sourceDate || doc.createdAt || doc.publish_date);
 
   // 6. Invalid — no content at all
-  if (!hasAnyContent) {
+  if (!hasAnyContent && !hasKI && !hasTranscript) {
     return 'invalid';
   }
 
@@ -95,17 +100,44 @@ export function classifySummaryBucket(doc: Record<string, any>): SummaryBucket {
   const isContradiction =
     status === 'published' && (!doc.alphaReady || !(doc.publishedArticle?.trim()));
 
-  // 3. NeedsReview — blocker phrases, explicit blocker, or status contradiction
+  // Hard blockers → needsReview (always takes priority over topicCandidate)
   if (hasBlockerPhrase || hasExplicitBlocker || isContradiction) {
     return 'needsReview';
   }
 
-  // 2. Candidate — status=candidate with actual draft content (not only legacy)
-  if (status === 'candidate' && hasDraftContent) {
-    return 'candidate';
+  // 3. DraftCandidate — status=candidate + alphaReady=false + actual clean/edited draft
+  if (status === 'candidate' && doc.alphaReady !== true &&
+      (doc.editedArticleDraft || doc.cleanArticleDraft)) {
+    return 'draftCandidate';
   }
 
-  // 1. RawMaterial — everything else: legacy-only content, unknown status, etc.
+  // 2. TopicCandidate — meets any positive signal (checked BEFORE score-based needsReview):
+  //    - has title + date (strong positive signal regardless of score)
+  //    - has any KI/transcript
+  //    - jgFitScore >= 75
+  //    - articleDecision is set
+  const jgFitScore = typeof doc.jgFitScore === 'number' ? doc.jgFitScore : null;
+  const hasJgScore = jgFitScore !== null;
+  const articleDecision = doc.articleDecision;
+  const hasArticleDecision = !!(articleDecision &&
+    ['draft_candidate', 'material_only', 'needs_review'].includes(articleDecision));
+
+  const isTopicCandidate =
+    (hasTitle && hasDate) ||
+    (hasKI || hasTranscript) ||
+    (hasJgScore && jgFitScore! >= 75) ||
+    hasArticleDecision;
+
+  if (isTopicCandidate) {
+    return 'topicCandidate';
+  }
+
+  // Score-based needsReview (only if no topicCandidate positive signal)
+  if (hasJgScore && jgFitScore! >= 50 && jgFitScore! < 75) {
+    return 'needsReview';
+  }
+
+  // 1. RawMaterial — everything else: legacy-only content, unknown status, no triage signal
   return 'rawMaterial';
 }
 

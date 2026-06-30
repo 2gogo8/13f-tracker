@@ -49,20 +49,22 @@ export default function ExpertsPage() {
 
   // CMS state
   const [cmsData, setCmsData] = useState<{
-    // 6-bucket CMS
-    rawMaterial: any[]; rawMaterialCount: number; rawMaterialExpertCount: number; rawMaterialIrrelevantCount: number;
-    candidate: any[]; candidateCount: number;
+    // New 6-bucket CMS (flow: rawMaterial → topicCandidate → draftCandidate → published)
+    rawMaterial: any[]; rawMaterialCount: number;
+    topicCandidate: any[]; topicCandidateCount: number;
+    draftCandidate: any[]; draftCandidateCount: number;
     needsReview: any[]; needsReviewCount: number;
     published: any[]; publishedCount: number;
-    unpublished: any[]; unpublishedCount: number;
     invalid: any[]; invalidCount: number;
     // backward compat
+    candidate: any[]; candidateCount: number;
     newExpertInsights: any[]; sectionB: any[]; sectionBEmpty: boolean; publishedSummaries: any[];
     unpublishedSummaries: any[]; archivedRejectedUnpublished: any[]; candidateSummaries: any[];
-    sectionB2: any[]; sectionB2Count: number; sectionBEmptyReason: string | null;
+    sectionAIrrelevantCount: number;
+    rawMaterialExpertCount: number; rawMaterialIrrelevantCount: number;
   } | null>(null);
-  // Article management sub-tab (6-bucket)
-  const [articleTab, setArticleTab] = useState<'rawMaterial' | 'candidate' | 'needsReview' | 'published' | 'unpublished' | 'invalid'>('rawMaterial');
+  // Article management sub-tab (new 6-bucket flow)
+  const [articleTab, setArticleTab] = useState<'rawMaterial' | 'topicCandidate' | 'draftCandidate' | 'needsReview' | 'published' | 'invalid'>('topicCandidate');
   // Draft editing state
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editingDraftText, setEditingDraftText] = useState<string>('');
@@ -1630,12 +1632,12 @@ export default function ExpertsPage() {
               {/* Sub-tab switcher */}
               <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '2px solid #e5e5e5', paddingBottom: '0', flexWrap: 'wrap' }}>
                 {([
-                  ['rawMaterial', `📦 素材庫 (${cmsData?.rawMaterialCount ?? 0})`],
-                  ['candidate',   `📝 候選/草稿 (${cmsData?.candidateCount ?? 0})`],
-                  ['needsReview', `⚠️ 需審核 (${cmsData?.needsReviewCount ?? 0})`],
-                  ['published',   `✅ 已上架 (${cmsData?.publishedCount ?? 0})`],
-                  ['unpublished', `🚫 已下架 (${cmsData?.unpublishedCount ?? 0})`],
-                  ['invalid',     `❌ 壞資料 (${cmsData?.invalidCount ?? 0})`],
+                  ['rawMaterial',    `📦 素材庫 (${cmsData?.rawMaterialCount ?? 0})`],
+                  ['topicCandidate', `🎯 選題候選 (${cmsData?.topicCandidateCount ?? 0})`],
+                  ['draftCandidate', `📝 草稿候選 (${cmsData?.draftCandidateCount ?? 0})`],
+                  ['needsReview',    `⚠️ 需人工審核 (${cmsData?.needsReviewCount ?? 0})`],
+                  ['published',      `✅ 已上架 (${cmsData?.publishedCount ?? 0})`],
+                  ['invalid',        `❌ 無正文/壞資料 (${cmsData?.invalidCount ?? 0})`],
                 ] as const).map(([tab, label]) => (
                   <button key={tab} onClick={() => setArticleTab(tab as any)}
                     style={{ padding: '7px 14px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '12px',
@@ -1647,8 +1649,88 @@ export default function ExpertsPage() {
                 ))}
               </div>
 
-              {/* ── 候選/草稿文章 ── */}
-              {articleTab === 'candidate' && (
+              {/* ── 選題候選 (topicCandidate) ── */}
+              {articleTab === 'topicCandidate' && (
+                <section style={{ marginBottom: '32px' }}>
+                  <div style={{ marginBottom: '12px', fontSize: '13px', color: '#6b7280', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '10px 14px' }}>
+                    🎯 這些素材已通過 auto-triage 前端筌選，適合人工確認主題、決定是否生成草稿。
+                    <button
+                      onClick={async () => {
+                        setCmsMsg(null);
+                        try {
+                          const res = await fetch('/api/admin/insights/run-triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                          const d = await res.json();
+                          if (d.ok) { setCmsMsg(`✅ Auto-triage 完成：${d.total} 篇，選題候選 ${d.bucketCounts?.topic_candidate ?? 0} 篇`); fetchCmsData(); }
+                          else setCmsMsg(`❌ ${d.error || 'Triage 失敗'}`);
+                        } catch { setCmsMsg('❌ 網路錯誤'); }
+                      }}
+                      style={{ marginLeft: '12px', padding: '3px 10px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                    >🤖 重跟 Auto-triage</button>
+                  </div>
+                  {(!cmsData?.topicCandidate?.length) && !cmsLoading && (
+                    <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
+                      目前沒有選題候選。請先點「🤖 Auto-triage」將素材分流。
+                    </div>
+                  )}
+                  {(cmsData?.topicCandidate ?? []).map((s: any) => (
+                    <div key={s._id} style={{ border: '1px solid #bae6fd', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#f0f9ff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                            {s.jgTitle || s.video_title || s.title || s.articleTitle || s.topic || '(無標題)'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#555', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+                            <span>📅 {s.sourceDate || 'n/a'}</span>
+                            <span>📡 {s.sourceChannel || s.source || s.channel || 'n/a'}</span>
+                            <span>status: {s.status || 'unknown'}</span>
+                            {s.jgFitScore != null && (
+                              <span style={{ color: s.jgFitScore >= 75 ? '#16a34a' : s.jgFitScore >= 50 ? '#d97706' : '#9ca3af', fontWeight: 700 }}>
+                                🎯 {s.jgFitScore}分
+                              </span>
+                            )}
+                          </div>
+                          {Array.isArray(s.matchedThemes) && s.matchedThemes.length > 0 && (
+                            <div style={{ fontSize: '11px', color: '#0369a1', marginBottom: '2px' }}>🏷️ {s.matchedThemes.join(' / ')}</div>
+                          )}
+                          {Array.isArray(s.matchedStocks) && s.matchedStocks.length > 0 && (
+                            <div style={{ fontSize: '11px', color: '#f59e0b', marginBottom: '2px' }}>🎯 {s.matchedStocks.join(', ')}</div>
+                          )}
+                          {s.suggestedUse && (
+                            <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>💡 {s.suggestedUse}</div>
+                          )}
+                          <div style={{ fontSize: '11px', color: '#888', display: 'flex', gap: '8px', marginTop: '4px' }}>
+                            {(s.key_insights?.length || s.keyInsights?.length) && <span style={{ color: '#16a34a' }}>🔑 keyInsights</span>}
+                            {s.transcriptStored && <span style={{ color: '#2563eb' }}>📄 transcript</span>}
+                            {s.cleanArticleDraft && <span style={{ color: '#7c3aed' }}>✨ cleanDraft</span>}
+                            {s.editedArticleDraft && <span style={{ color: '#be185d' }}>✏️ editedDraft</span>}
+                          </div>
+                          {s.articleDecision && (
+                            <div style={{ fontSize: '11px', marginTop: '4px' }}>
+                              {s.articleDecision === 'draft_candidate' && <span style={{ color: '#16a34a' }}>🔥 適合成文</span>}
+                              {s.articleDecision === 'material_only' && <span style={{ color: '#d97706' }}>📚 只放素材庫</span>}
+                              {s.articleDecision === 'needs_review' && <span style={{ color: '#dc2626' }}>🔍 需審核</span>}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                          <button
+                            disabled={generatingDraftId === s._id}
+                            onClick={() => handleGenerateDraft(s._id)}
+                            style={{ ...btnStyle('#805ad5'), opacity: generatingDraftId === s._id ? 0.6 : 1 }}
+                          >
+                            {generatingDraftId === s._id ? '生成中…' : '✍️ 生成草稿'}
+                          </button>
+                          <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {/* ── 草稿候選 (draftCandidate) ── */}
+              {articleTab === 'draftCandidate' && (
                 <section style={{ marginBottom: '32px' }}>
                   <div className="mb-3" style={{ marginBottom: '12px' }}>
                     <label style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>近期市場方向（可選，供生成草稿參考）</label>
@@ -1660,12 +1742,12 @@ export default function ExpertsPage() {
                       style={{ width: '100%', fontSize: '13px', background: '#1f2937', color: '#f9fafb', border: '1px solid #4b5563', borderRadius: '6px', padding: '8px 12px', resize: 'vertical', fontFamily: 'inherit' }}
                     />
                   </div>
-                  {(!cmsData?.candidate?.length) && !cmsLoading && (
+                  {(!cmsData?.draftCandidate?.length) && !cmsLoading && (
                     <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
-                      目前沒有候選草稿。請先在素材庫中將 expert_insight 轉為候選。
+                      目前沒有草稿候選。要進入此區需段：status=candidate + 有 cleanDraft 或 editedDraft。
                     </div>
                   )}
-                  {(cmsData?.candidate ?? []).map((s: any) => (
+                  {(cmsData?.draftCandidate ?? []).map((s: any) => (
                     <div key={s._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1824,13 +1906,13 @@ export default function ExpertsPage() {
                 </section>
               )}
 
-              {/* ── 已下架文章 ── */}
-              {articleTab === 'unpublished' && (
+              {/* ── 已下架文章 (已移除， unpublished bucket 不再使用) ── */}
+              {articleTab === ('unpublished' as any) && (
                 <section style={{ marginBottom: '32px' }}>
-                  {!cmsData?.unpublished?.length && !cmsLoading && (
+                  {!cmsData?.unpublishedSummaries?.length && !cmsLoading && (
                     <div style={{ color: '#888', fontSize: '14px', padding: '20px', textAlign: 'center' }}>無已下架文章</div>
                   )}
-                  {(cmsData?.unpublished ?? []).map((s: any) => (
+                  {(cmsData?.unpublishedSummaries ?? []).map((s: any) => (
                     <div key={s._id} style={{ border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fffbeb' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
