@@ -3,11 +3,8 @@ import { checkAdminStatus } from '@/lib/admin';
 import getClientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
-// Banned broadcast / podcast phrases
-const BROADCAST_BANNED = ['大家好', '歡迎回到', '記得按讚', '訂閱', '開啟小鈴鐺'];
-
-// JG 待補內容 / 後台操作指令（publish blocker）
-const JG_PENDING_BLOCKERS = [
+// Publish blockers — content with these phrases cannot be published
+const PUBLISH_BLOCKERS = [
   '【JG 觀點待補】',
   '《JG 觀點待補》',
   '請從上面候選方向',
@@ -18,44 +15,8 @@ const JG_PENDING_BLOCKERS = [
   'TODO for JG',
   '請 JG',
   '後台操作指令',
+  'TODO',
 ];
-
-function lintSummary(doc: Record<string, unknown>): string[] {
-  const errors: string[] = [];
-
-  // 1. needsDraft check done before calling this function
-  // 2. article / body
-  if (!doc.article && !doc.body) errors.push('needs_article_body');
-  // 3. title / jgTitle
-  if (!doc.title && !doc.jgTitle) errors.push('title_missing');
-  // 4. sourceDate
-  if (!doc.sourceDate) errors.push('sourceDate_missing');
-  // 5. analysisDate
-  if (!doc.analysisDate) errors.push('analysisDate_missing');
-  // 6. articleType
-  if (!doc.articleType) errors.push('articleType_missing');
-  // 7. tags
-  if (!doc.tags || (Array.isArray(doc.tags) && (doc.tags as unknown[]).length === 0)) errors.push('tags_missing');
-  // 8. 禁用口播詞
-  const articleText = ((doc.article || doc.body || '') as string);
-  for (const phrase of BROADCAST_BANNED) {
-    if (articleText.includes(phrase)) errors.push(`banned_phrase:${phrase}`);
-  }
-  // 8b. JG 待補內容 / 後台操作指令 — publish blocker
-  for (const blocker of JG_PENDING_BLOCKERS) {
-    if (articleText.includes(blocker)) {
-      errors.push('jg_pending_content:文章仍包含 JG 待補內容或後台操作指令，不能上架');
-      break;
-    }
-  }
-  // 9. source_thin
-  if (doc.source_thin === true) errors.push('source_thin');
-  // 10. topic / source
-  if (!doc.topic) errors.push('topic_missing');
-  if (!doc.source) errors.push('source_missing');
-
-  return errors;
-}
 
 export async function POST(req: NextRequest) {
   const authResult = await checkAdminStatus();
@@ -84,32 +45,27 @@ export async function POST(req: NextRequest) {
   const doc = await db.collection('summaries').findOne({ _id: objectId });
   if (!doc) return NextResponse.json({ error: 'Summary not found' }, { status: 404 });
 
-  // Rule 1: needsDraft=true → block immediately
-  if (doc.needsDraft === true) {
-    const lintErrors = ['needs_article_body'];
-    await db.collection('summaries').updateOne(
-      { _id: objectId },
-      { $set: { lintStatus: 'fail', lintErrors, updatedAt: new Date().toISOString() } }
-    );
+  // Source must be editedArticleDraft or cleanArticleDraft — NOT raw articleDraft
+  const source = (doc.editedArticleDraft || doc.cleanArticleDraft) as string | undefined;
+
+  if (!source || !source.trim()) {
     return NextResponse.json(
-      { ok: false, lintStatus: 'fail', lintErrors, message: '尚未成稿，不能上架' },
+      {
+        ok: false,
+        error: '發佈需要先有 editedArticleDraft 或 cleanArticleDraft。請先清理草稿或人工編輯後再發佈。',
+      },
       { status: 400 }
     );
   }
 
-  // Run full lint
-  const lintErrors = lintSummary(doc as Record<string, unknown>);
-  const lintStatus: 'pass' | 'fail' = lintErrors.length === 0 ? 'pass' : 'fail';
-
-  // Always persist lint result
-  await db.collection('summaries').updateOne(
-    { _id: objectId },
-    { $set: { lintStatus, lintErrors, updatedAt: new Date().toISOString() } }
-  );
-
-  if (lintStatus === 'fail') {
+  // Check for publish blockers
+  const blockerFound = PUBLISH_BLOCKERS.find(p => source.includes(p));
+  if (blockerFound) {
     return NextResponse.json(
-      { ok: false, lintStatus, lintErrors, message: 'Lint 不通過，無法上架' },
+      {
+        ok: false,
+        error: `草稿含有後台提示，不能發佈：「${blockerFound}」`,
+      },
       { status: 400 }
     );
   }
@@ -119,15 +75,16 @@ export async function POST(req: NextRequest) {
     { _id: objectId },
     {
       $set: {
+        publishedArticle: source,
         alphaReady: true,
         status: 'published',
         publishedAt: now,
+        publishedBy: authResult.email || 'admin',
+        publishSource: 'admin_manual_publish',
         updatedAt: now,
-        lintStatus,
-        lintErrors,
       },
     }
   );
 
-  return NextResponse.json({ ok: true, lintStatus, lintErrors, publishedAt: now });
+  return NextResponse.json({ ok: true, publishedAt: now });
 }

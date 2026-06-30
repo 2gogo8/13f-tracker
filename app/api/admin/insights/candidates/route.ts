@@ -140,9 +140,25 @@ export async function GET(req: NextRequest) {
     .limit(limit)
     .toArray();
 
-  // D. Rejected / archived / unpublished
+  // D. Unpublished summaries (separate from rejected/archived)
+  const unpublishedFilter: Record<string, unknown> = { status: 'unpublished' };
+  if (q) {
+    unpublishedFilter['$or'] = [
+      { title: { $regex: q, $options: 'i' } },
+      { jgTitle: { $regex: q, $options: 'i' } },
+      { topic: { $regex: q, $options: 'i' } },
+    ];
+  }
+  const unpublishedSummaries = await db
+    .collection('summaries')
+    .find(unpublishedFilter)
+    .sort({ unpublishedAt: -1 })
+    .limit(limit)
+    .toArray();
+
+  // E. Rejected / archived
   const archivedFilter: Record<string, unknown> = {
-    status: { $in: ['rejected', 'archived', 'unpublished'] },
+    status: { $in: ['rejected', 'archived'] },
   };
   if (q) {
     archivedFilter['$or'] = [
@@ -177,6 +193,7 @@ export async function GET(req: NextRequest) {
     // 向下相容
     candidateSummaries,
     publishedSummaries,
+    unpublishedSummaries,
     archivedRejectedUnpublished: [
       ...archivedSummaries.map(d => ({ ...d, _source: 'summary' })),
       ...archivedInsights.map(d => ({ ...d, _source: 'expert_insight' })),
