@@ -4,6 +4,21 @@ import getClientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import Anthropic from '@anthropic-ai/sdk';
 
+// Publish blockers — drafts containing these cannot be published directly
+const PUBLISH_BLOCKERS = [
+  '【JG 觀點待補】',
+  '《JG 觀點待補》',
+  '請從上面候選方向',
+  '候選方向中選一個',
+  '改寫成正式 JG 判斷',
+  'reviewer note',
+  'internal instruction',
+  'TODO for JG',
+  '請 JG',
+  '後台操作指令',
+  'TODO',
+];
+
 function getAnthropicClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 }
@@ -304,7 +319,7 @@ articleDraft 格式（固定格式，markdown，用 \\n 換行）：
         articleType: 'expert_note',
         tags,
         needsDraft: false,
-        draftStatus: 'draft_ready',
+        draftStatus: PUBLISH_BLOCKERS.some(b => draftBody.includes(b)) ? 'draft_needs_review' : 'draft_ready',
         lintStatus: 'pending',
         lintErrors: [],
         generatedAt,

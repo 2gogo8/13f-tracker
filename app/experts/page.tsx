@@ -102,6 +102,7 @@ export default function ExpertsPage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   // Workbench: publish confirm dialog
   const [publishConfirmDoc, setPublishConfirmDoc] = useState<any | null>(null);
+  const [publishDialogError, setPublishDialogError] = useState<string | null>(null);
   // Workbench: batch V2 dry-run dialog
   const [showBatchV2Dialog, setShowBatchV2Dialog] = useState(false);
   const [batchV2DryRunData, setBatchV2DryRunData] = useState<any | null>(null);
@@ -1986,7 +1987,9 @@ export default function ExpertsPage() {
                     {sorted.map((s: any) => {
                       const cardInfo = getWorkbenchCardInfo(s);
                       const hasDraft = !!(s.editedArticleDraft || s.cleanArticleDraft || s.articleDraft);
-                      const v2Completed = s.keyInsightsV2Status === 'completed';
+                      // 有效 completed：status=completed + 實際有 insights（排除假 completed）
+                      const v2Completed = s.keyInsightsV2Status === 'completed' &&
+                        ((s.insightsCount ?? 0) > 0 || (Array.isArray(s.keyInsightsV2) && s.keyInsightsV2.length > 0));
                       const usable = hasUsableContent(s);
                       const isYT = !!(s.youtube_id || s.rawExpertInsight?.youtube_id);
                       const hasArticleText = !isYT && (
@@ -2071,9 +2074,13 @@ export default function ExpertsPage() {
                               {/* 發佈 */}
                               <button
                                 disabled={!publishEnabled || publishingId === s._id}
-                                title={!publishEnabled ? '尚未生成草稿，請先點「生成草稿」' : ''}
+                                title={!publishEnabled ? '尚未生成草稿，或草稿含待補內容' : ''}
                                 onClick={() => {
-                                  if (!publishEnabled) return;
+                                  if (!publishEnabled) {
+                                    alert('尚未生成草稿，或草稿含待補內容，請先完成草稿');
+                                    return;
+                                  }
+                                  setPublishDialogError(null);
                                   setPublishConfirmDoc(s);
                                 }}
                                 style={{
@@ -2895,19 +2902,24 @@ export default function ExpertsPage() {
                   disabled={publishingId === s._id}
                   onClick={async () => {
                     setPublishingId(s._id);
-                    setPublishConfirmDoc(null);
+                    setPublishDialogError(null);
                     setCmsMsg(null);
                     try {
                       const r = await fetch('/api/admin/insights/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summaryId: s._id }) });
                       const d = await r.json();
-                      if (d.ok) { setCmsMsg('✅ 已發佈上架'); fetchCmsData(); }
-                      else setCmsMsg(`❌ ${d.error || '發佈失敗'}`);
-                    } catch { setCmsMsg('❌ 網路錯誤'); }
+                      if (d.ok) { setPublishConfirmDoc(null); setCmsMsg('✅ 已發佈上架'); fetchCmsData(); }
+                      else { setPublishDialogError(`❌ ${d.error || '發佈失敗'}`); setCmsMsg(`❌ ${d.error || '發佈失敗'}`); }
+                    } catch { setPublishDialogError('❌ 網路錯誤'); setCmsMsg('❌ 網路錯誤'); }
                     finally { setPublishingId(null); }
                   }}
                   style={{ padding: '8px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', cursor: publishingId === s._id ? 'wait' : 'pointer', fontWeight: 700, fontSize: '13px', opacity: publishingId === s._id ? 0.6 : 1 }}
                 >{publishingId === s._id ? '發佈中...' : '確認發佈'}</button>
               </div>
+              {publishDialogError && (
+                <div style={{ marginTop: '12px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', fontSize: '13px', color: '#dc2626', fontWeight: 600 }}>
+                  {publishDialogError}
+                </div>
+              )}
             </div>
           </div>
         );
