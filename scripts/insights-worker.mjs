@@ -258,7 +258,7 @@ async function processSummary(db, anthropic, summaryId, options = {}) {
     return { ok: false };
   }
 
-  const title = summary.title || summary.jgTitle || '(untitled)';
+  const title = summary.jgTitle || summary.title || summary.video_title || summary.articleTitle || summary.rawExpertInsight?.title || '(untitled)';
   console.log(`\n${'═'.repeat(60)}`);
   console.log(`📄 ${title}`);
   console.log(`   ID: ${summaryId}`);
@@ -275,7 +275,7 @@ async function processSummary(db, anthropic, summaryId, options = {}) {
 
   const chunks = chunkTranscript(fullTranscript);
   const totalChunks = chunks.length;
-  const videoTitle = summary.title || summary.jgTitle || '';
+  const videoTitle = summary.jgTitle || summary.title || summary.video_title || summary.articleTitle || summary.rawExpertInsight?.title || '';
   const channel = summary.sourceChannel || summary.rawExpertInsight?.channel || '';
 
   console.log(`   Transcript: ${fullTranscript.length.toLocaleString()} chars | ${totalChunks} chunks`);
