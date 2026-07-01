@@ -45,14 +45,14 @@ export async function POST(req: NextRequest) {
   const doc = await db.collection('summaries').findOne({ _id: objectId });
   if (!doc) return NextResponse.json({ error: 'Summary not found' }, { status: 404 });
 
-  // Source must be editedArticleDraft or cleanArticleDraft — NOT raw articleDraft
-  const source = (doc.editedArticleDraft || doc.cleanArticleDraft) as string | undefined;
+  // Source: prefer editedArticleDraft > cleanArticleDraft > article (legacy fallback)
+  const source = (doc.editedArticleDraft || doc.cleanArticleDraft || doc.article || doc.body) as string | undefined;
 
   if (!source || !source.trim()) {
     return NextResponse.json(
       {
         ok: false,
-        error: '發佈需要先有 editedArticleDraft 或 cleanArticleDraft。請先清理草稿或人工編輯後再發佈。',
+        error: '發佈需要先有草稿內容。請先生成草稿再發佈。',
       },
       { status: 400 }
     );
