@@ -16,11 +16,13 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { id, type = 'summary', action, reviewNote, metadata } = body as {
+  const { id, type = 'summary', action, reviewNote, rejectionReason, archivedReason, metadata } = body as {
     id: string;
     type?: TargetType;
     action: Action;
     reviewNote?: string;
+    rejectionReason?: string;
+    archivedReason?: string;
     metadata?: Record<string, unknown>;
   };
 
@@ -46,7 +48,11 @@ export async function POST(req: NextRequest) {
       update = { status: 'unpublished', alphaReady: false, unpublishedAt: now, updatedAt: now };
       break;
     case 'archive':
-      update = { status: 'archived', alphaReady: false, archivedAt: now, updatedAt: now };
+      update = {
+        status: 'archived', alphaReady: false, archivedAt: now, updatedAt: now,
+        ...(archivedReason ? { archivedReason } : {}),
+        ...(reviewNote ? { reviewNote } : {}),
+      };
       break;
     case 'reject':
       update = {
@@ -54,6 +60,7 @@ export async function POST(req: NextRequest) {
         alphaReady: false,
         rejectedAt: now,
         updatedAt: now,
+        ...(rejectionReason ? { rejectionReason } : {}),
         ...(reviewNote ? { reviewNote } : {}),
       };
       break;

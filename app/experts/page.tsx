@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { normalizeSummary } from '@/lib/insights/normalizeSummary';
+import { normalizeSummary, getWorkbenchCardInfo, hasUsableContent } from '@/lib/insights/normalizeSummary';
 
 interface Interview {
   date: string;
@@ -64,7 +64,7 @@ export default function ExpertsPage() {
     rawMaterialExpertCount: number; rawMaterialIrrelevantCount: number;
   } | null>(null);
   // Article management sub-tab (new 6-bucket flow)
-  const [articleTab, setArticleTab] = useState<'rawMaterial' | 'topicCandidate' | 'draftCandidate' | 'needsReview' | 'published' | 'invalid'>('topicCandidate');
+  const [articleTab, setArticleTab] = useState<'rawMaterial' | 'contentWorkbench' | 'needsReview' | 'published' | 'invalid'>('contentWorkbench');
   // Draft editing state
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editingDraftText, setEditingDraftText] = useState<string>('');
@@ -91,6 +91,17 @@ export default function ExpertsPage() {
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [marketDirectionsText, setMarketDirectionsText] = useState('');
+
+  // Workbench: reject dropdown
+  const [rejectDropdownId, setRejectDropdownId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState<string>('');
+  const [rejectReasonOther, setRejectReasonOther] = useState<string>('');
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  // Workbench: publish confirm dialog
+  const [publishConfirmDoc, setPublishConfirmDoc] = useState<any | null>(null);
+  // Workbench: batch V2 dry-run dialog
+  const [showBatchV2Dialog, setShowBatchV2Dialog] = useState(false);
+  const [batchV2DryRunData, setBatchV2DryRunData] = useState<any | null>(null);
 
   // 自動挑片狀態
   const [rankingContext, setRankingContext] = useState('');
@@ -321,10 +332,10 @@ export default function ExpertsPage() {
     }
   }
 
-  const openPreview = async (id: string, type: 'summary' | 'expert_insight') => {
+  const openPreview = async (id: string, type: 'summary' | 'expert_insight', defaultTab?: 'draft' | 'insights' | 'insightsV2' | 'transcript' | 'source') => {
     setCmsPreviewLoading(true);
     setCmsPreview(null);
-    setPreviewTab('draft');
+    setPreviewTab(defaultTab ?? 'draft');
     setTranscriptData(null);
     setTranscriptError(null);
     // Reset draft editing state when switching articles
@@ -612,6 +623,50 @@ export default function ExpertsPage() {
     } catch (err) {
       console.error('Remove interview failed:', err);
     }
+  };
+
+  // Workbench: reject handler
+  const handleReject = async (s: any, reason: string, otherText: string) => {
+    const finalReason = reason === '其他（可輸入文字）' ? otherText.trim() : reason;
+    if (!finalReason) { alert('請選擇拒絕原因'); return; }
+    const isArchive = reason === '封存（待後續處理）';
+    setRejectingId(s._id);
+    setRejectDropdownId(null);
+    setRejectReason('');
+    setRejectReasonOther('');
+    setCmsMsg(null);
+    try {
+      const res = await fetch('/api/admin/insights/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: s._id,
+          action: isArchive ? 'archive' : 'reject',
+          rejectionReason: isArchive ? undefined : finalReason,
+          archivedReason: isArchive ? finalReason : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) { setCmsMsg(isArchive ? '✅ 已封存' : '✅ 已拒絕'); fetchCmsData(); }
+      else setCmsMsg(`❌ ${data.error || '操作失敗'}`);
+    } catch { setCmsMsg('❌ 網路錯誤'); }
+    finally { setRejectingId(null); }
+  };
+
+  // Workbench: batch V2 dry-run (compute locally from cmsData)
+  const handleBatchV2DryRun = () => {
+    if (!cmsData) return;
+    const all = [...(cmsData.topicCandidate ?? []), ...(cmsData.draftCandidate ?? [])];
+    const toRun = all.filter((d: any) => d.keyInsightsV2Status !== 'completed' && hasUsableContent(d));
+    const toSkip = all.filter((d: any) => d.keyInsightsV2Status === 'completed');
+    const totalChunks = toRun.reduce((sum: number, d: any) => {
+      const chunks = d.totalChunks ?? (d.transcriptLength ? Math.ceil(d.transcriptLength / 10000) : 2);
+      return sum + chunks;
+    }, 0);
+    const estimateMin = Math.max(1, Math.round(totalChunks * 0.3));
+    const estimateMax = Math.max(2, Math.round(totalChunks * 0.5));
+    setBatchV2DryRunData({ toRun, toSkip, totalChunks, estimateMin, estimateMax });
+    setShowBatchV2Dialog(true);
   };
 
   if (status === 'loading' || status === 'unauthenticated') {
@@ -1842,17 +1897,16 @@ export default function ExpertsPage() {
               })}
             </section>
 
-            {/* ── 文章管理 6 Tab ── */}
+            {/* ── 文章管理 Tab ── */}
             <div style={{ marginTop: '8px' }}>
               {/* Sub-tab switcher */}
               <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '2px solid #e5e5e5', paddingBottom: '0', flexWrap: 'wrap' }}>
                 {([
-                  ['rawMaterial',    `📦 素材庫 (${cmsData?.rawMaterialCount ?? 0})`],
-                  ['topicCandidate', `🎯 選題候選 (${cmsData?.topicCandidateCount ?? 0})`],
-                  ['draftCandidate', `📝 草稿候選 (${cmsData?.draftCandidateCount ?? 0})`],
-                  ['needsReview',    `⚠️ 需人工審核 (${cmsData?.needsReviewCount ?? 0})`],
-                  ['published',      `✅ 已上架 (${cmsData?.publishedCount ?? 0})`],
-                  ['invalid',        `❌ 無正文/壞資料 (${cmsData?.invalidCount ?? 0})`],
+                  ['rawMaterial',       `📦 素材庫 (${cmsData?.rawMaterialCount ?? 0})`],
+                  ['contentWorkbench',  `📋 內容候選 (${(cmsData?.topicCandidateCount ?? 0) + (cmsData?.draftCandidateCount ?? 0)})`],
+                  ['published',         `✅ 已上架 (${cmsData?.publishedCount ?? 0})`],
+                  ['needsReview',       `⚠️ 需審核 (${cmsData?.needsReviewCount ?? 0})`],
+                  ['invalid',           `❌ 無正文 (${cmsData?.invalidCount ?? 0})`],
                 ] as const).map(([tab, label]) => (
                   <button key={tab} onClick={() => setArticleTab(tab as any)}
                     style={{ padding: '7px 14px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '12px',
@@ -1864,338 +1918,233 @@ export default function ExpertsPage() {
                 ))}
               </div>
 
-              {/* ── 選題候選 (topicCandidate) ── */}
-              {articleTab === 'topicCandidate' && (
-                <section style={{ marginBottom: '32px' }}>
-                  <div style={{ marginBottom: '12px', fontSize: '13px', color: '#6b7280', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '10px 14px' }}>
-                    🎯 這些素材已通過 auto-triage 前端筌選，適合人工確認主題、決定是否生成草稿。
-                    <button
-                      onClick={async () => {
-                        setCmsMsg(null);
-                        try {
-                          const res = await fetch('/api/admin/insights/run-triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-                          const d = await res.json();
-                          if (d.ok) { setCmsMsg(`✅ Auto-triage 完成：${d.total} 篇，選題候選 ${d.bucketCounts?.topic_candidate ?? 0} 篇`); fetchCmsData(); }
-                          else setCmsMsg(`❌ ${d.error || 'Triage 失敗'}`);
-                        } catch { setCmsMsg('❌ 網路錯誤'); }
-                      }}
-                      style={{ marginLeft: '12px', padding: '3px 10px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
-                    >🤖 重跟 Auto-triage</button>
-                    <button
-                      disabled={!!generatingV2Id}
-                      onClick={async () => {
-                        setGeneratingV2Id('batch');
-                        setCmsMsg(null);
-                        try {
-                          const res = await fetch('/api/admin/insights/batch-key-insights-v2', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ mode: 'all_with_transcript' }),
-                          });
-                          const data = await res.json();
-                          if (data.ok) {
-                            const summary = data.results?.map((r: any) => `${r.summaryId.slice(-6)}: ${r.status} (${r.insightsCount})`).join(' | ');
-                            setCmsMsg(`✅ 批次 V2 完成：${data.totalProcessed} 篇 | ${summary}`);
-                            fetchCmsData();
-                          } else {
-                            setCmsMsg(`❌ ${data.error || '批次處理失敗'}`);
-                          }
-                        } catch { setCmsMsg('❌ 網路錯誤'); }
-                        finally { setGeneratingV2Id(null); }
-                      }}
-                      style={{ marginLeft: '6px', padding: '3px 10px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '4px', cursor: generatingV2Id ? 'wait' : 'pointer', fontSize: '12px', fontWeight: 600, opacity: generatingV2Id ? 0.6 : 1 }}
-                    >{generatingV2Id === 'batch' ? '⏳ 批次處理中...' : '🔬 批次產生 V2（有 transcript）'}</button>
-                    <button
-                      disabled={!!generatingV2Id}
-                      onClick={async () => {
-                        setGeneratingV2Id('batch-failed');
-                        setCmsMsg(null);
-                        try {
-                          const res = await fetch('/api/admin/insights/batch-key-insights-v2', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ mode: 'failed_only' }),
-                          });
-                          const data = await res.json();
-                          if (data.ok) {
-                            setCmsMsg(`✅ 重處理完成：${data.totalProcessed} 篇`);
-                            fetchCmsData();
-                          } else {
-                            setCmsMsg(`❌ ${data.error || '重處理失敗'}`);
-                          }
-                        } catch { setCmsMsg('❌ 網路錯誤'); }
-                        finally { setGeneratingV2Id(null); }
-                      }}
-                      style={{ marginLeft: '6px', padding: '3px 10px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '4px', cursor: generatingV2Id ? 'wait' : 'pointer', fontSize: '12px', fontWeight: 600, opacity: generatingV2Id ? 0.6 : 1 }}
-                    >{generatingV2Id === 'batch-failed' ? '⏳...' : '🔄 重處理失敗/部分完成'}</button>
-                  </div>
-                  {(!cmsData?.topicCandidate?.length) && !cmsLoading && (
-                    <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
-                      目前沒有選題候選。請先點「🤖 Auto-triage」將素材分流。
+              {/* ── 內容候選 (contentWorkbench) ── */}
+              {articleTab === 'contentWorkbench' && (() => {
+                const allItems = [
+                  ...(cmsData?.topicCandidate ?? []),
+                  ...(cmsData?.draftCandidate ?? []),
+                ];
+                const sorted = [...allItems].sort((a, b) => {
+                  const pa = getWorkbenchCardInfo(a).priority;
+                  const pb = getWorkbenchCardInfo(b).priority;
+                  return pa - pb;
+                });
+                const REJECT_REASONS = [
+                  '不是投資內容', '重複題材', '品質低／資訊太少',
+                  '無可用內容（無逐字稿也無文章）', '主題不適合本頻道',
+                  '已過時（超過 3 個月）', '其他（可輸入文字）', '封存（待後續處理）',
+                ];
+                return (
+                  <section style={{ marginBottom: '32px' }}>
+                    {/* Toolbar */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', alignItems: 'center' }}>
+                      <button
+                        onClick={async () => {
+                          setCmsMsg(null);
+                          try {
+                            const res = await fetch('/api/admin/insights/run-triage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+                            const d = await res.json();
+                            if (d.ok) { setCmsMsg(`✅ Auto-triage 完成：${d.total} 篇，選題候選 ${d.bucketCounts?.topic_candidate ?? 0} 篇`); fetchCmsData(); }
+                            else setCmsMsg(`❌ ${d.error || 'Triage 失敗'}`);
+                          } catch { setCmsMsg('❌ 網路錯誤'); }
+                        }}
+                        style={{ padding: '5px 12px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                      >🤖 Auto-triage</button>
+                      <button
+                        onClick={handleBatchV2DryRun}
+                        style={{ padding: '5px 12px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
+                      >🔬 批次 V2 ▼</button>
+                      <button
+                        disabled={!!generatingV2Id}
+                        onClick={async () => {
+                          setGeneratingV2Id('batch-failed');
+                          setCmsMsg(null);
+                          try {
+                            const res = await fetch('/api/admin/insights/batch-key-insights-v2', {
+                              method: 'POST', headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ mode: 'failed_only' }),
+                            });
+                            const data = await res.json();
+                            if (data.ok) { setCmsMsg(`✅ 重處理完成：${data.totalProcessed} 篇`); fetchCmsData(); }
+                            else setCmsMsg(`❌ ${data.error || '重處理失敗'}`);
+                          } catch { setCmsMsg('❌ 網路錯誤'); }
+                          finally { setGeneratingV2Id(null); }
+                        }}
+                        style={{ padding: '5px 12px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '5px', cursor: generatingV2Id ? 'wait' : 'pointer', fontSize: '12px', fontWeight: 600, opacity: generatingV2Id ? 0.6 : 1 }}
+                      >{generatingV2Id === 'batch-failed' ? '⏳...' : '🔄 重處理失敗'}</button>
                     </div>
-                  )}
-                  {(cmsData?.topicCandidate ?? []).map((s: any) => (
-                    <div key={s._id} style={{ border: '1px solid #bae6fd', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#f0f9ff' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
-                            {s.jgTitle || s.video_title || s.title || s.articleTitle || s.topic || '(無標題)'}
+
+                    {sorted.length === 0 && !cmsLoading && (
+                      <div style={{ color: '#9ca3af', fontSize: '14px', padding: '24px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
+                        目前沒有內容候選。請先點「🤖 Auto-triage」將素材分流。
+                      </div>
+                    )}
+
+                    {sorted.map((s: any) => {
+                      const cardInfo = getWorkbenchCardInfo(s);
+                      const hasDraft = !!(s.editedArticleDraft || s.cleanArticleDraft || s.articleDraft);
+                      const v2Completed = s.keyInsightsV2Status === 'completed';
+                      const usable = hasUsableContent(s);
+                      const isYT = !!(s.youtube_id || s.rawExpertInsight?.youtube_id);
+                      const hasArticleText = !isYT && (
+                        ((s.summaries?.article || s.body || s.article) || '').trim().length > 100
+                      );
+                      // Draft button logic
+                      const draftEnabled = !hasDraft && (v2Completed || hasArticleText);
+                      const draftDisabledTitle = hasDraft ? '' : (!usable ? '無可用內容，無法生成草稿' : '請先完成 V2 全文洞察');
+                      // Publish button logic
+                      const publishEnabled = s.draftStatus === 'draft_ready';
+                      // Smart preview default tab
+                      const previewDefaultTab: 'insightsV2' | 'draft' = v2Completed ? 'insightsV2' : 'draft';
+                      const isRejectOpen = rejectDropdownId === s._id;
+
+                      return (
+                        <div key={s._id} style={{ border: `1px solid ${cardInfo.border}`, borderRadius: '8px', padding: '12px', marginBottom: '10px', background: cardInfo.bg, position: 'relative' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                            {/* Left: info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {/* Status badge */}
+                              <div style={{ marginBottom: '4px' }}>
+                                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '10px', fontSize: '11px', fontWeight: 700, color: cardInfo.color, background: cardInfo.bg, border: `1px solid ${cardInfo.border}` }}>
+                                  {cardInfo.label}
+                                </span>
+                              </div>
+                              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                                {s.jgTitle || s.video_title || s.title || s.articleTitle || s.topic || '(無標題)'}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#555', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
+                                <span>📅 {s.sourceDate || 'n/a'}</span>
+                                <span>📡 {s.sourceChannel || s.source || s.channel || 'n/a'}</span>
+                                {s.investmentRelevanceScore != null && (
+                                  <span style={{ color: '#0369a1', fontWeight: 700 }}>
+                                    投:{s.investmentRelevanceScore} 值:{s.topicValueScore ?? '-'} 品:{s.editorialFitScore ?? '-'}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#888', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {s.keyInsightsV2Status && s.keyInsightsV2Status !== 'not_started' && (
+                                  <span style={{
+                                    color: v2Completed ? '#16a34a' : s.keyInsightsV2Status === 'running' ? '#2563eb' : s.keyInsightsV2Status === 'partial' ? '#d97706' : '#dc2626',
+                                    fontWeight: 600,
+                                  }}>
+                                    🔬 V2:{s.keyInsightsV2Status}
+                                    {s.insightsCount != null && ` (${s.insightsCount}條)`}
+                                    {s.coveragePercent != null && ` ${s.coveragePercent}%`}
+                                    {s.processedChunks != null && s.totalChunks != null && ` [${s.processedChunks}/${s.totalChunks}]`}
+                                  </span>
+                                )}
+                                {hasDraft && <span style={{ color: '#16a34a' }}>📝 草稿:{s.draftStatus || 'ready'}</span>}
+                                {(s.transcriptStored || s.youtube_id) && <span style={{ color: '#2563eb' }}>📄 transcript</span>}
+                                {Array.isArray(s.matchedThemes) && s.matchedThemes.length > 0 && (
+                                  <span style={{ color: '#0369a1' }}>🏷️ {s.matchedThemes.join(' / ')}</span>
+                                )}
+                              </div>
+                              {!v2Completed && hasDraft && (
+                                <div style={{ marginTop: '4px', fontSize: '11px', color: '#d97706' }}>⚠️ V2 洞察尚未完成</div>
+                              )}
+                            </div>
+                            {/* Right: buttons */}
+                            <div style={{ display: 'flex', gap: '5px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '320px' }}>
+                              {/* Preview */}
+                              <button
+                                onClick={() => openPreview(s._id, 'summary', previewDefaultTab)}
+                                style={btnStyle('#6c757d')}
+                              >Preview</button>
+
+                              {/* 生成草稿 */}
+                              <button
+                                disabled={!draftEnabled || generatingDraftId === s._id}
+                                onClick={() => draftEnabled && handleGenerateDraft(s._id)}
+                                title={draftDisabledTitle}
+                                style={{
+                                  ...btnStyle(hasDraft ? '#38a169' : draftEnabled ? '#805ad5' : '#aaa'),
+                                  opacity: (!draftEnabled || generatingDraftId === s._id) ? 0.6 : 1,
+                                  cursor: (!draftEnabled || generatingDraftId === s._id) ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                {hasDraft ? '✅ 已有草稿' : generatingDraftId === s._id ? '生成中…' : '✍️ 生成草稿'}
+                              </button>
+
+                              {/* 發佈 */}
+                              <button
+                                disabled={!publishEnabled || publishingId === s._id}
+                                title={!publishEnabled ? '尚未生成草稿，請先點「生成草稿」' : ''}
+                                onClick={() => {
+                                  if (!publishEnabled) return;
+                                  setPublishConfirmDoc(s);
+                                }}
+                                style={{
+                                  ...btnStyle('#28a745'),
+                                  opacity: (!publishEnabled || publishingId === s._id) ? 0.5 : 1,
+                                  cursor: (!publishEnabled || publishingId === s._id) ? 'not-allowed' : 'pointer',
+                                }}
+                              >{publishingId === s._id ? '發佈中...' : '🚀 發佈'}</button>
+
+                              {/* 拒絕▼ */}
+                              <button
+                                disabled={rejectingId === s._id}
+                                onClick={() => {
+                                  if (rejectDropdownId === s._id) {
+                                    setRejectDropdownId(null);
+                                  } else {
+                                    setRejectDropdownId(s._id);
+                                    setRejectReason('');
+                                    setRejectReasonOther('');
+                                  }
+                                }}
+                                style={{ ...btnStyle('#dc3545'), opacity: rejectingId === s._id ? 0.6 : 1 }}
+                              >{rejectingId === s._id ? '⏳...' : '拒絕▼'}</button>
+
+                              {/* Meta */}
+                              <button
+                                onClick={() => { setCmsEditId(s._id); setCmsEditMeta({ jgTitle: s.jgTitle || '', displaySection: s.displaySection || '', articleType: s.articleType || '', sortOrder: s.sortOrder ?? 0, isPinned: !!s.isPinned, tags: s.tags || [] }); }}
+                                style={btnStyle('#0070f3')}
+                              >Meta</button>
+                            </div>
                           </div>
-                          <div style={{ fontSize: '11px', color: '#555', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '4px' }}>
-                            <span>📅 {s.sourceDate || 'n/a'}</span>
-                            <span>📡 {s.sourceChannel || s.source || s.channel || 'n/a'}</span>
-                            <span>status: {s.status || 'unknown'}</span>
-                            {s.investmentRelevanceScore != null && (
-                              <span style={{ color: s.investmentRelevanceScore >= 60 ? '#16a34a' : s.investmentRelevanceScore >= 30 ? '#d97706' : '#9ca3af', fontWeight: 700 }}>
-                                📊 投:{s.investmentRelevanceScore} 值:{s.topicValueScore ?? '-'} 品:{s.editorialFitScore ?? '-'}
-                              </span>
-                            )}
-                          </div>
-                          {Array.isArray(s.matchedThemes) && s.matchedThemes.length > 0 && (
-                            <div style={{ fontSize: '11px', color: '#0369a1', marginBottom: '2px' }}>🏷️ {s.matchedThemes.join(' / ')}</div>
-                          )}
-                          {Array.isArray(s.matchedStocks) && s.matchedStocks.length > 0 && (
-                            <div style={{ fontSize: '11px', color: '#f59e0b', marginBottom: '2px' }}>🎯 {s.matchedStocks.join(', ')}</div>
-                          )}
-                          {s.suggestedUse && (
-                            <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>💡 {s.suggestedUse}</div>
-                          )}
-                          <div style={{ fontSize: '11px', color: '#888', display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                            {(s.key_insights?.length || s.keyInsights?.length) && <span style={{ color: '#16a34a' }}>🔑 keyInsights</span>}
-                            {(s.transcriptStored || s.youtube_id || s.rawExpertInsight?.youtube_id) && <span style={{ color: '#2563eb' }}>📄 transcript</span>}
-                            {s.cleanArticleDraft && <span style={{ color: '#7c3aed' }}>✨ cleanDraft</span>}
-                            {s.editedArticleDraft && <span style={{ color: '#be185d' }}>✏️ editedDraft</span>}
-                            {/* V2 Job Status Badge */}
-                            {s.keyInsightsV2Status && s.keyInsightsV2Status !== 'not_started' && (
-                              <span style={{
-                                color: s.keyInsightsV2Status === 'completed' ? '#16a34a' : s.keyInsightsV2Status === 'running' ? '#2563eb' : s.keyInsightsV2Status === 'partial' ? '#d97706' : s.keyInsightsV2Status === 'failed' ? '#dc2626' : '#9ca3af',
-                                fontWeight: 600,
-                              }}>
-                                🔬 V2:{s.keyInsightsV2Status}
-                                {s.insightsCount != null && ` (${s.insightsCount})`}
-                                {s.coveragePercent != null && ` ${s.coveragePercent}%`}
-                                {s.processedChunks != null && s.totalChunks != null && ` [${s.processedChunks}/${s.totalChunks}]`}
-                                {(s.failedChunks ?? 0) > 0 && ` ⚠️${s.failedChunks}failed`}
-                              </span>
-                            )}
-                            {!s.keyInsightsV2Status && (s.keyInsightsV2Count ?? 0) > 0 && (
-                              <span style={{ color: '#16a34a', fontWeight: 600 }}>🔬 V2:{s.keyInsightsV2Count}條</span>
-                            )}
-                          </div>
-                          {s.articleDecision && (
-                            <div style={{ fontSize: '11px', marginTop: '4px' }}>
-                              {s.articleDecision === 'draft_candidate' && <span style={{ color: '#16a34a' }}>🔥 適合成文</span>}
-                              {s.articleDecision === 'material_only' && <span style={{ color: '#d97706' }}>📚 只放素材庫</span>}
-                              {s.articleDecision === 'needs_review' && <span style={{ color: '#dc2626' }}>🔍 需審核</span>}
+
+                          {/* Reject dropdown */}
+                          {isRejectOpen && (
+                            <div style={{ marginTop: '10px', padding: '12px', background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '6px' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626', marginBottom: '8px' }}>選擇拒絕原因（必填）</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                                {REJECT_REASONS.map(r => (
+                                  <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                                    <input
+                                      type="radio"
+                                      name={`reject-${s._id}`}
+                                      value={r}
+                                      checked={rejectReason === r}
+                                      onChange={() => setRejectReason(r)}
+                                    />
+                                    {r}
+                                  </label>
+                                ))}
+                              </div>
+                              {rejectReason === '其他（可輸入文字）' && (
+                                <input
+                                  value={rejectReasonOther}
+                                  onChange={e => setRejectReasonOther(e.target.value)}
+                                  placeholder="請輸入原因..."
+                                  style={{ width: '100%', padding: '5px 8px', border: '1px solid #fca5a5', borderRadius: '4px', fontSize: '12px', marginBottom: '8px', boxSizing: 'border-box' }}
+                                />
+                              )}
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  disabled={!rejectReason || (rejectReason === '其他（可輸入文字）' && !rejectReasonOther.trim())}
+                                  onClick={() => handleReject(s, rejectReason, rejectReasonOther)}
+                                  style={{ ...btnStyle('#dc3545'), opacity: (!rejectReason || (rejectReason === '其他（可輸入文字）' && !rejectReasonOther.trim())) ? 0.5 : 1, cursor: !rejectReason ? 'not-allowed' : 'pointer' }}
+                                >確認{rejectReason === '封存（待後續處理）' ? '封存' : '拒絕'}</button>
+                                <button onClick={() => { setRejectDropdownId(null); setRejectReason(''); setRejectReasonOther(''); }} style={{ ...btnStyle('#6b7280') }}>取消</button>
+                              </div>
                             </div>
                           )}
                         </div>
-                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
-                          {/* V2 Job Buttons */}
-                          {(!s.keyInsightsV2Status || s.keyInsightsV2Status === 'not_started') && (
-                            <button
-                              disabled={generatingV2Id === s._id}
-                              onClick={async () => {
-                                setGeneratingV2Id(s._id);
-                                setCmsMsg(null);
-                                try {
-                                  const res = await fetch('/api/admin/insights/v2-job', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ action: 'queue', summaryId: s._id }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.ok) {
-                                    setCmsMsg(`✅ ${data.message}`);
-                                    fetchCmsData();
-                                  } else {
-                                    setCmsMsg(`❌ ${data.error || 'Queue 失敗'}`);
-                                  }
-                                } catch { setCmsMsg('❌ 網路錯誤'); }
-                                finally { setGeneratingV2Id(null); }
-                              }}
-                              style={{ ...btnStyle('#7c3aed'), opacity: generatingV2Id === s._id ? 0.6 : 1 }}
-                            >
-                              {generatingV2Id === s._id ? '⏳...' : '📋 Queue V2'}
-                            </button>
-                          )}
-                          {(s.keyInsightsV2Status === 'partial' || s.keyInsightsV2Status === 'failed') && (
-                            <button
-                              disabled={generatingV2Id === s._id}
-                              onClick={async () => {
-                                setGeneratingV2Id(s._id);
-                                setCmsMsg(null);
-                                try {
-                                  const res = await fetch('/api/admin/insights/v2-job', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ action: 'resume', summaryId: s._id }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.ok) {
-                                    setCmsMsg(`✅ ${data.message}`);
-                                    fetchCmsData();
-                                  } else {
-                                    setCmsMsg(`❌ ${data.error || 'Resume 失敗'}`);
-                                  }
-                                } catch { setCmsMsg('❌ 網路錯誤'); }
-                                finally { setGeneratingV2Id(null); }
-                              }}
-                              style={{ ...btnStyle('#d97706'), opacity: generatingV2Id === s._id ? 0.6 : 1 }}
-                            >
-                              {generatingV2Id === s._id ? '⏳...' : '🔄 Resume V2'}
-                            </button>
-                          )}
-                          {(s.failedChunks ?? 0) > 0 && (
-                            <button
-                              disabled={generatingV2Id === s._id}
-                              onClick={async () => {
-                                setGeneratingV2Id(s._id);
-                                setCmsMsg(null);
-                                try {
-                                  const res = await fetch('/api/admin/insights/v2-job', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ action: 'retry-failed', summaryId: s._id }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.ok) {
-                                    setCmsMsg(`✅ ${data.message}`);
-                                    fetchCmsData();
-                                  } else {
-                                    setCmsMsg(`❌ ${data.error || 'Retry 失敗'}`);
-                                  }
-                                } catch { setCmsMsg('❌ 網路錯誤'); }
-                                finally { setGeneratingV2Id(null); }
-                              }}
-                              style={{ ...btnStyle('#dc2626'), opacity: generatingV2Id === s._id ? 0.6 : 1 }}
-                            >
-                              {generatingV2Id === s._id ? '⏳...' : '🔁 Retry Failed'}
-                            </button>
-                          )}
-                          {s.keyInsightsV2Status && s.keyInsightsV2Status !== 'not_started' && (
-                            <button
-                              disabled={generatingV2Id === s._id}
-                              onClick={async () => {
-                                if (!confirm('確定要重置此文章的 V2 資料嗎？所有 insights 會被清除。')) return;
-                                setGeneratingV2Id(s._id);
-                                setCmsMsg(null);
-                                try {
-                                  const res = await fetch('/api/admin/insights/v2-job', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ action: 'reset', summaryId: s._id, confirmed: true }),
-                                  });
-                                  const data = await res.json();
-                                  if (data.ok) {
-                                    setCmsMsg(`✅ ${data.message}`);
-                                    fetchCmsData();
-                                  } else {
-                                    setCmsMsg(`❌ ${data.error || 'Reset 失敗'}`);
-                                  }
-                                } catch { setCmsMsg('❌ 網路錯誤'); }
-                                finally { setGeneratingV2Id(null); }
-                              }}
-                              style={{ ...btnStyle('#6b7280'), opacity: generatingV2Id === s._id ? 0.6 : 1, fontSize: '10px' }}
-                            >
-                              🗑️ Reset V2
-                            </button>
-                          )}
-                          <button
-                            disabled={generatingDraftId === s._id}
-                            onClick={() => handleGenerateDraft(s._id)}
-                            style={{ ...btnStyle('#805ad5'), opacity: generatingDraftId === s._id ? 0.6 : 1 }}
-                          >
-                            {generatingDraftId === s._id ? '生成中…' : '✍️ 生成草稿'}
-                          </button>
-                          <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </section>
-              )}
-
-              {/* ── 草稿候選 (draftCandidate) ── */}
-              {articleTab === 'draftCandidate' && (
-                <section style={{ marginBottom: '32px' }}>
-                  <div className="mb-3" style={{ marginBottom: '12px' }}>
-                    <label style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px', display: 'block' }}>近期市場方向（可選，供生成草稿參考）</label>
-                    <textarea
-                      value={marketDirectionsText}
-                      onChange={e => setMarketDirectionsText(e.target.value)}
-                      placeholder={`AI 電力瓶頃｜AI 數據中心、電網、燃料電池、能源基礎設施\nAI CapEx 外溢｜晶片、電力、冷卻、土地、光纖、伺服器`}
-                      rows={2}
-                      style={{ width: '100%', fontSize: '13px', background: '#1f2937', color: '#f9fafb', border: '1px solid #4b5563', borderRadius: '6px', padding: '8px 12px', resize: 'vertical', fontFamily: 'inherit' }}
-                    />
-                  </div>
-                  {(!cmsData?.draftCandidate?.length) && !cmsLoading && (
-                    <div style={{ color: '#9ca3af', fontSize: '14px', padding: '16px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e5e5' }}>
-                      目前沒有草稿候選。要進入此區需段：status=candidate + 有 cleanDraft 或 editedDraft。
-                    </div>
-                  )}
-                  {(cmsData?.draftCandidate ?? []).map((s: any) => (
-                    <div key={s._id} style={{ border: '1px solid #e5e5e5', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#fff' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>{s.jgTitle || s.title || s.articleTitle}</div>
-                          <div style={{ fontSize: '11px', color: '#888', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '2px' }}>
-                            <span>sourceDate: {s.sourceDate || 'n/a'}</span>
-                            <span>channel: {s.sourceChannel || s.source || 'n/a'}</span>
-                            <span>status: {s.status || 'candidate'}</span>
-                            <span>alphaReady: {String(!!s.alphaReady)}</span>
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#888', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '2px' }}>
-                            <span>draftStatus: {s.draftStatus || 'n/a'}</span>
-                            <span>publishReadiness: {s.publishReadiness || 'n/a'}</span>
-                            <span>articleDecision: {s.articleDecision || 'n/a'}</span>
-                            {s.investmentRelevanceScore != null && (
-                              <span style={{ fontWeight: 700, color: '#0369a1' }}>
-                                📊 投:{s.investmentRelevanceScore} 值:{s.topicValueScore ?? '-'} 品:{s.editorialFitScore ?? '-'} (合計:{(s.topicValueScore || 0) + (s.editorialFitScore || 0)})
-                              </span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#888', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                            {s.cleanArticleDraft && <span style={{ color: '#22c55e' }}>✅ cleanDraft</span>}
-                            {s.editedArticleDraft && <span style={{ color: '#3b82f6' }}>✏️ editedDraft</span>}
-                            {s.publishedArticle && <span style={{ color: '#c0202a' }}>🔴 publishedArticle</span>}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
-                          <button
-                            disabled={s.draftStatus === 'draft_ready' || generatingDraftId === s._id}
-                            onClick={() => handleGenerateDraft(s._id)}
-                            style={{ ...btnStyle(s.draftStatus === 'draft_ready' ? '#38a169' : '#805ad5'), opacity: (s.draftStatus === 'draft_ready' || generatingDraftId === s._id) ? 0.6 : 1, cursor: (s.draftStatus === 'draft_ready' || generatingDraftId === s._id) ? 'not-allowed' : 'pointer' }}
-                            title={s.draftStatus === 'draft_ready' ? '已有草稿，可直接發佈或編輯' : '呼叫 AI 生成研究筆記草稿'}
-                          >
-                            {s.draftStatus === 'draft_ready' ? '✅ 已有草稿' : generatingDraftId === s._id ? '生成中…' : '✍️ 生成草稿'}
-                          </button>
-                          <button
-                            disabled={publishingId === s._id}
-                            onClick={async () => {
-                              setPublishingId(s._id); setCmsMsg(null);
-                              try {
-                                const r = await fetch('/api/admin/insights/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summaryId: s._id }) });
-                                const d = await r.json();
-                                if (d.ok) { setCmsMsg('✅ 已發佈上架'); fetchCmsData(); }
-                                else setCmsMsg(`❌ ${d.error || '發佈失敗'}`);
-                              } catch { setCmsMsg('❌ 網路錯誤'); }
-                              finally { setPublishingId(null); }
-                            }}
-                            style={{ ...btnStyle('#28a745'), opacity: publishingId === s._id ? 0.6 : 1 }}
-                          >{publishingId === s._id ? '發佈中...' : '🚀 發佈'}</button>
-                          <button onClick={() => { setCmsEditId(s._id); setCmsEditMeta({ jgTitle: s.jgTitle || '', displaySection: s.displaySection || '', articleType: s.articleType || '', sortOrder: s.sortOrder ?? 0, isPinned: !!s.isPinned, tags: s.tags || [] }); }} style={btnStyle('#0070f3')}>Meta</button>
-                          <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
-                          <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: s._id, action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                </section>
-              )}
+                      );
+                    })}
+                  </section>
+                );
+              })()}
 
               {/* ── 需審核 (needsReview) ── */}
               {articleTab === 'needsReview' && (
@@ -2791,6 +2740,103 @@ export default function ExpertsPage() {
         </div>
         </>)}
       </div>
+
+      {/* Publish Confirm Dialog */}
+      {publishConfirmDoc && (() => {
+        const s = publishConfirmDoc;
+        const draftText = s.editedArticleDraft || s.cleanArticleDraft || s.articleDraft || '';
+        const title = s.jgTitle || s.video_title || s.title || s.articleTitle || s.topic || '(無標題)';
+        const v2Done = s.keyInsightsV2Status === 'completed';
+        const v2Count = s.insightsCount ?? 0;
+        const v2Coverage = s.coveragePercent ?? 0;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setPublishConfirmDoc(null)} />
+            <div style={{ position: 'relative', background: '#fff', borderRadius: '12px', padding: '24px', maxWidth: '480px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '12px' }}>確認發佈？</h3>
+              <div style={{ fontSize: '14px', color: '#333', marginBottom: '12px', lineHeight: 1.5 }}>「{title.slice(0, 50)}{title.length > 50 ? '...' : ''}」</div>
+              <div style={{ fontSize: '12px', color: '#666', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', background: '#f9fafb', padding: '10px 12px', borderRadius: '6px' }}>
+                <span>草稿長度：{draftText.length.toLocaleString()} 字</span>
+                {v2Done
+                  ? <span style={{ color: '#16a34a' }}>V2 洞察：{v2Count} 條，coverage {v2Coverage}%</span>
+                  : <span style={{ color: '#d97706' }}>⚠️ V2 洞察未完成（{s.keyInsightsV2Status || 'not_started'}），確認要直接發佈？</span>
+                }
+              </div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '20px' }}>發佈後將顯示於 /insights 頁面。</div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setPublishConfirmDoc(null)} style={{ padding: '8px 18px', border: '1px solid #ccc', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '13px' }}>取消</button>
+                <button
+                  disabled={publishingId === s._id}
+                  onClick={async () => {
+                    setPublishingId(s._id);
+                    setPublishConfirmDoc(null);
+                    setCmsMsg(null);
+                    try {
+                      const r = await fetch('/api/admin/insights/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summaryId: s._id }) });
+                      const d = await r.json();
+                      if (d.ok) { setCmsMsg('✅ 已發佈上架'); fetchCmsData(); }
+                      else setCmsMsg(`❌ ${d.error || '發佈失敗'}`);
+                    } catch { setCmsMsg('❌ 網路錯誤'); }
+                    finally { setPublishingId(null); }
+                  }}
+                  style={{ padding: '8px 18px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', cursor: publishingId === s._id ? 'wait' : 'pointer', fontWeight: 700, fontSize: '13px', opacity: publishingId === s._id ? 0.6 : 1 }}
+                >{publishingId === s._id ? '發佈中...' : '確認發佈'}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Batch V2 Dry-run Dialog */}
+      {showBatchV2Dialog && batchV2DryRunData && (() => {
+        const { toRun, toSkip, totalChunks, estimateMin, estimateMax } = batchV2DryRunData;
+        const CLI_CMD = 'npm run insights:v2 -- --all-with-transcript --resume';
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowBatchV2Dialog(false)} />
+            <div style={{ position: 'relative', background: '#fff', borderRadius: '12px', padding: '24px', maxWidth: '520px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '80vh', overflowY: 'auto' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '16px', marginBottom: '12px' }}>🔬 批次 V2 Dry-run 預覽</h3>
+              <div style={{ fontSize: '13px', marginBottom: '12px' }}>
+                <strong>預計處理：{toRun.length} 篇</strong>
+              </div>
+              {toRun.length > 0 && (
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '4px' }}>將跑：</div>
+                  <div style={{ fontSize: '11px', color: '#333', background: '#f0f9ff', padding: '8px', borderRadius: '6px', maxHeight: '120px', overflowY: 'auto' }}>
+                    {toRun.map((d: any) => (
+                      <div key={d._id}>{d.jgTitle || d.video_title || d.title || '(無標題)'}{d.totalChunks ? ` (${d.totalChunks} chunks)` : ''}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {toSkip.length > 0 && (
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '4px' }}>將跳過（已 completed）：</div>
+                  <div style={{ fontSize: '11px', color: '#888', background: '#f9fafb', padding: '8px', borderRadius: '6px', maxHeight: '80px', overflowY: 'auto' }}>
+                    {toSkip.map((d: any) => (
+                      <div key={d._id}>{d.jgTitle || d.video_title || d.title || '(無標題)'}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '16px' }}>
+                預估 chunks：{totalChunks} | 預估時間：{estimateMin}–{estimateMax} 分鐘（本地 terminal 執行）
+              </div>
+              <div style={{ fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>請在本地 Mac 執行以下指令：</div>
+              <div style={{ background: '#1f2937', color: '#f9fafb', padding: '10px 14px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '13px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                <span>{CLI_CMD}</span>
+                <button
+                  onClick={() => navigator.clipboard.writeText(CLI_CMD).catch(() => {})}
+                  style={{ padding: '3px 10px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', flexShrink: 0 }}
+                >複製</button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={() => setShowBatchV2Dialog(false)} style={{ padding: '8px 20px', border: '1px solid #ccc', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '13px' }}>關閉</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal */}
       {showModal && (

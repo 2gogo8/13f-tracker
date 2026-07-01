@@ -310,3 +310,82 @@ export function normalizeSummary(doc: Record<string, any>): NormalizedSummary {
     transcriptMetadataWarnings,
   };
 }
+
+// ── Content Workbench helpers ─────────────────────────────────────────────────
+
+/**
+ * Determine if a summary doc has usable content for V2 / draft generation.
+ * Rules:
+ *  - YouTube source (youtube_id present): need transcript stored/referenced.
+ *  - Bloomberg/article: summaries.article or body/article field > 100 chars.
+ *  - rawExpertInsight.key_insights: non-empty array.
+ *  - editedArticleDraft / cleanArticleDraft / articleDraft also counts.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function hasUsableContent(doc: Record<string, any>): boolean {
+  // Draft content already exists → definitely usable
+  if (doc.editedArticleDraft || doc.cleanArticleDraft || doc.articleDraft) return true;
+  // YouTube source: need transcript
+  if (doc.youtube_id || doc.rawExpertInsight?.youtube_id) {
+    return !!(
+      doc.transcriptStored ||
+      doc.transcriptRef ||
+      (typeof doc.transcriptLength === 'number' && doc.transcriptLength > 0) ||
+      (typeof doc.transcriptCharLength === 'number' && doc.transcriptCharLength > 0) ||
+      (typeof doc.rawExpertInsight?.transcriptLength === 'number' && doc.rawExpertInsight.transcriptLength > 0)
+    );
+  }
+  // Article / Bloomberg / expert-pipeline source
+  const articleText: string =
+    (typeof doc.summaries?.article === 'string' ? doc.summaries.article : '') ||
+    (typeof doc.body === 'string' ? doc.body : '') ||
+    (typeof doc.article === 'string' ? doc.article : '');
+  if (articleText.trim().length > 100) return true;
+  // rawExpertInsight.key_insights
+  if (
+    doc.rawExpertInsight?.key_insights &&
+    Array.isArray(doc.rawExpertInsight.key_insights) &&
+    doc.rawExpertInsight.key_insights.length > 0
+  ) return true;
+  // Other content fields
+  if (typeof doc.content === 'string' && doc.content.trim().length > 0) return true;
+  if (typeof doc.sourceText === 'string' && doc.sourceText.trim().length > 0) return true;
+  return false;
+}
+
+export type WorkbenchCardStatus = 'publishable' | 'needs_draft' | 'v2_processing' | 'needs_v2' | 'no_content';
+
+export interface WorkbenchCardInfo {
+  status: WorkbenchCardStatus;
+  priority: number;
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+}
+
+/**
+ * Get the workbench card status for the unified 📋 內容候選 tab.
+ * Priority: 1=publishable > 2=needs_draft > 3=v2_processing > 4=needs_v2 > 5=no_content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getWorkbenchCardInfo(doc: Record<string, any>): WorkbenchCardInfo {
+  // 1. 🚀 可發佈
+  if (doc.draftStatus === 'draft_ready') {
+    return { status: 'publishable', priority: 1, label: '🚀 可發佈', color: '#16a34a', bg: '#f0fff4', border: '#86efac' };
+  }
+  // 2. ✍️ 待草稿 (V2 completed + no draft)
+  const hasDraft = !!(doc.editedArticleDraft || doc.cleanArticleDraft || doc.articleDraft);
+  if (doc.keyInsightsV2Status === 'completed' && !hasDraft) {
+    return { status: 'needs_draft', priority: 2, label: '✍️ 待草稿', color: '#d97706', bg: '#fffbeb', border: '#fcd34d' };
+  }
+  // 3. 🔬 V2 處理中
+  if (doc.keyInsightsV2Status === 'partial' || doc.keyInsightsV2Status === 'running') {
+    return { status: 'v2_processing', priority: 3, label: '🔬 V2 處理中', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' };
+  }
+  // 4 vs 5: depends on content availability
+  if (hasUsableContent(doc)) {
+    return { status: 'needs_v2', priority: 4, label: '📭 待 V2', color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' };
+  }
+  return { status: 'no_content', priority: 5, label: '⚠️ 無可用內容', color: '#ef4444', bg: '#fff5f5', border: '#fecaca' };
+}
