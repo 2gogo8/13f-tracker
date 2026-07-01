@@ -104,9 +104,9 @@ export function classifySummaryBucket(doc: Record<string, any>): SummaryBucket {
     return 'needsReview';
   }
 
-  // 3. DraftCandidate — status=candidate + alphaReady=false + actual clean/edited draft
+  // 3. DraftCandidate — status=candidate + alphaReady=false + actual clean/edited draft (or legacy draft_ready)
   if (status === 'candidate' && doc.alphaReady !== true &&
-      (doc.editedArticleDraft || doc.cleanArticleDraft)) {
+      (doc.editedArticleDraft || doc.cleanArticleDraft || doc.draftStatus === 'draft_ready')) {
     return 'draftCandidate';
   }
 
