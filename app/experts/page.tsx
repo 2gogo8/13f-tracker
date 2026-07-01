@@ -1004,8 +1004,9 @@ export default function ExpertsPage() {
                             key={tab}
                             onClick={() => {
                               setPreviewTab(tab);
-                              if (tab === 'transcript' && cmsPreview?.youtube_id && !transcriptData) {
-                                loadTranscript(cmsPreview.youtube_id);
+                              const ytIdForTranscript = cmsPreview?.youtube_id || cmsPreview?.rawExpertInsight?.youtube_id;
+                              if (tab === 'transcript' && ytIdForTranscript && !transcriptData) {
+                                loadTranscript(ytIdForTranscript);
                               }
                             }}
                             style={{
@@ -1159,6 +1160,7 @@ export default function ExpertsPage() {
                         const transcriptSegments = cmsPreview.transcriptSegments ?? cmsPreview.rawExpertInsight?.transcriptSegments;
                         return (
                         <div>
+                          <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '6px 10px', marginBottom: 8, fontSize: 12, color: '#856404', fontWeight: 600 }}>⚠️ Legacy 原始片段（英文，非正式中文洞察）— 請使用 🔬 V2 全文洞察 tab 閱讀完整中文內容</div>
                           <div style={{ fontSize: 12, marginBottom: 8 }}>
                             <span style={{ color: '#888' }}>
                               {kiCount} 條 | 模式: {extractionMode}
@@ -1357,7 +1359,8 @@ export default function ExpertsPage() {
                               <summary style={{ padding: '10px 14px', cursor: 'pointer', background: '#fefce8', fontSize: 13, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                                 <span style={{ color: '#c9a84c', fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
                                 <div style={{ flex: 1 }}>
-                                  <div style={{ fontWeight: 600 }}>{ins.insightTitle}</div>
+                                  <div style={{ fontWeight: 600 }}>{ins.zhTitle || ins.insightTitle}</div>
+                                  {ins.zhTitle && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{ins.insightTitle}</div>}
                                   <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>{ins.zhSummary}</div>
                                   <div style={{ fontSize: 11, color: '#888', marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
@@ -1383,6 +1386,7 @@ export default function ExpertsPage() {
                                   </div>
                                   <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 4 }}>位置: chars {(ins.sourceCharStart ?? 0).toLocaleString()}–{(ins.sourceCharEnd ?? 0).toLocaleString()}{ins.timestampStart && ` | ⏱ ${ins.timestampStart}–${ins.timestampEnd || '?'}`}</div>
                                 </div>
+                                {ins.zhEvidenceSummary && <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 600, color: '#374151' }}>🔍 佐證摘要: </span><span style={{ color: '#555' }}>{ins.zhEvidenceSummary}</span></div>}
                                 {ins.whyItMatters && <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 600, color: '#374151' }}>💡 為什麼重要: </span><span style={{ color: '#555' }}>{ins.whyItMatters}</span></div>}
                                 {ins.suggestedArticleAngle && <div style={{ marginBottom: 6 }}><span style={{ fontWeight: 600, color: '#374151' }}>✍️ 文章角度: </span><span style={{ color: '#555' }}>{ins.suggestedArticleAngle}</span></div>}
                                 {ins.companies?.length > 0 && <div style={{ fontSize: 11, color: '#6b7280' }}>🏢 {ins.companies.join(', ')}</div>}
@@ -1405,8 +1409,11 @@ export default function ExpertsPage() {
                           {transcriptError && <div style={{ color: '#d32f2f' }}>⚠️ {transcriptError}</div>}
                           {transcriptData && (
                             <div>
+                              <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '5px 10px', marginBottom: 8, fontSize: 12, color: '#856404' }}>
+                                📜 原文進字稿（英文）— 屬於 worker 輸入原料，主閱讀請使用 🔬 V2 全文洞察 tab
+                              </div>
                               <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
-                                {transcriptData.transcriptLength?.toLocaleString()} 字 | 抓取: {transcriptData.fetchedAt ? new Date(transcriptData.fetchedAt).toLocaleDateString() : 'N/A'} | 到期: {transcriptData.expiresAt ? new Date(transcriptData.expiresAt).toLocaleDateString() : 'N/A'}
+                                {transcriptData.transcriptLength?.toLocaleString()} chars | 抓取: {transcriptData.fetchedAt ? new Date(transcriptData.fetchedAt).toLocaleDateString() : 'N/A'} | 到期: {transcriptData.expiresAt ? new Date(transcriptData.expiresAt).toLocaleDateString() : 'N/A'}
                               </div>
                               <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                 {transcriptData.fullTranscript}
@@ -1449,6 +1456,7 @@ export default function ExpertsPage() {
                             <div>transcriptAvailable: {norm.transcriptAvailable ? 'Yes' : 'No'}</div>
                             <div>transcriptLength: {norm.transcriptLength?.toLocaleString() || 'N/A'}</div>
                             <div>transcriptSource: {norm.transcriptSource || 'N/A'}</div>
+                            <div>workerInputField: video_transcripts.fullTranscript (via youtube_id fallback)</div>
                             {norm.transcriptMetadataWarnings.length > 0 && (
                               <div style={{ color: '#f59e0b', marginTop: 4 }}>⚠️ {norm.transcriptMetadataWarnings.join('; ')}</div>
                             )}

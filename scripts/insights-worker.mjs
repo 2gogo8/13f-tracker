@@ -108,8 +108,10 @@ ${chunk}
 Extract ALL investment-relevant insights from this chunk. For each insight, return a JSON object:
 
 {
+  "zhTitle": "繁體中文標題，20字以內，精準描述這條洞察的核心",
   "insightTitle": "concise English title (max 80 chars)",
   "zhSummary": "繁體中文摘要，2-4 句話說明此觀點重點",
+  "zhEvidenceSummary": "繁體中文，1-2句，說明哪些具體數據或陳述支持這條洞察（可引用數字、比例、時間點）",
   "sourceExcerpt": "the exact transcript excerpt supporting this insight, 300-800 chars, MUST be verbatim from the chunk above",
   "sourceCharStart": ${charStart},
   "sourceCharEnd": ${charEnd},
@@ -127,6 +129,8 @@ Extract ALL investment-relevant insights from this chunk. For each insight, retu
 }
 
 Rules:
+- zhTitle: 繁體中文，20字以內，必填
+- zhEvidenceSummary: 繁體中文，必填，說明支持數據或依據
 - sourceExcerpt MUST be verbatim from the transcript, 300-800 chars. No paraphrasing.
 - If a chunk has no investment-relevant content, return an empty array []
 - importanceScore: how important is this insight overall (0-100)

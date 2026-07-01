@@ -189,7 +189,7 @@ export function normalizeSummary(doc: Record<string, any>): NormalizedSummary {
   const displaySourceDate = doc.sourceDate || doc.publish_date || null;
   const displaySource = doc.source || doc.source_type || null;
   const displayChannel = doc.channel || doc.sourceChannel || null;
-  const youtubeId = doc.youtube_id || null;
+  const youtubeId = doc.youtube_id || doc.rawExpertInsight?.youtube_id || null;
 
   // ── Content resolution ──
   const resolved = resolveContentChain(doc);
@@ -255,7 +255,8 @@ export function normalizeSummary(doc: Record<string, any>): NormalizedSummary {
 
   // ── Transcript ──
   const transcriptLength: number | null =
-    doc.transcriptLength ?? doc.rawExpertInsight?.transcriptLength ?? null;
+    doc.transcriptLength ?? doc.transcriptCharLength ??
+    doc.rawExpertInsight?.transcriptLength ?? doc.rawExpertInsight?.transcript_length ?? null;
 
   const transcriptStored = doc.transcriptStored === true;
   const transcriptRef = doc.transcriptRef || null;
