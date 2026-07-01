@@ -1167,9 +1167,11 @@ export default function ExpertsPage() {
                               {transcriptSegments != null && <>{' | '}segments: {transcriptSegments}</>}
                             </span>
                             {' '}
-                            {coverageRatio >= 0.95
-                              ? <span style={{ color: '#4ade80' }}>✅ Key insights 已覆蓋完整逐字稿 ({Math.round(coverageRatio * 100)}%)</span>
-                              : <span style={{ color: '#f87171' }}>⚠️ Key insights 未覆蓋完整逐字稿 ({Math.round(coverageRatio * 100)}%)</span>
+                            {cmsPreview?.keyInsightsV2Status === 'completed'
+                              ? <span style={{ color: '#9ca3af' }}>此為舊版片段，未做全文覆蓋；正式全文洞察請看 ✅ V2 正式洞察 tab。</span>
+                              : coverageRatio >= 0.95
+                                ? <span style={{ color: '#4ade80' }}>✅ 已覆蓋完整逐字稿 ({Math.round(coverageRatio * 100)}%)</span>
+                                : <span style={{ color: '#9ca3af' }}>舊版片段（部分覆蓋 {Math.round(coverageRatio * 100)}%），正式洞察請看 V2 tab</span>
                             }
                             {coverageWarning && (
                               <div style={{ color: '#fbbf24', marginTop: 4 }}>{coverageWarning}</div>
