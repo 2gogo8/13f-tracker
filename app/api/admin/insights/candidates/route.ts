@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkAdminStatus } from '@/lib/admin';
 import getClientPromise from '@/lib/mongodb';
-import { classifySummaryBucket } from '@/lib/insights/normalizeSummary';
+import { classifySummaryBucket, getContentReadiness } from '@/lib/insights/normalizeSummary';
 
 /**
  * GET /api/admin/insights/candidates
  *
- * Returns 6 buckets for the /experts CMS view (new flow):
- *   rawMaterial    – investmentRelevanceScore < 30 or no triage signal
- *   topicCandidate – investmentRelevanceScore >= 60
- *   draftCandidate – status=candidate + alphaReady=false + clean/edited draft
- *   needsReview    – blocker phrase / explicit blocker / investmentRelevanceScore 30-59
- *   published      – status=published + alphaReady=true + publishedArticle
- *   invalid        – no content at all
+ * Returns buckets for the /experts CMS view (new content-gate flow):
+ *   contentCandidate – ALL 5 conditions met (title + content + V2 + draft + meta)
+ *   inProgress       – has title + content, but V2 or draft incomplete
+ *   needsData        – missing title OR missing content
+ *   needsReview      – blocker phrase / explicit blocker / status contradiction
+ *   published        – status=published + alphaReady=true + publishedArticle
+ *   invalid          – no content at all
+ *   rawMaterial      – catch-all
  *
+ * inProgress and needsData docs include a `missingItems` field.
  * Each bucket sorted by sourceDate desc (newest first).
  * Max 50 items per bucket (configurable via ?limit=N).
  */
@@ -53,47 +55,57 @@ export async function GET(req: NextRequest) {
     .sort({ sourceDate: -1, publishedAt: -1, createdAt: -1 })
     .toArray();
 
-  // ── Classify into new 6 buckets ──
+  // ── Classify into new buckets ──
   const buckets: Record<string, unknown[]> = {
     rawMaterial: [],
-    topicCandidate: [],
-    draftCandidate: [],
+    contentCandidate: [],
+    inProgress: [],
+    needsData: [],
     needsReview: [],
     published: [],
     invalid: [],
+    // legacy aliases kept for backward compat
+    topicCandidate: [],
+    draftCandidate: [],
   };
 
   for (const doc of allSummaries) {
     const bucket = classifySummaryBucket(doc as Record<string, unknown>);
+    // Attach missingItems to inProgress and needsData docs
+    if (bucket === 'inProgress' || bucket === 'needsData') {
+      const readiness = getContentReadiness(doc as Record<string, unknown>);
+      (doc as Record<string, unknown>).missingItems = readiness.missingItems;
+    }
     buckets[bucket].push(doc);
   }
 
-  // Sort topicCandidate by sourceDate desc (newest first), then investmentRelevanceScore desc
-  (buckets.topicCandidate as Array<Record<string, unknown>>).sort((a, b) => {
+  // Sort contentCandidate by draftStatus + sourceDate
+  (buckets.contentCandidate as Array<Record<string, unknown>>).sort((a, b) => {
     const dateA = String(a.sourceDate || a.createdAt || '');
     const dateB = String(b.sourceDate || b.createdAt || '');
-    const dateCmp = dateB.localeCompare(dateA);
-    if (dateCmp !== 0) return dateCmp;
-    const scoreA = typeof a.investmentRelevanceScore === 'number' ? a.investmentRelevanceScore : 0;
-    const scoreB = typeof b.investmentRelevanceScore === 'number' ? b.investmentRelevanceScore : 0;
-    return scoreB - scoreA;
+    return dateB.localeCompare(dateA);
   });
 
-  // Sort draftCandidate by (topicValueScore + editorialFitScore) desc
-  (buckets.draftCandidate as Array<Record<string, unknown>>).sort((a, b) => {
-    const combinedA = (typeof a.topicValueScore === 'number' ? a.topicValueScore : 0) + (typeof a.editorialFitScore === 'number' ? a.editorialFitScore : 0);
-    const combinedB = (typeof b.topicValueScore === 'number' ? b.topicValueScore : 0) + (typeof b.editorialFitScore === 'number' ? b.editorialFitScore : 0);
-    return combinedB - combinedA;
+  // Sort inProgress: docs missing only draft first, then sourceDate
+  (buckets.inProgress as Array<Record<string, unknown>>).sort((a, b) => {
+    const missingA = (a.missingItems as string[] || []).length;
+    const missingB = (b.missingItems as string[] || []).length;
+    if (missingA !== missingB) return missingA - missingB;
+    return String(b.sourceDate || b.createdAt || '').localeCompare(String(a.sourceDate || a.createdAt || ''));
   });
 
   // Apply per-bucket limit
   const limitedBuckets = {
     rawMaterial: (buckets.rawMaterial as unknown[]).slice(0, limit),
-    topicCandidate: (buckets.topicCandidate as unknown[]).slice(0, limit),
-    draftCandidate: (buckets.draftCandidate as unknown[]).slice(0, limit),
+    contentCandidate: (buckets.contentCandidate as unknown[]).slice(0, limit),
+    inProgress: (buckets.inProgress as unknown[]).slice(0, limit),
+    needsData: (buckets.needsData as unknown[]).slice(0, limit),
     needsReview: (buckets.needsReview as unknown[]).slice(0, limit),
     published: (buckets.published as unknown[]).slice(0, limit),
     invalid: (buckets.invalid as unknown[]).slice(0, limit),
+    // legacy (empty — kept for backward compat)
+    topicCandidate: (buckets.topicCandidate as unknown[]).slice(0, limit),
+    draftCandidate: (buckets.draftCandidate as unknown[]).slice(0, limit),
   };
 
   // ── Backward compatibility: expose expert_insights from a separate collection ──
@@ -149,15 +161,18 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
 
-    // ── New 6 buckets ──
+    // ── New content-gate buckets ──
     rawMaterial: limitedBuckets.rawMaterial,
     rawMaterialCount: (buckets.rawMaterial as unknown[]).length,
 
-    topicCandidate: limitedBuckets.topicCandidate,
-    topicCandidateCount: (buckets.topicCandidate as unknown[]).length,
+    contentCandidate: limitedBuckets.contentCandidate,
+    contentCandidateCount: (buckets.contentCandidate as unknown[]).length,
 
-    draftCandidate: limitedBuckets.draftCandidate,
-    draftCandidateCount: (buckets.draftCandidate as unknown[]).length,
+    inProgress: limitedBuckets.inProgress,
+    inProgressCount: (buckets.inProgress as unknown[]).length,
+
+    needsData: limitedBuckets.needsData,
+    needsDataCount: (buckets.needsData as unknown[]).length,
 
     needsReview: limitedBuckets.needsReview,
     needsReviewCount: (buckets.needsReview as unknown[]).length,
@@ -173,12 +188,16 @@ export async function GET(req: NextRequest) {
     sectionAIrrelevantCount: irrelevantCount,
 
     // ── Backward compatibility aliases ──
-    candidate: limitedBuckets.draftCandidate,
-    candidateCount: (buckets.draftCandidate as unknown[]).length,
-    candidateSummaries: buckets.draftCandidate,
-    sectionB: buckets.draftCandidate,
-    sectionBCount: (buckets.draftCandidate as unknown[]).length,
-    sectionBEmpty: (buckets.draftCandidate as unknown[]).length === 0,
+    topicCandidate: limitedBuckets.topicCandidate,
+    topicCandidateCount: (buckets.topicCandidate as unknown[]).length,
+    draftCandidate: limitedBuckets.draftCandidate,
+    draftCandidateCount: (buckets.draftCandidate as unknown[]).length,
+    candidate: limitedBuckets.contentCandidate,
+    candidateCount: (buckets.contentCandidate as unknown[]).length,
+    candidateSummaries: buckets.contentCandidate,
+    sectionB: buckets.contentCandidate,
+    sectionBCount: (buckets.contentCandidate as unknown[]).length,
+    sectionBEmpty: (buckets.contentCandidate as unknown[]).length === 0,
     publishedSummaries: buckets.published,
     unpublished: [],
     unpublishedCount: 0,

@@ -7,18 +7,102 @@
  */
 
 /**
- * 6-bucket classification for /experts CMS view (new flow).
+ * 7-bucket classification for /experts CMS view (new flow).
  *
- * rawMaterial     → topicCandidate → draftCandidate → published
+ * rawMaterial → needsData / inProgress → contentCandidate → published
  *
- * 1. rawMaterial      – investmentRelevanceScore < 30 and no substantial content
- * 2. topicCandidate   – investmentRelevanceScore >= 60 (investment-related)
- * 3. draftCandidate   – status=candidate + alphaReady=false + has cleanArticleDraft/editedArticleDraft
- * 4. needsReview      – has blocker phrases, or investmentRelevanceScore 30-59, or status contradiction
- * 5. published        – status=published + alphaReady=true + publishedArticle present
- * 6. invalid          – no content at all, cannot process
+ * 1. rawMaterial      – catch-all: low relevance, no clear pipeline signal
+ * 2. contentCandidate – ALL 5 conditions met (title + content + V2 + draft + meta)
+ * 3. inProgress       – has title + content, but V2 or draft not yet done
+ * 4. needsData        – missing title OR missing content (18 no-title articles here)
+ * 5. needsReview      – has blocker phrases or status contradiction
+ * 6. published        – status=published + alphaReady=true + publishedArticle present
+ * 7. invalid          – no content at all, cannot process
+ *
+ * Legacy aliases kept for backward compat:
+ * topicCandidate → inProgress, draftCandidate → contentCandidate
  */
-export type SummaryBucket = 'rawMaterial' | 'topicCandidate' | 'draftCandidate' | 'needsReview' | 'published' | 'invalid';
+export type SummaryBucket =
+  | 'rawMaterial'
+  | 'contentCandidate'
+  | 'inProgress'
+  | 'needsData'
+  | 'needsReview'
+  | 'published'
+  | 'invalid'
+  // legacy aliases (kept for backward compat only)
+  | 'topicCandidate'
+  | 'draftCandidate';
+
+// ── Content Readiness ──────────────────────────────────────────────────────
+
+export interface ContentReadiness {
+  hasTitle: boolean;
+  hasContent: boolean;   // youtube transcript or article/body > 100 chars
+  hasV2: boolean;        // keyInsightsV2Status === 'completed'
+  hasDraft: boolean;     // draftStatus === 'draft_ready' + has content field
+  hasMeta: boolean;      // source or sourceDate or topic or ticker
+  missingItems: string[];
+  readyForCandidate: boolean; // all 5 true
+}
+
+/**
+ * Evaluate whether a summary document meets all 5 content-candidate entry conditions.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getContentReadiness(doc: Record<string, any>): ContentReadiness {
+  // 1. Has title (jgTitle / title / video_title — not topic/articleTitle)
+  const hasTitle = !!(
+    (typeof doc.jgTitle === 'string' && doc.jgTitle.trim()) ||
+    (typeof doc.title === 'string' && doc.title.trim()) ||
+    (typeof doc.video_title === 'string' && doc.video_title.trim())
+  );
+
+  // 2. Has usable content: YouTube → need transcript; others → article/body > 100 chars
+  const isYT = !!(doc.youtube_id || doc.rawExpertInsight?.youtube_id);
+  const hasTranscriptData = !!(
+    doc.transcriptStored ||
+    doc.transcriptRef ||
+    (typeof doc.transcriptLength === 'number' && doc.transcriptLength > 0) ||
+    (typeof doc.transcriptCharLength === 'number' && doc.transcriptCharLength > 0) ||
+    (typeof doc.rawExpertInsight?.transcriptLength === 'number' && doc.rawExpertInsight.transcriptLength > 0)
+  );
+  const articleText: string =
+    (typeof doc.summaries?.article === 'string' ? doc.summaries.article : '') ||
+    (typeof doc.body === 'string' ? doc.body : '') ||
+    (typeof doc.article === 'string' ? doc.article : '');
+  const hasContent = isYT ? hasTranscriptData : articleText.trim().length > 100;
+
+  // 3. V2 洞察完成
+  const hasV2 = doc.keyInsightsV2Status === 'completed';
+
+  // 4. 草稿已備 (draftStatus=draft_ready + actual content)
+  const hasDraftContent = !!(
+    doc.cleanArticleDraft || doc.editedArticleDraft || doc.articleDraft ||
+    doc.article || doc.body
+  );
+  const hasDraft = doc.draftStatus === 'draft_ready' && hasDraftContent;
+
+  // 5. 基本溯源 (source / sourceDate / topic / ticker)
+  const hasMeta = !!(
+    doc.source || doc.sourceDate || doc.topic || doc.ticker ||
+    (Array.isArray(doc.tickers) && doc.tickers.length > 0)
+  );
+
+  const missingItems: string[] = [];
+  if (!hasTitle) missingItems.push('缺標題');
+  if (!hasContent) {
+    if (isYT) missingItems.push('尚未抓 transcript');
+    else missingItems.push('缺文章內容（< 100 字）');
+  }
+  if (!hasV2) missingItems.push('缺 V2 洞察');
+  if (!hasDraft) missingItems.push('缺草稿（draftStatus 非 draft_ready）');
+  if (!hasMeta) missingItems.push('缺來源/日期/主題資訊');
+
+  const readyForCandidate = hasTitle && hasContent && hasV2 && hasDraft && hasMeta;
+
+  return { hasTitle, hasContent, hasV2, hasDraft, hasMeta, missingItems, readyForCandidate };
+}
 
 export interface NormalizedSummary {
   id: string
@@ -58,35 +142,18 @@ export interface NormalizedSummary {
   transcriptMetadataWarnings: string[]
 }
 
-// ── 6-Bucket Classifier (new flow) ─────────────────────────────────────────
+// ── 7-Bucket Classifier (new flow) ─────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function classifySummaryBucket(doc: Record<string, any>): SummaryBucket {
   const status = doc.status || 'unknown';
 
-  // 5. Published — strict gate
+  // 1. Published — strict gate
   if (status === 'published' && doc.alphaReady === true &&
       typeof doc.publishedArticle === 'string' && doc.publishedArticle.trim().length > 0) {
     return 'published';
   }
 
-  // Content availability
-  const hasDraftContent = !!(doc.editedArticleDraft || doc.cleanArticleDraft || doc.articleDraft);
-  const hasLegacyContent = !!(doc.article || doc.body);
-  const hasAnyContent = hasDraftContent || hasLegacyContent;
-  const hasKI = !!((
-    Array.isArray(doc.key_insights) && doc.key_insights.length > 0) ||
-    (Array.isArray(doc.keyInsights) && doc.keyInsights.length > 0));
-  const hasTranscript = !!(doc.transcriptStored || doc.transcriptRef ||
-    (typeof doc.transcriptLength === 'number' && doc.transcriptLength > 0));
-  const hasTitle = !!(doc.jgTitle || doc.video_title || doc.title || doc.articleTitle || doc.topic);
-  const hasDate = !!(doc.sourceDate || doc.createdAt || doc.publish_date);
-
-  // 6. Invalid — no content at all
-  if (!hasAnyContent && !hasKI && !hasTranscript) {
-    return 'invalid';
-  }
-
-  // Blocker phrase check — only in editable drafts (editedArticleDraft / cleanArticleDraft)
+  // 2. Blocker phrases / contradiction → needsReview
   const editableText = (doc.editedArticleDraft || '') + ' ' + (doc.cleanArticleDraft || '');
   const BLOCK_PHRASES = [
     '【JG 觀點待補】', '《JG 觀點待補》', 'TODO', 'reviewer note',
@@ -94,46 +161,47 @@ export function classifySummaryBucket(doc: Record<string, any>): SummaryBucket {
   ];
   const hasBlockerPhrase = BLOCK_PHRASES.some(p => editableText.includes(p));
   const hasExplicitBlocker = !!doc.blocker;
-
-  // Status contradiction: claims published but gate fails
   const isContradiction =
     status === 'published' && (!doc.alphaReady || !(doc.publishedArticle?.trim()));
 
-  // Hard blockers → needsReview (always takes priority over topicCandidate)
   if (hasBlockerPhrase || hasExplicitBlocker || isContradiction) {
     return 'needsReview';
   }
 
-  // 3. DraftCandidate — status=candidate + alphaReady=false + actual clean/edited draft (or legacy draft_ready)
-  if (status === 'candidate' && doc.alphaReady !== true &&
-      (doc.editedArticleDraft || doc.cleanArticleDraft || doc.draftStatus === 'draft_ready')) {
-    return 'draftCandidate';
+  // 3. Evaluate per-condition readiness
+  const readiness = getContentReadiness(doc);
+
+  // Check for truly empty docs
+  const hasDraftContent = !!(doc.editedArticleDraft || doc.cleanArticleDraft || doc.articleDraft);
+  const hasKI = !!(
+    (Array.isArray(doc.key_insights) && doc.key_insights.length > 0) ||
+    (Array.isArray(doc.keyInsights) && doc.keyInsights.length > 0)
+  );
+  const hasTranscriptStored = !!(doc.transcriptStored || doc.transcriptRef ||
+    (typeof doc.transcriptLength === 'number' && doc.transcriptLength > 0));
+  const hasAnyUsable = readiness.hasTitle || readiness.hasContent || hasDraftContent || hasKI || hasTranscriptStored;
+
+  // 4. Invalid — truly nothing usable
+  if (!hasAnyUsable) {
+    return 'invalid';
   }
 
-  // 2. TopicCandidate — investmentRelevanceScore >= 60
-  const irScore = typeof doc.investmentRelevanceScore === 'number' ? doc.investmentRelevanceScore : null;
-
-  if (irScore !== null && irScore >= 60) {
-    return 'topicCandidate';
+  // 5. contentCandidate — ALL 5 conditions met → 內容候選
+  if (readiness.readyForCandidate) {
+    return 'contentCandidate';
   }
 
-  // needsReview: borderline investment relevance (30-59)
-  if (irScore !== null && irScore >= 30) {
-    return 'needsReview';
+  // 6. inProgress — has title + content, pipeline incomplete
+  if (readiness.hasTitle && readiness.hasContent) {
+    return 'inProgress';
   }
 
-  // Fallback for untriaged docs: use legacy signals
-  if (irScore === null) {
-    // Legacy: has title + date, or KI/transcript, or articleDecision set
-    const articleDecision = doc.articleDecision;
-    const hasArticleDecision = !!(articleDecision &&
-      ['draft_candidate', 'material_only', 'needs_review'].includes(articleDecision));
-    if ((hasTitle && hasDate) || hasKI || hasTranscript || hasArticleDecision) {
-      return 'topicCandidate';
-    }
+  // 7. needsData — missing title OR missing content (has some data)
+  if (readiness.hasTitle || readiness.hasContent || hasDraftContent || hasKI || hasTranscriptStored) {
+    return 'needsData';
   }
 
-  // 1. RawMaterial — investmentRelevanceScore < 30 or no triage signal
+  // 8. rawMaterial — catch-all
   return 'rawMaterial';
 }
 

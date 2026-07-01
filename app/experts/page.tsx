@@ -49,22 +49,25 @@ export default function ExpertsPage() {
 
   // CMS state
   const [cmsData, setCmsData] = useState<{
-    // New 6-bucket CMS (flow: rawMaterial → topicCandidate → draftCandidate → published)
+    // New content-gate CMS buckets
     rawMaterial: any[]; rawMaterialCount: number;
-    topicCandidate: any[]; topicCandidateCount: number;
-    draftCandidate: any[]; draftCandidateCount: number;
+    contentCandidate: any[]; contentCandidateCount: number;
+    inProgress: any[]; inProgressCount: number;
+    needsData: any[]; needsDataCount: number;
     needsReview: any[]; needsReviewCount: number;
     published: any[]; publishedCount: number;
     invalid: any[]; invalidCount: number;
     // backward compat
+    topicCandidate: any[]; topicCandidateCount: number;
+    draftCandidate: any[]; draftCandidateCount: number;
     candidate: any[]; candidateCount: number;
     newExpertInsights: any[]; sectionB: any[]; sectionBEmpty: boolean; publishedSummaries: any[];
     unpublishedSummaries: any[]; archivedRejectedUnpublished: any[]; candidateSummaries: any[];
     sectionAIrrelevantCount: number;
     rawMaterialExpertCount: number; rawMaterialIrrelevantCount: number;
   } | null>(null);
-  // Article management sub-tab (new 6-bucket flow)
-  const [articleTab, setArticleTab] = useState<'rawMaterial' | 'contentWorkbench' | 'needsReview' | 'published' | 'invalid'>('contentWorkbench');
+  // Article management sub-tab (content-gate flow)
+  const [articleTab, setArticleTab] = useState<'rawMaterial' | 'contentWorkbench' | 'inProgress' | 'published' | 'needsData' | 'needsReview' | 'invalid'>('contentWorkbench');
   // Draft editing state
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [editingDraftText, setEditingDraftText] = useState<string>('');
@@ -656,7 +659,7 @@ export default function ExpertsPage() {
   // Workbench: batch V2 dry-run (compute locally from cmsData)
   const handleBatchV2DryRun = () => {
     if (!cmsData) return;
-    const all = [...(cmsData.topicCandidate ?? []), ...(cmsData.draftCandidate ?? [])];
+    const all = [...(cmsData.contentCandidate ?? []), ...(cmsData.inProgress ?? [])];
     const toRun = all.filter((d: any) => d.keyInsightsV2Status !== 'completed' && hasUsableContent(d));
     const toSkip = all.filter((d: any) => d.keyInsightsV2Status === 'completed');
     const totalChunks = toRun.reduce((sum: number, d: any) => {
@@ -1903,10 +1906,11 @@ export default function ExpertsPage() {
               <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '2px solid #e5e5e5', paddingBottom: '0', flexWrap: 'wrap' }}>
                 {([
                   ['rawMaterial',       `📦 素材庫 (${cmsData?.rawMaterialCount ?? 0})`],
-                  ['contentWorkbench',  `📋 內容候選 (${(cmsData?.topicCandidateCount ?? 0) + (cmsData?.draftCandidateCount ?? 0)})`],
+                  ['contentWorkbench',  `📋 內容候選 (${cmsData?.contentCandidateCount ?? 0})`],
+                  ['inProgress',        `⏳ 進行中 (${cmsData?.inProgressCount ?? 0})`],
                   ['published',         `✅ 已上架 (${cmsData?.publishedCount ?? 0})`],
-                  ['needsReview',       `⚠️ 需審核 (${cmsData?.needsReviewCount ?? 0})`],
-                  ['invalid',           `❌ 無正文 (${cmsData?.invalidCount ?? 0})`],
+                  ['needsData',         `📭 需補資料 (${cmsData?.needsDataCount ?? 0})`],
+                  ['invalid',           `❌ 廢資料 (${cmsData?.invalidCount ?? 0})`],
                 ] as const).map(([tab, label]) => (
                   <button key={tab} onClick={() => setArticleTab(tab as any)}
                     style={{ padding: '7px 14px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '12px',
@@ -1921,8 +1925,7 @@ export default function ExpertsPage() {
               {/* ── 內容候選 (contentWorkbench) ── */}
               {articleTab === 'contentWorkbench' && (() => {
                 const allItems = [
-                  ...(cmsData?.topicCandidate ?? []),
-                  ...(cmsData?.draftCandidate ?? []),
+                  ...(cmsData?.contentCandidate ?? []),
                 ];
                 const sorted = [...allItems].sort((a, b) => {
                   const pa = getWorkbenchCardInfo(a).priority;
@@ -2139,6 +2142,129 @@ export default function ExpertsPage() {
                               </div>
                             </div>
                           )}
+                        </div>
+                      );
+                    })}
+                  </section>
+                );
+              })()}
+
+              {/* ── 進行中 (inProgress) ── */}
+              {articleTab === 'inProgress' && (() => {
+                const items = cmsData?.inProgress ?? [];
+                return (
+                  <section style={{ marginBottom: '32px' }}>
+                    <div style={{ marginBottom: '12px', fontSize: '13px', color: '#6b7280', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 14px' }}>
+                      ⏳ 這些文章有標題和內容來源，但尚未完成 V2 洞察或草稿生成。補齊後會自動升入「內容候選」。
+                    </div>
+                    {items.length === 0 && !cmsLoading && (
+                      <div style={{ color: '#9ca3af', fontSize: '14px', padding: '24px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e7eb' }}>目前沒有進行中的文章 🎉</div>
+                    )}
+                    {items.map((s: any) => {
+                      const missing: string[] = s.missingItems ?? [];
+                      const isYT = !!(s.youtube_id || s.rawExpertInsight?.youtube_id);
+                      const summaryId = s._id;
+                      const needsV2 = missing.some((m: string) => m.includes('V2'));
+                      return (
+                        <div key={s._id} style={{ border: '1px solid #d1d5db', borderRadius: '8px', padding: '12px', marginBottom: '10px', background: '#f9fafb' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
+                                {s.jgTitle || s.video_title || s.title || s.topic || '(無標題)'}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#555', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                                <span>📅 {s.sourceDate || 'n/a'}</span>
+                                <span>📡 {s.sourceChannel || s.source || 'n/a'}</span>
+                                {isYT && <span style={{ color: '#2563eb' }}>▶ YouTube</span>}
+                              </div>
+                              {missing.length > 0 && (
+                                <div style={{ marginTop: '6px' }}>
+                                  {missing.map((item: string) => (
+                                    <div key={item} style={{ fontSize: '12px', color: '#d97706', marginBottom: '3px' }}>⚠️ {item}</div>
+                                  ))}
+                                </div>
+                              )}
+                              {needsV2 && (
+                                <div style={{ marginTop: '8px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '6px 10px', fontSize: '11px', fontFamily: 'monospace', color: '#92400e' }}>
+                                  本地執行：<code>npm run insights:v2 -- --summaryId={summaryId}</code>
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '5px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                              <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                              <button
+                                disabled={rejectingId === s._id}
+                                onClick={() => {
+                                  if (rejectDropdownId === s._id) { setRejectDropdownId(null); }
+                                  else { setRejectDropdownId(s._id); setRejectReason(''); setRejectReasonOther(''); }
+                                }}
+                                style={{ ...btnStyle('#dc3545'), opacity: rejectingId === s._id ? 0.6 : 1 }}
+                              >{rejectingId === s._id ? '⏳...' : '拒絕▼'}</button>
+                            </div>
+                          </div>
+                          {/* Reject dropdown */}
+                          {rejectDropdownId === s._id && (
+                            <div style={{ marginTop: '10px', padding: '12px', background: '#fff5f5', border: '1px solid #fecaca', borderRadius: '6px' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 700, color: '#dc2626', marginBottom: '8px' }}>選擇拒絕原因（必填）</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                                {['不是投資內容', '重複題材', '品質低／資訊太少', '無可用內容（無逐字稿也無文章）', '主題不適合本頻道', '已過時（超過 3 個月）', '其他（可輸入文字）', '封存（待後續處理）'].map(r => (
+                                  <label key={r} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                                    <input type="radio" name={`reject-ip-${s._id}`} value={r} checked={rejectReason === r} onChange={() => setRejectReason(r)} />
+                                    {r}
+                                  </label>
+                                ))}
+                              </div>
+                              {rejectReason === '其他（可輸入文字）' && (
+                                <input value={rejectReasonOther} onChange={e => setRejectReasonOther(e.target.value)} placeholder="請輸入原因..." style={{ width: '100%', padding: '5px 8px', border: '1px solid #fca5a5', borderRadius: '4px', fontSize: '12px', marginBottom: '8px', boxSizing: 'border-box' }} />
+                              )}
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button disabled={!rejectReason || (rejectReason === '其他（可輸入文字）' && !rejectReasonOther.trim())} onClick={() => handleReject(s, rejectReason, rejectReasonOther)} style={{ ...btnStyle('#dc3545'), opacity: !rejectReason ? 0.5 : 1, cursor: !rejectReason ? 'not-allowed' : 'pointer' }}>確認{rejectReason === '封存（待後續處理）' ? '封存' : '拒絕'}</button>
+                                <button onClick={() => { setRejectDropdownId(null); setRejectReason(''); setRejectReasonOther(''); }} style={btnStyle('#6b7280')}>取消</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </section>
+                );
+              })()}
+
+              {/* ── 需補資料 (needsData) ── */}
+              {articleTab === 'needsData' && (() => {
+                const items = cmsData?.needsData ?? [];
+                return (
+                  <section style={{ marginBottom: '32px' }}>
+                    <div style={{ marginBottom: '12px', fontSize: '13px', color: '#6b7280', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 14px' }}>
+                      📭 這些文章缺少標題或可用內容，需要人工補資料後才能進入管線。
+                    </div>
+                    {items.length === 0 && !cmsLoading && (
+                      <div style={{ color: '#9ca3af', fontSize: '14px', padding: '24px', textAlign: 'center', background: '#f9fafb', borderRadius: '8px', border: '1px dashed #e5e7eb' }}>目前沒有需補資料的文章</div>
+                    )}
+                    {items.map((s: any) => {
+                      const missing: string[] = s.missingItems ?? [];
+                      const isYT = !!(s.youtube_id || s.rawExpertInsight?.youtube_id);
+                      return (
+                        <div key={s._id} style={{ border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', marginBottom: '8px', background: '#fffbeb' }}>
+                          <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px', color: '#92400e' }}>
+                            {s.jgTitle || s.video_title || s.title || s.topic || '(無標題)'}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#555', display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                            <span>📅 {s.sourceDate || 'n/a'}</span>
+                            <span>📡 {s.sourceChannel || s.source || 'n/a'}</span>
+                            {isYT && <span>▶ youtube_id: {s.youtube_id}</span>}
+                            {s._id && <span style={{ color: '#9ca3af' }}>id: {s._id}</span>}
+                          </div>
+                          {missing.length > 0 && (
+                            <div style={{ marginTop: '4px' }}>
+                              {missing.map((item: string) => (
+                                <div key={item} style={{ fontSize: '12px', color: '#b45309', marginBottom: '2px' }}>⚠️ {item}</div>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{ marginTop: '8px' }}>
+                            <button onClick={() => openPreview(s._id, 'summary')} style={btnStyle('#6c757d')}>Preview</button>
+                          </div>
                         </div>
                       );
                     })}
