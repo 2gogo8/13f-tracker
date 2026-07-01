@@ -1990,8 +1990,8 @@ export default function ExpertsPage() {
                         ((s.summaries?.article || s.body || s.article) || '').trim().length > 100
                       );
                       // Draft button logic
-                      const draftEnabled = !hasDraft && (v2Completed || hasArticleText);
-                      const draftDisabledTitle = hasDraft ? '' : (!usable ? '無可用內容，無法生成草稿' : '請先完成 V2 全文洞察');
+                      const draftEnabled = !hasDraft && v2Completed;
+                      const draftDisabledTitle = hasDraft ? '已有草稿' : (!v2Completed ? '請先完成 V2 全文洞察' : !usable ? '無可用內容，無法生成草稿' : '');
                       // Publish button logic
                       const publishEnabled = s.draftStatus === 'draft_ready';
                       // Smart preview default tab
