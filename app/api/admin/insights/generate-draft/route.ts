@@ -51,8 +51,9 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. 避免重複生成
-  if (summary.draftStatus === 'draft_ready') {
-    return NextResponse.json({ error: '已有草稿，不允許覆蓋' }, { status: 400 });
+  const force = body.force === true;
+  if (summary.draftStatus === 'draft_ready' && !force) {
+    return NextResponse.json({ error: '已有草稿，不允許覆蓋。如需重新生成請傳入 force: true' }, { status: 400 });
   }
 
   // 6. 取 rawExpertInsight
@@ -227,22 +228,15 @@ articleDraft 格式（固定格式，markdown，用 \\n 換行）：
 ## 二、為什麼這件事對投資人重要
 （從市場角度說明這則訊息的意義，不給買賣建議）
 
-## 三、可能的 JG 觀點方向
+## 三、投資判斷摘要
 
-市場方向連結：
-（說明這則素材與近期市場方向的關聯，若無明確關聯則說明為何）
+根據以上素材，請生成一段完整的投資判斷段落（3-5句），說明：
+- 這則素材對投資人的意義是什麼
+- 哪些結構性變化值得關注
+- 相關公司或產業的潛在影響
 
-近期文章聯想：
-（說明與近期已上架文章的關聯，若無則說明）
-
-JG 觀點候選：
-
-1. （候選觀點 1）
-2. （候選觀點 2）
-3. （候選觀點 3）
-
-【JG 觀點待補】
-請從上面候選方向中選一個，改寫成正式 JG 判斷。
+請用中性分析語氣，不要留任何空白或後台提示。
+不要寫「JG 認為」「我的觀點是」「買賣建議」。
 
 ## 四、接下來觀察什麼
 （列出 2-3 個後續值得追蹤的觀察指標或事件）
@@ -289,26 +283,6 @@ JG 觀點候選：
   }
   let draftBody = draftLines.slice(bodyStart).join('\n').trim();
 
-  // 「程式保證」：檢查【JG 觀點待補】是否存在
-  const PLACEHOLDER = '【JG 觀點待補】';  // 和 prompt 中一致
-  const hasPlaceholder = draftBody.includes(PLACEHOLDER);
-  let jgPlaceholderInsertedByGuard = false;
-
-  if (!hasPlaceholder) {
-    // 只插入【JG 觀點待補】，不帶任何後台操作說明
-    const section4Idx = draftBody.indexOf('## 四、');
-    const guardBlock = `\n\n【JG 觀點待補】`;
-
-    if (section4Idx >= 0) {
-      draftBody = draftBody.slice(0, section4Idx).trimEnd() + guardBlock + '\n\n' + draftBody.slice(section4Idx);
-    } else {
-      draftBody = draftBody.trimEnd() + guardBlock;
-    }
-    jgPlaceholderInsertedByGuard = true;
-  }
-
-  const jgPlaceholderCheckedAt = new Date();
-
   // 將 articleDraft 也同步更新（含標題行）
   const finalArticleDraft = draftLines.slice(0, bodyStart).join('\n') + (bodyStart > 0 ? '\n' : '') + draftBody;
 
@@ -323,9 +297,7 @@ JG 觀點候選：
       $set: {
         article: draftBody,
         body: draftBody,
-        hasJgPlaceholder: true,
-        jgPlaceholderInsertedByGuard,
-        jgPlaceholderCheckedAt,
+        hasJgPlaceholder: false,
         title: draftTitle,
         jgTitle: draftTitle,
         analysisDate: today,
