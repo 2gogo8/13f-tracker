@@ -44,34 +44,94 @@ export interface ContentReadiness {
   hasMeta: boolean;      // source or sourceDate or topic or ticker
   missingItems: string[];
   readyForCandidate: boolean; // all 5 true
+  // extended normalize fields
+  sourceType: 'youtube' | 'article' | 'podcast' | 'bloomberg' | 'expert-pipeline' | 'unknown';
+  canRunV2: boolean;
+  displayTitle: string;
+}
+
+export interface DocNormalized {
+  displayTitle: string;
+  sourceText: string;
+  sourceTextLength: number;
+  youtubeId: string | null;
+  sourceType: 'youtube' | 'article' | 'podcast' | 'bloomberg' | 'expert-pipeline' | 'unknown';
+  hasUsableContent: boolean;
+  canRunV2: boolean;
+  missingReasons: string[];
+}
+
+/**
+ * Single source of truth for normalizing raw summary doc fields.
+ * Used by getContentReadiness() and anywhere else that needs canonical field values.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getDocNormalized(doc: Record<string, any>): DocNormalized {
+  // 1. displayTitle — priority chain (includes articleTitle for article sources)
+  const displayTitle =
+    doc.jgTitle?.trim() ||
+    doc.title?.trim() ||
+    doc.video_title?.trim() ||
+    doc.articleTitle?.trim() ||
+    doc.rawExpertInsight?.title?.trim() ||
+    doc.topic?.trim() ||
+    '';
+
+  // 2. sourceText — static article/body fields (transcript is fetched in worker)
+  const rawSourceText =
+    (doc.article && typeof doc.article === 'string' && doc.article.trim().length > 100 ? doc.article : null) ||
+    (doc.body && typeof doc.body === 'string' && doc.body.trim().length > 100 ? doc.body : null) ||
+    (doc.rawText && typeof doc.rawText === 'string' && doc.rawText.trim().length > 100 ? doc.rawText : null) ||
+    (doc.sourceText && typeof doc.sourceText === 'string' && doc.sourceText.trim().length > 100 ? doc.sourceText : null) ||
+    null;
+  const sourceText = rawSourceText ?? '';
+  const sourceTextLength = sourceText.length;
+
+  // 3. youtubeId
+  const youtubeId: string | null = doc.youtube_id || doc.rawExpertInsight?.youtube_id || null;
+
+  // 4. sourceType
+  const sourceType: DocNormalized['sourceType'] =
+    youtubeId ? 'youtube' :
+    (doc.source === 'Bloomberg' || doc.source === 'bloomberg') ? 'bloomberg' :
+    doc.source === 'expert-pipeline' ? 'expert-pipeline' :
+    (doc.source === 'podcast' || (typeof doc.source === 'string' && doc.source.toLowerCase().includes('podcast'))) ? 'podcast' :
+    sourceText.length > 100 ? 'article' :
+    'unknown';
+
+  // 5. hasUsableContent
+  const hasUsableContent =
+    (sourceType === 'youtube' && !!youtubeId) ||
+    sourceText.length > 100;
+
+  // 6. canRunV2
+  const canRunV2 = !!displayTitle && hasUsableContent;
+
+  // 7. missingReasons
+  const missingReasons: string[] = [];
+  if (!displayTitle) missingReasons.push('缺標題');
+  if (!hasUsableContent) {
+    if (sourceType === 'youtube' && !youtubeId) missingReasons.push('缺 youtube_id');
+    else missingReasons.push('缺正文（article content < 100 字）');
+  }
+  if (!doc.source && !doc.rawExpertInsight?.channel) missingReasons.push('缺來源資訊');
+
+  return { displayTitle, sourceText, sourceTextLength, youtubeId, sourceType, hasUsableContent, canRunV2, missingReasons };
 }
 
 /**
  * Evaluate whether a summary document meets all 5 content-candidate entry conditions.
+ * Uses getDocNormalized() as single source of truth for title/content resolution.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getContentReadiness(doc: Record<string, any>): ContentReadiness {
-  // 1. Has title (jgTitle / title / video_title — not topic/articleTitle)
-  const hasTitle = !!(
-    (typeof doc.jgTitle === 'string' && doc.jgTitle.trim()) ||
-    (typeof doc.title === 'string' && doc.title.trim()) ||
-    (typeof doc.video_title === 'string' && doc.video_title.trim())
-  );
+  const norm = getDocNormalized(doc);
 
-  // 2. Has usable content: YouTube → need transcript; others → article/body > 100 chars
-  const isYT = !!(doc.youtube_id || doc.rawExpertInsight?.youtube_id);
-  const hasTranscriptData = !!(
-    doc.transcriptStored ||
-    doc.transcriptRef ||
-    (typeof doc.transcriptLength === 'number' && doc.transcriptLength > 0) ||
-    (typeof doc.transcriptCharLength === 'number' && doc.transcriptCharLength > 0) ||
-    (typeof doc.rawExpertInsight?.transcriptLength === 'number' && doc.rawExpertInsight.transcriptLength > 0)
-  );
-  const articleText: string =
-    (typeof doc.summaries?.article === 'string' ? doc.summaries.article : '') ||
-    (typeof doc.body === 'string' ? doc.body : '') ||
-    (typeof doc.article === 'string' ? doc.article : '');
-  const hasContent = isYT ? hasTranscriptData : articleText.trim().length > 100;
+  // 1. Has title — from normalized displayTitle (includes articleTitle)
+  const hasTitle = !!norm.displayTitle;
+
+  // 2. Has usable content — from normalized hasUsableContent
+  const hasContent = norm.hasUsableContent;
 
   // 3. V2 洞察完成
   const hasV2 = doc.keyInsightsV2Status === 'completed';
@@ -89,19 +149,25 @@ export function getContentReadiness(doc: Record<string, any>): ContentReadiness 
     (Array.isArray(doc.tickers) && doc.tickers.length > 0)
   );
 
-  const missingItems: string[] = [];
-  if (!hasTitle) missingItems.push('缺標題');
-  if (!hasContent) {
-    if (isYT) missingItems.push('尚未抓 transcript');
-    else missingItems.push('缺文章內容（< 100 字）');
-  }
-  if (!hasV2) missingItems.push('缺 V2 洞察');
-  if (!hasDraft) missingItems.push('缺草稿（draftStatus 非 draft_ready）');
-  if (!hasMeta) missingItems.push('缺來源/日期/主題資訊');
+  const missing = [...norm.missingReasons];
+  if (!hasV2) missing.push('缺V2洞察');
+  if (!hasDraft) missing.push('缺草稿');
+  if (!hasMeta) missing.push('缺來源資訊');
 
   const readyForCandidate = hasTitle && hasContent && hasV2 && hasDraft && hasMeta;
 
-  return { hasTitle, hasContent, hasV2, hasDraft, hasMeta, missingItems, readyForCandidate };
+  return {
+    hasTitle,
+    hasContent,
+    hasV2,
+    hasDraft,
+    hasMeta,
+    missingItems: missing,
+    readyForCandidate,
+    sourceType: norm.sourceType,
+    canRunV2: norm.canRunV2,
+    displayTitle: norm.displayTitle,
+  };
 }
 
 export interface NormalizedSummary {

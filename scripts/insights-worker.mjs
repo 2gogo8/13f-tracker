@@ -6,6 +6,7 @@
  *   node scripts/insights-worker.mjs --summaryId=<id> [--resume]
  *   node scripts/insights-worker.mjs --all-partial --resume
  *   node scripts/insights-worker.mjs --all-with-transcript [--limit=N]
+ *   node scripts/insights-worker.mjs --all-with-article-content [--resume]
  *   node scripts/insights-worker.mjs --retry-failed --summaryId=<id>
  *   node scripts/insights-worker.mjs --dry-run --all-with-transcript
  *
@@ -21,14 +22,15 @@ import { parseArgs } from 'util';
 
 const { values: args } = parseArgs({
   options: {
-    summaryId:            { type: 'string' },
-    resume:               { type: 'boolean', default: false },
-    'all-partial':        { type: 'boolean', default: false },
-    'all-with-transcript':{ type: 'boolean', default: false },
-    'retry-failed':       { type: 'boolean', default: false },
-    'dry-run':            { type: 'boolean', default: false },
-    limit:                { type: 'string' },
-    help:                 { type: 'boolean', default: false },
+    summaryId:                  { type: 'string' },
+    resume:                     { type: 'boolean', default: false },
+    'all-partial':              { type: 'boolean', default: false },
+    'all-with-transcript':      { type: 'boolean', default: false },
+    'all-with-article-content': { type: 'boolean', default: false },
+    'retry-failed':             { type: 'boolean', default: false },
+    'dry-run':                  { type: 'boolean', default: false },
+    limit:                      { type: 'string' },
+    help:                       { type: 'boolean', default: false },
   },
   strict: false,
 });
@@ -38,14 +40,15 @@ if (args.help) {
 Key Insights V2 Worker
 ======================
 Flags:
-  --summaryId=<id>       Process a single summary
-  --resume               Skip already-completed chunks
-  --all-partial          Process all partial/failed summaries
-  --all-with-transcript  Process all summaries that have a transcript
-  --retry-failed         Retry only failed chunks for a summary
-  --limit=N              Max summaries to process
-  --dry-run              Show plan without making LLM calls
-  --help                 Show this help
+  --summaryId=<id>            Process a single summary
+  --resume                    Skip already-completed chunks
+  --all-partial               Process all partial/failed summaries
+  --all-with-transcript       Process all summaries that have youtube_id OR article content
+  --all-with-article-content  Process only non-YouTube sources (article/bloomberg/podcast)
+  --retry-failed              Retry only failed chunks for a summary
+  --limit=N                   Max summaries to process
+  --dry-run                   Show plan without making LLM calls
+  --help                      Show this help
 `);
   process.exit(0);
 }
@@ -186,35 +189,61 @@ async function ensureInsightChunksCollection(db) {
 // ── Get transcript ─────────────────────────────────────────────────────────────
 
 async function getTranscript(db, summary) {
+  // 1. Try YouTube transcript (by youtube_id)
   const youtubeId = summary.youtube_id || summary.rawExpertInsight?.youtube_id;
-  if (!youtubeId) return null;
+  if (youtubeId) {
+    const transcriptDoc = await db.collection('video_transcripts').findOne({ youtube_id: youtubeId });
+    if (transcriptDoc?.fullTranscript) {
+      await db.collection('summaries').updateOne(
+        { _id: summary._id },
+        { $set: { workerInputField: 'video_transcripts.fullTranscript', workerInputSource: 'youtube' } }
+      );
+      return transcriptDoc.fullTranscript;
+    }
 
-  const transcriptDoc = await db.collection('video_transcripts').findOne({ youtube_id: youtubeId });
-  if (transcriptDoc?.fullTranscript) return transcriptDoc.fullTranscript;
-
-  // Try fetching from YouTube
-  console.log(`  📥 Fetching transcript from YouTube for ${youtubeId}...`);
-  try {
-    const { YoutubeTranscript } = await import('youtube-transcript');
-    let lines;
-    try { lines = await YoutubeTranscript.fetchTranscript(youtubeId, { lang: 'en' }); }
-    catch { lines = await YoutubeTranscript.fetchTranscript(youtubeId); }
-    if (!lines?.length) return null;
-    const fullTranscript = lines.map(l => l.text).join(' ');
-    const now = new Date();
-    await db.collection('video_transcripts').updateOne(
-      { youtube_id: youtubeId },
-      {
-        $set: { youtube_id: youtubeId, fullTranscript, transcriptLength: fullTranscript.length, transcriptSource: 'youtube-transcript', fetchedAt: now.toISOString(), updatedAt: now.toISOString() },
-        $setOnInsert: { createdAt: now.toISOString() },
-      },
-      { upsert: true }
-    );
-    return fullTranscript;
-  } catch (err) {
-    console.error(`  ❌ Failed to fetch transcript: ${err.message}`);
+    // Try fetching from YouTube
+    console.log(`  📥 Fetching transcript from YouTube for ${youtubeId}...`);
+    try {
+      const { YoutubeTranscript } = await import('youtube-transcript');
+      let lines;
+      try { lines = await YoutubeTranscript.fetchTranscript(youtubeId, { lang: 'en' }); }
+      catch { lines = await YoutubeTranscript.fetchTranscript(youtubeId); }
+      if (lines?.length) {
+        const fullTranscript = lines.map(l => l.text).join(' ');
+        const now = new Date();
+        await db.collection('video_transcripts').updateOne(
+          { youtube_id: youtubeId },
+          {
+            $set: { youtube_id: youtubeId, fullTranscript, transcriptLength: fullTranscript.length, transcriptSource: 'youtube-transcript', fetchedAt: now.toISOString(), updatedAt: now.toISOString() },
+            $setOnInsert: { createdAt: now.toISOString() },
+          },
+          { upsert: true }
+        );
+        await db.collection('summaries').updateOne(
+          { _id: summary._id },
+          { $set: { workerInputField: 'video_transcripts.fullTranscript', workerInputSource: 'youtube' } }
+        );
+        return fullTranscript;
+      }
+    } catch (err) {
+      console.error(`  ❌ Failed to fetch transcript: ${err.message}`);
+    }
+    // YouTube ID present but no transcript available — do NOT fall through to article
     return null;
   }
+
+  // 2. Article content fallback (non-YouTube sources)
+  const articleText = summary.article || summary.body || summary.rawText || summary.sourceText || '';
+  if (typeof articleText === 'string' && articleText.trim().length >= 100) {
+    console.log(`  📰 Using article content (${articleText.trim().length} chars) as input`);
+    await db.collection('summaries').updateOne(
+      { _id: summary._id },
+      { $set: { workerInputField: 'article', workerInputSource: 'article_content' } }
+    );
+    return articleText;
+  }
+
+  return null;
 }
 
 // ── Process a single summary ───────────────────────────────────────────────────
@@ -507,15 +536,27 @@ async function findSummaries(db) {
   if (args['all-partial']) {
     filter = { keyInsightsV2Status: { $in: ['partial', 'failed', 'queued'] } };
   } else if (args['all-with-transcript']) {
-    // Find summaries that have a youtube_id (which means transcript can be fetched)
+    // Find summaries with youtube_id OR article content (expanded to include article sources)
     filter = {
       $or: [
         { youtube_id: { $exists: true, $ne: null } },
         { 'rawExpertInsight.youtube_id': { $exists: true, $ne: null } },
+        { article: { $exists: true, $ne: null, $type: 'string' } },
+        { body: { $exists: true, $ne: null, $type: 'string' } },
       ]
     };
+  } else if (args['all-with-article-content']) {
+    // Only non-YouTube sources that have article/body text
+    filter = {
+      youtube_id: { $exists: false },
+      'rawExpertInsight.youtube_id': { $exists: false },
+      $or: [
+        { article: { $exists: true, $ne: null, $type: 'string' } },
+        { body: { $exists: true, $ne: null, $type: 'string' } },
+      ],
+    };
   } else {
-    console.error('❌ Must specify --summaryId, --all-partial, or --all-with-transcript');
+    console.error('❌ Must specify --summaryId, --all-partial, --all-with-transcript, or --all-with-article-content');
     process.exit(1);
   }
 
