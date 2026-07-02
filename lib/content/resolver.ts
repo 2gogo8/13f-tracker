@@ -249,8 +249,14 @@ export async function resolveContent(
     safeStr(s.sourceDate as string) ||
     null;
 
-  // YouTube ID
-  const youtubeId = safeStr(e.youtube_id as string) || safeStr(s.youtube_id as string) || null;
+  // YouTube ID — check all possible fields including legacy summaries.sourceVideoId
+  const youtubeId =
+    safeStr(e.youtube_id as string) ||
+    safeStr(e.sourceId as string) ||
+    safeStr(s.youtube_id as string) ||
+    safeStr(s.sourceVideoId as string) ||
+    safeStr(s.sourceId as string) ||
+    null;
 
   // ── Transcript (priority chain) ──
   let transcript: string | null = null;

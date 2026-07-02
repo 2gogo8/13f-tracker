@@ -1518,13 +1518,21 @@ export default function ExpertsPage() {
                                 </div>
                               )}
                               {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && !cmsPreview?.rawExpertInsight?.transcript_sample && (
-                                <div style={{ color: '#f59e0b', fontSize: 13, padding: 12, textAlign: 'center', background: '#fffbeb', borderRadius: 6, border: '1px dashed #fcd34d' }}>⚠️ 舊資料缺來源 — 無逐字稿資料</div>
+                                <div style={{ color: '#9ca3af', fontSize: 13, padding: 12, textAlign: 'center', background: '#f9fafb', borderRadius: 6, border: '1px dashed #d1d5db' }}>
+                                  {(cmsPreview?.source_type || cmsPreview?.sourceType) === 'youtube' || cmsPreview?.youtube_id
+                                    ? '⚠️ 逐字稿已過期或暫時無法取得（YouTube 影片）'
+                                    : '📄 此內容非影片來源，無逐字稿（文字稿來源）'}
+                                </div>
                               )}
                             </div>
                           )}
                           {/* Missing fields indicator */}
                           {resolvedContent?._missing?.includes('transcript') && (
-                            <div style={{ color: '#f59e0b', fontSize: 12, padding: '6px 10px', marginTop: 8, background: '#fffbeb', borderRadius: 6, border: '1px dashed #fcd34d' }}>⚠️ 舊資料缺來源 — Resolver 無法找到逐字稿</div>
+                            <div style={{ color: '#9ca3af', fontSize: 12, padding: '6px 10px', marginTop: 8, background: '#f9fafb', borderRadius: 6, border: '1px dashed #d1d5db' }}>
+                              {resolvedContent.youtubeId
+                                ? '⚠️ 逐字稿已過期或暫時無法取得，可在內容候選點「先讀取影片內容」重新擷取'
+                                : '📄 此內容非影片來源，無逐字稿（由 V2 洗察 / Key Insights 代替）'}
+                            </div>
                           )}
                         </div>
                       )}
