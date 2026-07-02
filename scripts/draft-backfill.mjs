@@ -85,13 +85,14 @@ async function generateDraftForSummary(db, anthropic, summary) {
   const v2Insights = Array.isArray(summary.keyInsightsV2) ? summary.keyInsightsV2 : [];
   const oldKI = raw.key_insights ?? [];
 
-  // Convert V2 items to strings for the prompt
+  // Convert V2 items to strings for the prompt (actual fields: zhTitle, zhSummary, whyItMatters, sourceExcerpt)
   const v2KI = v2Insights
-    .filter(item => item.headline || item.investmentImplication)
+    .filter(item => item.zhTitle || item.zhSummary || item.whyItMatters)
     .map(item => {
       const parts = [];
-      if (item.headline) parts.push(item.headline);
-      if (item.investmentImplication) parts.push(`投資意涵：${item.investmentImplication}`);
+      if (item.zhTitle) parts.push(item.zhTitle);
+      if (item.zhSummary) parts.push(item.zhSummary);
+      if (item.whyItMatters) parts.push(`投資意涵：${item.whyItMatters}`);
       if (item.sourceExcerpt) parts.push(`原文摘錄：${item.sourceExcerpt}`);
       return parts.join('。');
     });
@@ -103,7 +104,7 @@ async function generateDraftForSummary(db, anthropic, summary) {
   const expertName = raw.expert_name || summary.expertName || '';
   const expertRole = raw.expert_role || raw.expert_title || '';
   const expertOrg = raw.expert_org || raw.expert_institution || '';
-  const channel = raw.channel || raw.source_channel || summary.channel || '';
+  const channel = raw.channel || raw.source_channel || summary.channel || summary.topic || summary.topicLabel || '';
   const sourceType = raw.source_type || '';
   const ticker = raw.ticker || summary.ticker || '';
   const title = raw.title || raw.video_title || summary.title || '';
@@ -120,8 +121,7 @@ async function generateDraftForSummary(db, anthropic, summary) {
 
   const hasContent = validKI.length > 0 || (typeof ts === 'string' && ts.length > 50);
   if (!hasContent) return { ok: false, error: '缺少 key_insights 和 transcript_sample' };
-  if (!topic) return { ok: false, error: 'topic 空白' };
-  if (!expertName && !channel) return { ok: false, error: '缺少 expert_name / channel' };
+  if (!topic && !channel && !expertName) return { ok: false, error: 'topic/channel/expertName 全空' };
   if (sourceType === 'no_match') return { ok: false, error: 'source_type=no_match' };
 
   const enrichmentStatus = raw.enrichmentStatus || '';

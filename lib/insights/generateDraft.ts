@@ -116,9 +116,10 @@ export async function generateDraft(
 
   // Try V2 format first (keyInsightsV2), fallback to old rawExpertInsight.key_insights
   interface KeyInsightV2Item {
-    headline?: string;
+    zhTitle?: string;
+    zhSummary?: string;
+    whyItMatters?: string;
     sourceExcerpt?: string;
-    investmentImplication?: string;
     importanceScore?: number;
     investmentRelevanceScore?: number;
   }
@@ -127,11 +128,12 @@ export async function generateDraft(
 
   // Convert V2 items to key insight strings for the prompt
   const v2KI: string[] = v2Insights
-    .filter((item: KeyInsightV2Item) => item.headline || item.investmentImplication)
+    .filter((item: KeyInsightV2Item) => item.zhTitle || item.zhSummary || item.whyItMatters)
     .map((item: KeyInsightV2Item) => {
       const parts: string[] = [];
-      if (item.headline) parts.push(item.headline);
-      if (item.investmentImplication) parts.push(`投資意涵：${item.investmentImplication}`);
+      if (item.zhTitle) parts.push(item.zhTitle);
+      if (item.zhSummary) parts.push(item.zhSummary);
+      if (item.whyItMatters) parts.push(`投資意涵：${item.whyItMatters}`);
       if (item.sourceExcerpt) parts.push(`原文摘錄：${item.sourceExcerpt}`);
       return parts.join('。');
     });
