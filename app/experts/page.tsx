@@ -89,6 +89,8 @@ export default function ExpertsPage() {
   const [transcriptData, setTranscriptData] = useState<{fullTranscript: string, transcriptLength?: number, fetchedAt: string, expiresAt: string} | null>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
+  // Unified Content Resolver state
+  const [resolvedContent, setResolvedContent] = useState<any | null>(null);
   const [cmsEditId, setCmsEditId] = useState<string | null>(null);
   const [cmsEditMeta, setCmsEditMeta] = useState<Record<string, any>>({});
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null);
@@ -342,6 +344,7 @@ export default function ExpertsPage() {
   const openPreview = async (id: string, type: 'summary' | 'expert_insight', defaultTab?: 'draft' | 'insights' | 'insightsV2' | 'transcript' | 'source') => {
     setCmsPreviewLoading(true);
     setCmsPreview(null);
+    setResolvedContent(null);
     setPreviewTab(defaultTab ?? 'draft');
     setTranscriptData(null);
     setTranscriptError(null);
@@ -352,9 +355,15 @@ export default function ExpertsPage() {
     setDraftSaveMsg(null);
     setDraftWarning(null);
     try {
-      const res = await fetch(`/api/admin/insights/preview?id=${id}&type=${type}`);
-      const data = await res.json();
-      if (data.ok) setCmsPreview(data.doc);
+      // Fetch both the raw doc (for existing CMS operations) and resolved content
+      const [previewRes, resolveRes] = await Promise.all([
+        fetch(`/api/admin/insights/preview?id=${id}&type=${type}`),
+        fetch(`/api/content/resolve/${id}`),
+      ]);
+      const previewData = await previewRes.json();
+      if (previewData.ok) setCmsPreview(previewData.doc);
+      const resolveData = await resolveRes.json();
+      if (resolveData.ok) setResolvedContent(resolveData.resolved);
     } finally {
       setCmsPreviewLoading(false);
     }
@@ -1466,51 +1475,78 @@ export default function ExpertsPage() {
                         );
                       })()}
 
-                      {/* Tab: transcript */}
+                      {/* Tab: transcript — uses unified Content Resolver */}
                       {previewTab === 'transcript' && (
                         <div>
-                          {transcriptLoading && <div style={{ color: '#888' }}>載入中...</div>}
-                          {transcriptError && <div style={{ color: '#d32f2f' }}>⚠️ {transcriptError}</div>}
-                          {transcriptData && (
+                          {/* Resolver-provided transcript (priority: rawText > transcript_sample > video_transcripts) */}
+                          {resolvedContent?.transcript ? (
                             <div>
                               <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '5px 10px', marginBottom: 8, fontSize: 12, color: '#856404' }}>
-                                📜 原文進字稿（英文）— 屬於 worker 輸入原料，主閱讀請使用 🔬 V2 全文洞察 tab
+                                📜 原文逐字稿 — 屬於 worker 輸入原料，主閱讀請使用 🔬 V2 全文洞察 tab
                               </div>
-                              <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
-                                {transcriptData.transcriptLength?.toLocaleString()} chars | 抓取: {transcriptData.fetchedAt ? new Date(transcriptData.fetchedAt).toLocaleDateString() : 'N/A'} | 到期: {transcriptData.expiresAt ? new Date(transcriptData.expiresAt).toLocaleDateString() : 'N/A'}
+                              <div style={{ color: '#888', fontSize: 12, marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <span>{resolvedContent.transcriptLength?.toLocaleString()} chars</span>
+                                <span>來源: {resolvedContent.transcriptSource === 'rawText' ? '📄 expert_insights.rawText（全文）' : resolvedContent.transcriptSource === 'transcript_sample' ? '📋 transcript_sample（前 600 字）' : resolvedContent.transcriptSource === 'video_transcripts' ? '🎬 video_transcripts（完整逐字稿）' : resolvedContent.transcriptSource}</span>
+                                <span>類型: {resolvedContent.transcriptType === 'full' ? '✅ 全文' : '⚠️ 片段'}</span>
                               </div>
                               <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                {transcriptData.fullTranscript}
+                                {resolvedContent.transcript}
                               </div>
                             </div>
-                          )}
-                          {!transcriptLoading && !transcriptError && !transcriptData && (cmsPreview?.transcript_sample || cmsPreview?.rawExpertInsight?.transcript_sample) && (
+                          ) : (
+                            /* Fallback: legacy flow (transcriptData from separate API, or sample from cmsPreview) */
                             <div>
-                              <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Transcript Sample（前 600 字）</div>
-                              <div style={{ fontSize: 13, color: '#444', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>{cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample}</div>
+                              {transcriptLoading && <div style={{ color: '#888' }}>載入中...</div>}
+                              {transcriptError && <div style={{ color: '#d32f2f' }}>⚠️ {transcriptError}</div>}
+                              {transcriptData && (
+                                <div>
+                                  <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '5px 10px', marginBottom: 8, fontSize: 12, color: '#856404' }}>
+                                    📜 原文逐字稿（英文）— 屬於 worker 輸入原料，主閱讀請使用 🔬 V2 全文洞察 tab
+                                  </div>
+                                  <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                                    {transcriptData.transcriptLength?.toLocaleString()} chars | 抓取: {transcriptData.fetchedAt ? new Date(transcriptData.fetchedAt).toLocaleDateString() : 'N/A'} | 到期: {transcriptData.expiresAt ? new Date(transcriptData.expiresAt).toLocaleDateString() : 'N/A'}
+                                  </div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {transcriptData.fullTranscript}
+                                  </div>
+                                </div>
+                              )}
+                              {!transcriptLoading && !transcriptError && !transcriptData && (cmsPreview?.transcript_sample || cmsPreview?.rawExpertInsight?.transcript_sample) && (
+                                <div>
+                                  <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Transcript Sample（前 600 字）</div>
+                                  <div style={{ fontSize: 13, color: '#444', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>{cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample}</div>
+                                </div>
+                              )}
+                              {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && !cmsPreview?.rawExpertInsight?.transcript_sample && (
+                                <div style={{ color: '#f59e0b', fontSize: 13, padding: 12, textAlign: 'center', background: '#fffbeb', borderRadius: 6, border: '1px dashed #fcd34d' }}>⚠️ 舊資料缺來源 — 無逐字稿資料</div>
+                              )}
                             </div>
                           )}
-                          {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && !cmsPreview?.rawExpertInsight?.transcript_sample && (
-                            <div style={{ color: '#aaa', fontSize: 13, padding: 12, textAlign: 'center' }}>(無逐字稿資料)</div>
+                          {/* Missing fields indicator */}
+                          {resolvedContent?._missing?.includes('transcript') && (
+                            <div style={{ color: '#f59e0b', fontSize: 12, padding: '6px 10px', marginTop: 8, background: '#fffbeb', borderRadius: 6, border: '1px dashed #fcd34d' }}>⚠️ 舊資料缺來源 — Resolver 無法找到逐字稿</div>
                           )}
                         </div>
                       )}
 
-                      {/* Tab: source — uses normalizeSummary */}
+                      {/* Tab: source — uses unified Content Resolver */}
                       {previewTab === 'source' && (() => {
-                        // Unified source tab — supports all sourceType values
-                        const sourceType = cmsPreview?.sourceType
+                        // Use resolved content when available, fallback to cmsPreview fields
+                        const rc = resolvedContent;
+                        const sourceType = rc?.sourceType
+                          || cmsPreview?.sourceType
                           || (cmsPreview?.source_type === 'video_queue' || cmsPreview?.youtube_id ? 'youtube'
                             : cmsPreview?.source_type === 'podcast' ? 'podcast'
                             : cmsPreview?.source_type === 'article' || cmsPreview?.source_type === 'bloomberg' ? 'article'
                             : cmsPreview?.source_type === 'expert-pipeline' || cmsPreview?.source_type === 'expert_pipeline' ? 'expert_pipeline'
                             : cmsPreview?.source_type === 'manual' ? 'manual'
                             : cmsPreview?.youtube_id ? 'youtube' : 'expert_pipeline');
-                        const sourceUrl = cmsPreview?.sourceUrl || cmsPreview?.source_url || cmsPreview?.url;
-                        const sourceName = cmsPreview?.sourceName || cmsPreview?.source_name || cmsPreview?.channel || cmsPreview?.institution;
-                        const sourceTitle = cmsPreview?.sourceTitle || cmsPreview?.video_title || cmsPreview?.title;
-                        const sourcePublishedAt = cmsPreview?.sourcePublishedAt || cmsPreview?.publish_date;
+                        const sourceUrl = rc?.sourceUrl || cmsPreview?.sourceUrl || cmsPreview?.source_url || cmsPreview?.url;
+                        const sourceName = rc?.sourceName || cmsPreview?.sourceName || cmsPreview?.source_name || cmsPreview?.channel || cmsPreview?.institution;
+                        const sourceTitle = rc?.sourceTitle || cmsPreview?.sourceTitle || cmsPreview?.video_title || cmsPreview?.title;
+                        const sourcePublishedAt = rc?.sourcePublishedAt || cmsPreview?.sourcePublishedAt || cmsPreview?.publish_date;
                         const fetchedAt = cmsPreview?.fetchedAt;
+                        const missingFields = rc?._missing || [];
 
                         const typeEmoji: Record<string, string> = {
                           youtube: '🎬 YouTube',
@@ -1523,6 +1559,15 @@ export default function ExpertsPage() {
 
                         return (
                         <div style={{ fontSize: 13 }}>
+                          {/* Resolver status badge */}
+                          {rc && (
+                            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#e0f2fe', color: '#0369a1' }}>Resolver: {rc._resolvedFrom}</span>
+                              <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#f0fdf4', color: '#166534' }}>sourceDoc: {rc.sourceDocId?.slice(-6)}</span>
+                              {rc.summaryId && <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: '#fef3c7', color: '#92400e' }}>summary: {rc.summaryId?.slice(-6)}</span>}
+                            </div>
+                          )}
+
                           <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>{label}</div>
 
                           {sourceUrl ? (
@@ -1533,7 +1578,7 @@ export default function ExpertsPage() {
                               </a>
                             </div>
                           ) : (
-                            <div style={{ color: '#9ca3af', marginBottom: 8 }}>⚠️ 舊資料無來源連結</div>
+                            <div style={{ color: '#f59e0b', marginBottom: 8, background: '#fffbeb', padding: '4px 8px', borderRadius: 4, border: '1px dashed #fcd34d', fontSize: 12 }}>⚠️ 舊資料缺來源 — 無來源連結</div>
                           )}
 
                           <div style={{ color: '#888', fontSize: 12, lineHeight: 1.8 }}>
@@ -1542,18 +1587,30 @@ export default function ExpertsPage() {
                             {fetchedAt && <div>抓取：{fetchedAt}</div>}
                             {cmsPreview?.status && <div>pipeline status: {cmsPreview.status}</div>}
                             {cmsPreview?.sourceId && <div>sourceId: {cmsPreview.sourceId}</div>}
+                            {rc?.youtubeId && <div>youtube_id: {rc.youtubeId}</div>}
+                            {rc?.expertName && <div>專家：{[rc.expertName, rc.expertRole, rc.expertOrg].filter(Boolean).join(' / ')}</div>}
                           </div>
 
-                          {/* Legacy debug info */}
+                          {/* Missing fields from resolver */}
+                          {missingFields.length > 0 && (
+                            <div style={{ marginTop: 8, padding: '6px 10px', background: '#fffbeb', border: '1px dashed #fcd34d', borderRadius: 6, fontSize: 11, color: '#92400e' }}>
+                              ⚠️ 缺少欄位：{missingFields.join(', ')}
+                            </div>
+                          )}
+
+                          {/* Debug info */}
                           <details style={{ marginTop: 12 }}>
                             <summary style={{ color: '#aaa', fontSize: 11, cursor: 'pointer' }}>Debug info</summary>
                             <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>
-                              <div>youtube_id: {cmsPreview?.youtube_id || 'N/A'}</div>
+                              <div>youtube_id: {cmsPreview?.youtube_id || rc?.youtubeId || 'N/A'}</div>
                               <div>source_type: {cmsPreview?.source_type || 'N/A'}</div>
+                              <div>resolved sourceType: {rc?.sourceType || 'N/A'}</div>
                               <div>enrichmentModel: {cmsPreview?.enrichmentModel || 'N/A'}</div>
-                              <div>keyInsightsV2Status: {cmsPreview?.keyInsightsV2Status || 'N/A'}</div>
-                              <div>draftStatus: {cmsPreview?.draftStatus || 'N/A'}</div>
+                              <div>keyInsightsV2Status: {rc?.keyInsightsV2Status || cmsPreview?.keyInsightsV2Status || 'N/A'}</div>
+                              <div>draftStatus: {rc?.draftStatus || cmsPreview?.draftStatus || 'N/A'}</div>
+                              <div>draftSource: {rc?.draftSource || 'N/A'}</div>
                               <div>_backfilled: {cmsPreview?._backfilled ? 'Yes' : 'No'}</div>
+                              <div>_resolvedFrom: {rc?._resolvedFrom || 'N/A'}</div>
                             </div>
                           </details>
                         </div>
