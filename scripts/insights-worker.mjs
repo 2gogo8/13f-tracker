@@ -364,26 +364,68 @@ Rules:
 
   const msg = await anthropic.messages.create({
     model: MODEL,
-    max_tokens: 4000,
+    max_tokens: 8000,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
   });
 
   const rawText = msg.content[0].text.trim();
+
+  // Item 2: Check stop_reason for truncation
+  if (msg.stop_reason === 'max_tokens') {
+    const tail = rawText.slice(-500);
+    console.error(`  ❌ Chunk ${chunkIndex + 1}/${totalChunks} TRUNCATED (hit max_tokens)`);
+    console.error(`     Last 500 chars: ${tail}`);
+    return { insights: [], error: 'max_tokens_truncated' };
+  }
+
   const cleanText = cleanLLMJson(rawText);
+
+  // Item 3: JSON truncation pre-check
+  const trimmed = cleanText.trimEnd();
+  const firstChar = trimmed[0];
+  const lastCharPre = trimmed.slice(-1);
+  const expectedEnd = firstChar === '[' ? ']' : firstChar === '{' ? '}' : null;
+  if (!expectedEnd) {
+    console.error(`  ❌ Chunk ${chunkIndex + 1}/${totalChunks} FAILED: Response is not valid JSON (starts with '${firstChar}')`);
+    console.error(`     Last 500 chars: ${trimmed.slice(-500)}`);
+    return { insights: [], error: 'invalid_json_format' };
+  }
+  if (lastCharPre !== expectedEnd) {
+    console.error(`  ❌ Chunk ${chunkIndex + 1}/${totalChunks} FAILED: Response appears truncated (starts '${firstChar}', ends '${lastCharPre}', expected '${expectedEnd}')`);
+    console.error(`     Last 500 chars: ${trimmed.slice(-500)}`);
+    return { insights: [], error: 'truncated_response' };
+  }
+
+  // Item 4: Schema validation helper
+  const REQUIRED_FIELDS = ['insightTitle', 'sourceExcerpt', 'importanceScore', 'investmentRelevanceScore'];
+  function validateInsight(obj) {
+    return REQUIRED_FIELDS.every(f => f in obj && obj[f] !== null && obj[f] !== '');
+  }
 
   try {
     const parsed = JSON.parse(cleanText);
-    if (!Array.isArray(parsed)) return { insights: [], error: null };
+    if (!Array.isArray(parsed)) {
+      console.error(`  ❌ Chunk ${chunkIndex + 1}/${totalChunks} FAILED: Parsed result is not an array`);
+      console.error(`     Last 500 chars: ${cleanText.slice(-500)}`);
+      return { insights: [], error: 'no_valid_insights' };
+    }
     // Filter: must have sourceExcerpt (discard without it)
-    const valid = parsed.filter(item =>
-      typeof item.sourceExcerpt === 'string' &&
-      item.sourceExcerpt.length >= 100 &&
-      typeof item.insightTitle === 'string'
-    );
+    const valid = parsed.filter(item => {
+      if (!validateInsight(item)) {
+        console.warn(`  ⚠️  Chunk ${chunkIndex + 1}/${totalChunks}: Dropping insight missing required fields: ${JSON.stringify(Object.keys(item)).slice(0, 200)}`);
+        return false;
+      }
+      if (typeof item.sourceExcerpt !== 'string' || item.sourceExcerpt.length < 100) {
+        console.warn(`  ⚠️  Chunk ${chunkIndex + 1}/${totalChunks}: Dropping insight with short/missing sourceExcerpt`);
+        return false;
+      }
+      return true;
+    });
     return { insights: valid, error: null };
   } catch (parseErr) {
-    return { insights: [], error: `JSON parse failed: ${parseErr.message}` };
+    console.error(`     Last 500 chars: ${cleanText.slice(-500)}`);
+    return { insights: [], error: `json_parse_failed: ${parseErr.message}` };
   }
 }
 
@@ -537,15 +579,17 @@ async function processSummary(db, anthropic, summaryId, options = {}) {
 
     for (let i = 0; i < totalChunks; i++) {
       if (completedSet.has(i)) continue;
-      if (completedSet.size === 0 && i <= lastIdx) continue; // Legacy: skip chunks <= lastProcessedChunkIndex
+      // Legacy resume line removed — resume only uses insight_chunks.status === 'completed'
       chunksToProcess.push(i);
     }
     if (chunksToProcess.length === 0) {
       console.log('  ✅ All chunks already completed');
-      // Ensure status is 'completed'
-      await db.collection('summaries').updateOne({ _id: objectId }, {
-        $set: { keyInsightsV2Status: 'completed', updatedAt: new Date() }
-      });
+      // Ensure status is 'completed' (guard: no DB write in dry-run)
+      if (!dryRun) {
+        await db.collection('summaries').updateOne({ _id: objectId }, {
+          $set: { keyInsightsV2Status: 'completed', updatedAt: new Date() }
+        });
+      }
       return { ok: true };
     }
     console.log(`  ⏩ Resuming: ${chunksToProcess.length} chunks remaining (skipping ${totalChunks - chunksToProcess.length} completed)`);
