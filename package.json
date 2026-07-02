@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "insights:v2": "node scripts/insights-worker.mjs"
+    "insights:v2": "node scripts/insights-worker.mjs",
+    "insights:draft-backfill": "node scripts/draft-backfill.mjs",
+    "insights:draft-backfill:dry": "node scripts/draft-backfill.mjs --dry-run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

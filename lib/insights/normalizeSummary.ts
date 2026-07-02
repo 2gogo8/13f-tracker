@@ -133,8 +133,11 @@ export function getContentReadiness(doc: Record<string, any>): ContentReadiness 
   // 2. Has usable content — from normalized hasUsableContent
   const hasContent = norm.hasUsableContent;
 
-  // 3. V2 洞察完成
-  const hasV2 = doc.keyInsightsV2Status === 'completed';
+  // 3. V2 洞察完成（有效 completed：status=completed + 實際有 insights）
+  // 排除假 completed（status=completed 但 insightsCount=0 且 keyInsightsV2=[]）
+  const hasV2 =
+    doc.keyInsightsV2Status === 'completed' &&
+    ((doc.insightsCount ?? 0) > 0 || (Array.isArray(doc.keyInsightsV2) && doc.keyInsightsV2.length > 0));
 
   // 4. 草稿已備 (draftStatus=draft_ready + actual content)
   const hasDraftContent = !!(

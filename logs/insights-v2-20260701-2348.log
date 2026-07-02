@@ -1,0 +1,259 @@
+
+> 13f-tracker@0.1.0 insights:v2
+> node scripts/insights-worker.mjs --all-with-article-content --resume
+
+🔗 Connected to MongoDB
+📇 Ensured unique index on insight_chunks (summaryId, chunkIndex)
+
+📋 24 summaries to process
+
+════════════════════════════════════════════════════════════
+📄 SpaceX IPO 表面是火箭故事，真正是私人市場破牆
+   ID: 6a3bb178dcf7b7046d928600
+  📰 Using article content (1543 chars) as input
+   Transcript: 1,543 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 5 (+5)
+
+  📊 DONE: 5 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 SpaceX史上最大IPO：$850億募資背後，AI監管戰爭正式開打
+   ID: 6a3bbe2a81dd0e9698682cc8
+  📰 Using article content (2305 chars) as input
+   Transcript: 2,305 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 6557 (line 124 column 72)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 AI 應用層，從題材到基本面只隔一件事：用戶會不會回來
+   ID: 6a3bc15b81dd0e9698685042
+  📰 Using article content (1909 chars) as input
+   Transcript: 1,909 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 5 (+5)
+
+  📊 DONE: 5 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 通膨可能跌破預期？核心指標已降至1.2%
+   ID: 6a3bc88a81dd0e9698688536
+  📰 Using article content (952 chars) as input
+   Transcript: 952 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 5960 (line 119 column 47)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 今日專家觀點：Amon談AI數據中心、Micron HBM4認證
+   ID: 6a3c4403f7f1c328fea90422
+  📰 Using article content (1053 chars) as input
+   Transcript: 1,053 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 4 (+4)
+
+  📊 DONE: 4 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 美光財報炸裂漲15%，記憶體寒冬結束了？
+   ID: 6a3c53b281dd0e969868859e
+  📰 Using article content (927 chars) as input
+   Transcript: 927 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 6064 (line 138 column 21)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 Anthropic營收一年暴漲20倍，但跟電動車有什麼關係？
+   ID: 6a3c53cf81dd0e969868859f
+  📰 Using article content (993 chars) as input
+   Transcript: 993 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 5 (+5)
+
+  📊 DONE: 5 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 Fed壓力測試過關！大銀行狂撒700億，但升息警報還沒解除
+   ID: 6a3c53e781dd0e96986885a0
+  📰 Using article content (819 chars) as input
+   Transcript: 819 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 3 (+3)
+
+  📊 DONE: 3 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 生技股爆地雷？$ENSG遭投資人求償，醫療板塊出事了
+   ID: 6a3c540981dd0e96986885a1
+  📰 Using article content (1117 chars) as input
+   Transcript: 1,117 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 6174 (line 126 column 60)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 Anthropic年營收從9億暴衝到300億：什麼叫「非線性成長」
+   ID: 6a3c61a781dd0e96986885a2
+  📰 Using article content (855 chars) as input
+   Transcript: 855 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 6557 (line 120 column 62)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 22歲兄弟的$4000卡車，如何滾成年收3億台幣生意
+   ID: 6a3c61bd81dd0e96986885a3
+  📰 Using article content (756 chars) as input
+   Transcript: 756 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 4 (+4)
+
+  📊 DONE: 4 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 預測市場爆發：世界盃帶來的不只是賭盤
+   ID: 6a3c61d481dd0e96986885a4
+  📰 Using article content (977 chars) as input
+   Transcript: 977 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 5 (+5)
+
+  📊 DONE: 5 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 五年後，傳統金融與加密貨幣的界線會消失？
+   ID: 6a3c61e681dd0e96986885a5
+  📰 Using article content (825 chars) as input
+   Transcript: 825 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 4 (+4)
+
+  📊 DONE: 4 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 中國AI年營收破10億美元，開源模式靠什麼賺錢？
+   ID: 6a3c64bf81dd0e96986885a6
+  📰 Using article content (2036 chars) as input
+   Transcript: 2,036 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 6183 (line 120 column 58)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 自我進化的 AI：Mirendal 想讓每家公司都擁有自己的 AI 實驗室
+   ID: 6a3c675d81dd0e96986885a7
+  📰 Using article content (1775 chars) as input
+   Transcript: 1,775 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 5920 (line 111 column 13)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 荷莫茲海峽封鎖：台灣半導體11天斷氣危機，AI基建大缺料
+   ID: 6a3c67be81dd0e96986885a8
+  📰 Using article content (1126 chars) as input
+   Transcript: 1,126 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 5 (+5)
+
+  📊 DONE: 5 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 AI 內容生成的真實性困境：Google DeepMind 揭示生成式媒體的價值邊界
+   ID: 6a3c67e081dd0e96986885a9
+  📰 Using article content (1155 chars) as input
+   Transcript: 1,155 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ✅ Chunk 1/1 | coverage 100% | insights 5 (+5)
+
+  📊 DONE: 5 insights | coverage 100% | status completed
+
+════════════════════════════════════════════════════════════
+📄 Holcim CEO 親揭：水泥業如何靠 AI 省下 2 億瑞郎，歐洲缺千萬戶房子的投資機會
+   ID: 6a3c681581dd0e96986885aa
+  📰 Using article content (1870 chars) as input
+   Transcript: 1,870 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 5453 (line 99 column 24)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 Ryan Cohen 的 eBay 想像：$56B 收購案背後的資本配置邏輯
+   ID: 6a3ce0184aae4950b871e730
+  📰 Using article content (1925 chars) as input
+   Transcript: 1,925 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 6544 (line 143 column 26)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 Fable 5 的爭議：當 AI 公司變成平台裁判員，投資人該注意什麼
+   ID: 6a3ce0184aae4950b871e731
+  📰 Using article content (2204 chars) as input
+   Transcript: 2,204 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 5887 (line 105 column 115)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 挪威主權基金買的不是水泥，而是歐洲住宅缺口和 AI 降成本邏輯
+   ID: 6a3ce0194aae4950b871e732
+  📰 Using article content (2272 chars) as input
+   Transcript: 2,272 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Expected double-quoted property name in JSON at position 6540 (line 129 column 27)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 挪威主權基金情境推演：極端氣候恐引發4200億美元虧損
+   ID: 6a3e86db24c139ca2a1273b3
+  📰 Using article content (1282 chars) as input
+   Transcript: 1,282 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 5512 (line 107 column 58)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 社會主義橫掃紐約、中國AI追上美國、Micron記憶體狂賣到2026——這三件事正在改變投資版圖
+   ID: 6a401c1224c139ca2a184fc4
+  📰 Using article content (3115 chars) as input
+   Transcript: 3,115 chars | 1 chunks
+  ⏩ Resuming: 1 chunks remaining (skipping 0 completed)
+  ❌ Chunk 1/1 FAILED: JSON parse failed: Unterminated string in JSON at position 6038 (line 97 column 20)
+
+  📊 DONE: 0 insights | coverage 0% | status partial
+  ⚠️  1 chunks failed — use --retry-failed to retry
+
+════════════════════════════════════════════════════════════
+📄 WEN Meme Stock
+   ID: 6a41d7334d6d5ac28cf54d6b
+  ❌ No transcript or too short
+
+════════════════════════════════════════════════════════════
+🏁 COMPLETE: 23 succeeded, 1 failed out of 24

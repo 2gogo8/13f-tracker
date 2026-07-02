@@ -64,6 +64,227 @@ if (!mongoUri || !anthropicKey) {
   process.exit(1);
 }
 
+// ── PUBLISH_BLOCKERS (mirror of lib/insights/generateDraft.ts) ─────────────────
+
+const PUBLISH_BLOCKERS = [
+  '【JG 觀點待補】',
+  '《JG 觀點待補》',
+  '請從上面候選方向',
+  '候選方向中選一個',
+  '改寫成正式 JG 判斷',
+  'reviewer note',
+  'internal instruction',
+  'TODO for JG',
+  '請 JG',
+  '後台操作指令',
+  'TODO',
+];
+
+// ── Auto-draft generation (inline JS mirror of lib/insights/generateDraft.ts) ──
+
+/**
+ * Generate a draft for a completed V2 summary.
+ * Mirrors lib/insights/generateDraft.ts but is pure JS for worker use.
+ *
+ * @param {import('mongodb').Db} db
+ * @param {Anthropic} anthropic
+ * @param {string} summaryId
+ * @param {{ force?: boolean }} [opts]
+ * @returns {Promise<{ok:boolean, draftStatus?:string, blocked?:boolean, error?:string, skipped?:boolean}>}
+ */
+async function generateDraftForWorker(db, anthropic, summaryId, opts = {}) {
+  const { force = false } = opts;
+  const { ObjectId: ObjId } = await import('mongodb');
+  let objectId;
+  try { objectId = new ObjId(summaryId); } catch { return { ok: false, error: 'Invalid summaryId' }; }
+
+  const summary = await db.collection('summaries').findOne({ _id: objectId });
+  if (!summary) return { ok: false, error: 'Summary not found' };
+
+  // Only candidates
+  if (summary.status !== 'candidate') {
+    return { ok: false, error: `status='${summary.status}' not candidate`, skipped: true };
+  }
+
+  // Skip if draft already exists
+  if (!force && (summary.draftStatus === 'draft_ready' || summary.draftStatus === 'draft_needs_review')) {
+    return { ok: false, error: 'Draft already exists', skipped: true };
+  }
+
+  const raw = summary.rawExpertInsight ?? {};
+  const ki = raw.key_insights ?? [];
+  const ts = raw.transcript_sample ?? '';
+  const topic = raw.topic || summary.topic || '';
+  const expertName = raw.expert_name || summary.expertName || '';
+  const expertRole = raw.expert_role || raw.expert_title || '';
+  const expertOrg = raw.expert_org || raw.expert_institution || '';
+  const channel = raw.channel || raw.source_channel || '';
+  const sourceType = raw.source_type || '';
+  const ticker = raw.ticker || summary.ticker || '';
+  const title = raw.title || raw.video_title || summary.title || '';
+  const sourceUrl = raw.source_url || raw.url || summary.sourceUrl || '';
+  const sourceDate = raw.publish_date || summary.createdAt || new Date().toISOString().split('T')[0];
+  const sourceDateFallback = !raw.publish_date;
+
+  const validKI = ki.filter(s =>
+    typeof s === 'string' &&
+    !s.match(/^\[music\]/i) &&
+    !s.match(/^(welcome|hello|hi|大家好|歡迎)/i) &&
+    s.length > 20
+  );
+
+  const hasContent = validKI.length > 0 || (typeof ts === 'string' && ts.length > 50);
+  if (!hasContent) return { ok: false, error: '缺少 key_insights 和 transcript_sample' };
+  if (!topic) return { ok: false, error: 'topic 空白' };
+  if (!expertName && !channel) return { ok: false, error: '缺少 expert_name / channel' };
+  if (sourceType === 'no_match') return { ok: false, error: 'source_type=no_match' };
+
+  const enrichmentStatus = raw.enrichmentStatus || '';
+  if (enrichmentStatus === 'needs_transcript_or_insights' || enrichmentStatus === 'transcript_too_short') {
+    return { ok: false, error: `enrichmentStatus=${enrichmentStatus}` };
+  }
+
+  // Freshness warning (log only, don't block in workerMode)
+  let freshnessWarning = null;
+  try {
+    const srcDate = new Date(raw.publish_date || summary.createdAt);
+    const daysOld = Math.floor((Date.now() - srcDate.getTime()) / 86400000);
+    if (daysOld > 90) freshnessWarning = `⚠️ 素材已 ${daysOld} 天前（workerMode 繼續）`;
+    else if (daysOld > 30) freshnessWarning = `⚠️ 此素材為 ${daysOld} 天前的訪談`;
+  } catch { /* ignore */ }
+
+  // Fetch recent articles
+  const recentArticles = await db.collection('summaries')
+    .find({ alphaReady: true }, { projection: { _id: 1, jgTitle: 1, title: 1, topic: 1, tags: 1, publishedAt: 1 } })
+    .sort({ publishedAt: -1 }).limit(5).toArray();
+
+  const kiText = validKI.map((k, i) => `${i + 1}. ${k}`).join('\n');
+  const tsSection = typeof ts === 'string' && ts.length > 50 ? `\n訪談片段：\n${ts.slice(0, 800)}` : '';
+  const expertLine = [expertName, expertRole, expertOrg].filter(Boolean).join('，');
+
+  const systemPrompt = `你是一個財經研究助理。你必須只回傳一個 valid JSON object，不加任何解釋文字、markdown code block、或前後文。`;
+  const userPrompt = `素材資訊：
+- 標題：${title || topic}
+- 專家：${expertLine || '（未知）'}
+- 頻道：${channel || '（未知）'}
+- 日期：${sourceDate || '（未知）'}
+- 主題標的：${ticker ? ticker + ' / ' : ''}${topic}
+- 來源連結：${sourceUrl || '（未提供）'}
+
+專家關鍵觀點：
+${kiText}
+${tsSection}
+
+近期市場感覺 / 方向（admin 原始輸入，請先整理成主題再進行連結）：
+（未提供）
+
+最近已上架文章（供聯想參考）：
+${recentArticles.length > 0
+    ? recentArticles.map(a => `- 標題：${a.jgTitle || a.title || '未知'} | 主題：${a.topic || '—'} | 標籤：${(a.tags || []).join(', ') || '—'} | 日期：${a.publishedAt || '—'}`).join('\n')
+    : '（無已上架文章）'}
+
+---
+
+請生成以下格式的 JSON object，只回傳 JSON，不加任何額外文字：
+
+{
+  "suggestedTitle": "建議標題（繁體中文）",
+  "articleDraft": "完整文章草稿（markdown 格式）",
+  "normalizedMarketThemes": [],
+  "selectedMarketDirection": null,
+  "marketDirectionFitScore": 0,
+  "marketDirectionReason": "",
+  "relatedRecentArticles": [],
+  "jgAngleCandidates": []
+}
+
+articleDraft 格式（固定格式，markdown，用 \\n 換行）：
+# {標題}
+
+## 一、這則素材在講什麼
+（根據素材整理這位專家說了什麼，只整理，不評論）
+
+## 二、為什麼這件事對投資人重要
+（從市場角度說明這則訊息的意義，不給買賣建議）
+
+## 三、投資判斷摘要
+（中性分析語氣，不要寫「JG 認為」「買賣建議」）
+
+## 四、接下來觀察什麼
+（列出 2-3 個後續值得追蹤的觀察指標或事件）
+
+禁止出現：「JG 認為」「我的觀點是」買賣建議、影片口吻`;
+
+  const DRAFT_MODEL = 'claude-sonnet-4-5';
+  const msg = await anthropic.messages.create({
+    model: DRAFT_MODEL,
+    max_tokens: 3000,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }],
+  });
+
+  const rawLLMText = msg.content[0].text.trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(rawLLMText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, ''));
+  } catch {
+    return { ok: false, error: 'LLM JSON parse failed' };
+  }
+
+  const draftTitle = parsed.suggestedTitle || title || topic;
+  const articleDraft = parsed.articleDraft || '';
+  const draftLines = articleDraft.split('\n');
+  let bodyStart = 0;
+  for (let i = 0; i < draftLines.length; i++) {
+    if (draftLines[i].startsWith('# ')) { bodyStart = i + 1; break; }
+  }
+  const draftBody = draftLines.slice(bodyStart).join('\n').trim();
+  const blocked = PUBLISH_BLOCKERS.some(b => draftBody.includes(b));
+  const draftStatus = blocked ? 'draft_needs_review' : 'draft_ready';
+
+  const tags = [ticker, topic, sourceType].filter(Boolean);
+  const generatedAt = new Date();
+  const today = generatedAt.toISOString().split('T')[0];
+
+  await db.collection('summaries').updateOne(
+    { _id: objectId },
+    {
+      $set: {
+        article: draftBody,
+        body: draftBody,
+        hasJgPlaceholder: false,
+        title: draftTitle,
+        jgTitle: draftTitle,
+        analysisDate: today,
+        articleType: 'expert_note',
+        tags,
+        needsDraft: false,
+        draftStatus,
+        lintStatus: 'pending',
+        lintErrors: [],
+        generatedAt,
+        generatedBy: 'ai',
+        model: DRAFT_MODEL,
+        promptVersion: 'v2.0',
+        updatedAt: generatedAt.toISOString(),
+        sourceDate,
+        sourceDateFallback,
+        marketDirectionInput: '',
+        originalMarketDirectionInput: '',
+        normalizedMarketThemes: parsed.normalizedMarketThemes ?? [],
+        selectedMarketDirection: parsed.selectedMarketDirection ?? null,
+        marketDirectionFitScore: parsed.marketDirectionFitScore ?? 0,
+        marketDirectionReason: parsed.marketDirectionReason ?? '',
+        relatedRecentArticles: parsed.relatedRecentArticles ?? [],
+        jgAngleCandidates: parsed.jgAngleCandidates ?? [],
+      },
+    }
+  );
+
+  if (freshnessWarning) console.log(`  ${freshnessWarning}`);
+  return { ok: true, draftStatus, blocked };
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const CHUNK_SIZE = 4500;
@@ -490,7 +711,20 @@ async function processSummary(db, anthropic, summaryId, options = {}) {
   const finalCoverage = Math.min(100, Math.round((coveredChars / fullTranscript.length) * 100));
   const finalDoc = await db.collection('summaries').findOne({ _id: objectId }, { projection: { keyInsightsV2: 1 } });
   const finalInsightsCount = Array.isArray(finalDoc?.keyInsightsV2) ? finalDoc.keyInsightsV2.length : 0;
-  const finalStatus = totalFailed > 0 ? 'partial' : (totalCompleted >= totalChunks ? 'completed' : 'partial');
+  // Strict completed: ALL chunks processed, zero failed, insights generated, coverage=100
+  let finalStatus;
+  if (totalFailed === 0 && totalCompleted >= totalChunks && finalInsightsCount > 0 && finalCoverage >= 100) {
+    finalStatus = 'completed';
+  } else if (totalFailed > 0 && totalCompleted > 0 && finalInsightsCount > 0) {
+    finalStatus = 'partial';   // mixed: some chunks ok, some failed, but has insights
+  } else if (totalFailed > 0 && (totalCompleted === 0 || finalInsightsCount === 0)) {
+    finalStatus = 'failed';    // all chunks failed or produced zero insights
+  } else if (totalCompleted < totalChunks) {
+    finalStatus = 'partial';   // still in progress (no failures, but not all chunks done)
+  } else {
+    // totalFailed === 0, totalCompleted >= totalChunks, but coverage < 100 or insightsCount === 0
+    finalStatus = finalInsightsCount === 0 ? 'failed' : 'partial';
+  }
 
   await db.collection('summaries').updateOne({ _id: objectId }, {
     $set: {
@@ -518,6 +752,25 @@ async function processSummary(db, anthropic, summaryId, options = {}) {
 
   console.log(`\n  📊 DONE: ${finalInsightsCount} insights | coverage ${finalCoverage}% | status ${finalStatus}`);
   if (totalFailed > 0) console.log(`  ⚠️  ${totalFailed} chunks failed — use --retry-failed to retry`);
+
+  // ── Auto-draft generation ──────────────────────────────────────────────────
+  if (finalStatus === 'completed' && finalInsightsCount > 0 && !dryRun) {
+    console.log('  ✍️  Auto-generating draft...');
+    try {
+      const draftResult = await generateDraftForWorker(db, anthropic, summaryId);
+      if (draftResult.ok) {
+        console.log(`  ✅ Draft generated: ${draftResult.draftStatus}${draftResult.blocked ? ' (needs review)' : ''}`);
+      } else if (draftResult.skipped) {
+        console.log(`  ⏭️  Draft skipped: ${draftResult.error}`);
+      } else {
+        console.log(`  ⚠️  Draft generation failed: ${draftResult.error}`);
+      }
+    } catch (draftErr) {
+      console.log(`  ⚠️  Draft generation exception: ${draftErr.message}`);
+    }
+  } else if (dryRun && finalStatus === 'completed' && finalInsightsCount > 0) {
+    console.log('  🔍 DRY RUN — would auto-generate draft after completion');
+  }
 
   return { ok: true, status: finalStatus, insightsCount: finalInsightsCount };
 }
