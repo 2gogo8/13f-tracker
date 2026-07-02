@@ -137,6 +137,11 @@ export async function POST(req: NextRequest) {
     transcript_sample: insight.transcript_sample || '',
     enrichmentStatus: insight.enrichmentStatus || 'needs_transcript_or_insights',
 
+    // Source material — copy from expert_insights so rawContent survives promote
+    rawContentOriginal: (insight.rawContentOriginal as string) || null,
+    rawContentZh: (insight.rawContentZh as string) || null,
+    rawContentStatus: (insight.rawContentStatus as string) || ((insight.rawContentOriginal || insight.rawText) ? 'complete' : 'pending'),
+
     // Raw data
     rawExpertInsight: insight,
 
