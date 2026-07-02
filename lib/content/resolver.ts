@@ -186,6 +186,16 @@ export async function resolveContent(
         // skip
       }
     }
+    // Try sourceVideoId / youtube_id lookup in expert_insights
+    if (!expertDoc) {
+      const ytId = safeStr(summaryDoc.sourceVideoId as string) || safeStr(summaryDoc.youtube_id as string);
+      if (ytId && ytId !== 'NONE') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        expertDoc = await db.collection('expert_insights').findOne({
+          $or: [{ youtube_id: ytId }, { sourceId: ytId }]
+        }) as any;
+      }
+    }
     // Last resort: check rawExpertInsight embedded doc
     if (!expertDoc && summaryDoc.rawExpertInsight && typeof summaryDoc.rawExpertInsight === 'object') {
       // Use embedded copy but mark it as such
