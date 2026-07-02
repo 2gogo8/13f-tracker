@@ -110,18 +110,43 @@ export async function generateDraft(
     };
   }
 
-  // ── 5. Extract rawExpertInsight fields ────────────────────────────────────
+  // ── 5. Extract rawExpertInsight fields + V2 support ─────────────────────────
 
   const raw = summary.rawExpertInsight as Record<string, unknown> | null | undefined;
 
-  const ki: string[] = (raw?.key_insights as string[]) || [];
+  // Try V2 format first (keyInsightsV2), fallback to old rawExpertInsight.key_insights
+  interface KeyInsightV2Item {
+    headline?: string;
+    sourceExcerpt?: string;
+    investmentImplication?: string;
+    importanceScore?: number;
+    investmentRelevanceScore?: number;
+  }
+  const v2Insights = Array.isArray(summary.keyInsightsV2) ? (summary.keyInsightsV2 as KeyInsightV2Item[]) : [];
+  const oldKI: string[] = (raw?.key_insights as string[]) || [];
+
+  // Convert V2 items to key insight strings for the prompt
+  const v2KI: string[] = v2Insights
+    .filter((item: KeyInsightV2Item) => item.headline || item.investmentImplication)
+    .map((item: KeyInsightV2Item) => {
+      const parts: string[] = [];
+      if (item.headline) parts.push(item.headline);
+      if (item.investmentImplication) parts.push(`投資意涵：${item.investmentImplication}`);
+      if (item.sourceExcerpt) parts.push(`原文摘錄：${item.sourceExcerpt}`);
+      return parts.join('。');
+    });
+
+  // Prefer V2, fallback to old format
+  const ki: string[] = v2KI.length > 0 ? v2KI : oldKI;
+  const isV2Source = v2KI.length > 0;
+
   const ts: string = (raw?.transcript_sample as string) || '';
   const topic: string = (raw?.topic as string) || (summary.topic as string) || '';
   const expertName: string = (raw?.expert_name as string) || (summary.expertName as string) || '';
   const expertRole: string = (raw?.expert_role as string) || (raw?.expert_title as string) || '';
   const expertOrg: string = (raw?.expert_org as string) || (raw?.expert_institution as string) || '';
-  const channel: string = (raw?.channel as string) || (raw?.source_channel as string) || '';
-  const sourceType: string = (raw?.source_type as string) || '';
+  const channel: string = (raw?.channel as string) || (raw?.source_channel as string) || (summary.channel as string) || '';
+  const sourceType: string = (raw?.source_type as string) || (summary.sourceType as string) || '';
   const ticker: string = (raw?.ticker as string) || (summary.ticker as string) || '';
   const title: string = (raw?.title as string) || (raw?.video_title as string) || (summary.title as string) || '';
   const sourceUrl: string = (raw?.source_url as string) || (raw?.url as string) || (summary.sourceUrl as string) || '';
@@ -146,7 +171,7 @@ export async function generateDraft(
   // ── 6. Content / enrichment guards ───────────────────────────────────────
 
   if (!hasContent) {
-    return { ok: false, error: '缺少 key_insights 和 transcript_sample', errorCode: 'no_content' };
+    return { ok: false, error: '缺少 key_insights / keyInsightsV2 和 transcript_sample', errorCode: 'no_content' };
   }
 
   const enrichmentStatus = (raw as Record<string, unknown>)?.enrichmentStatus as string || '';

@@ -80,13 +80,30 @@ const DRAFT_MODEL = 'claude-sonnet-4-5';
 
 async function generateDraftForSummary(db, anthropic, summary) {
   const raw = summary.rawExpertInsight ?? {};
-  const ki = raw.key_insights ?? [];
+
+  // V2 format: keyInsightsV2 array on the summary document
+  const v2Insights = Array.isArray(summary.keyInsightsV2) ? summary.keyInsightsV2 : [];
+  const oldKI = raw.key_insights ?? [];
+
+  // Convert V2 items to strings for the prompt
+  const v2KI = v2Insights
+    .filter(item => item.headline || item.investmentImplication)
+    .map(item => {
+      const parts = [];
+      if (item.headline) parts.push(item.headline);
+      if (item.investmentImplication) parts.push(`投資意涵：${item.investmentImplication}`);
+      if (item.sourceExcerpt) parts.push(`原文摘錄：${item.sourceExcerpt}`);
+      return parts.join('。');
+    });
+
+  // Prefer V2, fallback to old format
+  const ki = v2KI.length > 0 ? v2KI : oldKI;
   const ts = raw.transcript_sample ?? '';
   const topic = raw.topic || summary.topic || '';
   const expertName = raw.expert_name || summary.expertName || '';
   const expertRole = raw.expert_role || raw.expert_title || '';
   const expertOrg = raw.expert_org || raw.expert_institution || '';
-  const channel = raw.channel || raw.source_channel || '';
+  const channel = raw.channel || raw.source_channel || summary.channel || '';
   const sourceType = raw.source_type || '';
   const ticker = raw.ticker || summary.ticker || '';
   const title = raw.title || raw.video_title || summary.title || '';
@@ -276,12 +293,12 @@ async function main() {
   const filter = {
     keyInsightsV2Status: 'completed',
     insightsCount: { $gt: 0 },
-    status: 'candidate',
+    status: { $nin: ['archived', 'published', 'rejected'] }, // exclude explicitly terminal statuses; allow missing/candidate/etc
     ...draftFilter,
   };
 
   const cursor = db.collection('summaries').find(filter, {
-    projection: { _id: 1, title: 1, jgTitle: 1, insightsCount: 1, draftStatus: 1, rawExpertInsight: 1, topic: 1, ticker: 1, expertName: 1, sourceUrl: 1, createdAt: 1 },
+    projection: { _id: 1, title: 1, jgTitle: 1, insightsCount: 1, draftStatus: 1, rawExpertInsight: 1, keyInsightsV2: 1, topic: 1, ticker: 1, expertName: 1, sourceUrl: 1, channel: 1, sourceType: 1, createdAt: 1 },
   });
   if (limit > 0) cursor.limit(limit);
 
