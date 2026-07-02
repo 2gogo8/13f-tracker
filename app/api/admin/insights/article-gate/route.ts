@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
   const doc = await db.collection('expert_insights').findOne({ _id: new ObjectId(expertInsightId) })
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // 必須已 enriched
-  if (doc.enrichmentStatus !== 'enriched') {
+  // 必須已 enriched（相容新 worker 的 status:'ready'）
+  if (doc.enrichmentStatus !== 'enriched' && doc.status !== 'ready') {
     return NextResponse.json({ error: '素材尚未完整整理，請先讀取影片內容', status: doc.enrichmentStatus }, { status: 400 })
   }
 

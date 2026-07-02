@@ -500,7 +500,7 @@ async function processItem(db, anthropic, doc, dryRun) {
   // 5. All done → ready
   await db.collection('expert_insights').updateOne(
     { _id: doc._id },
-    { $set: { status: 'ready', completedAt: new Date().toISOString(), updatedAt: new Date() } }
+    { $set: { status: 'ready', enrichmentStatus: 'enriched', completedAt: new Date().toISOString(), updatedAt: new Date() } }
   );
 
   console.log(`  🎉 Complete → status: ready`);

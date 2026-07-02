@@ -137,6 +137,7 @@ export default function ExpertsPage() {
   const [newChannelUrl, setNewChannelUrl] = useState('');
   const [addingChannel, setAddingChannel] = useState(false);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
+  const [inlineGateResult, setInlineGateResult] = useState<Record<string, { decision: string; score: number; reason: string }>>({});
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkInput, setBulkInput] = useState('');
@@ -325,9 +326,11 @@ export default function ExpertsPage() {
           : data.articleDecision === 'material_only' ? '📚 只放素材庫'
           : '🚫 不建議處理'
         setCmsMsg(`${label}（${data.articleWorthinessScore}分）`)
+        setInlineGateResult(prev => ({ ...prev, [expertInsightId]: { decision: data.articleDecision, score: data.articleWorthinessScore, reason: data.articleReason || '' } }))
         fetchCmsData()
       } else {
         setCmsMsg(`⚠️ ${data.error}`)
+        setInlineGateResult(prev => ({ ...prev, [expertInsightId]: { decision: 'error', score: 0, reason: data.error || '未知錯誤' } }))
       }
     } catch {
       setCmsMsg('⚠️ 網路錯誤')
@@ -1856,7 +1859,7 @@ export default function ExpertsPage() {
                             🚫 不建議處理 {ins.articleWorthinessScore}分
                           </span>
                         )}
-                        {!ins.articleDecision && ins.enrichmentStatus === 'enriched' && (
+                        {!ins.articleDecision && (ins.enrichmentStatus === 'enriched' || ins.status === 'ready') && (
                           <span style={{ fontSize: 11, color: '#9ca3af', display: 'inline-block', marginTop: 4 }}>尚未判斷成文價値</span>
                         )}
                         {ins.articleReason && (
@@ -1866,65 +1869,85 @@ export default function ExpertsPage() {
                           <div style={{ fontSize: 11, color: '#60a5fa', marginTop: 2 }}>🎯 {ins.matchedStocks.join(', ')}</div>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: '6px', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
-                        {ins.enrichmentStatus === 'enriched' && (ins.key_insights?.length > 0 || ins.keyInsights?.length > 0) ? (
-                          ins.articleDecision === 'draft_candidate' ? (
-                            <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={btnStyle('#16a34a')}>➡️ 轉成最新候選</button>
-                          ) : ins.articleDecision === 'material_only' ? (
-                            <span style={{ fontSize: '11px', color: '#fbbf24', padding: '4px 8px', alignSelf: 'center' }}>📚 已整理為素材，不建議成文</span>
-                          ) : ins.articleDecision === 'reject' ? (
-                            <span style={{ fontSize: '11px', color: '#f87171', padding: '4px 8px', alignSelf: 'center' }}>🚫 不建議處理</span>
-                          ) : (
-                            <button
-                              onClick={() => handleArticleGate(ins._id)}
-                              disabled={enrichingId === ins._id}
-                              style={{ ...btnStyle('#7c3aed'), opacity: enrichingId === ins._id ? 0.6 : 1, cursor: enrichingId === ins._id ? 'wait' : 'pointer' }}
-                            >
-                              {enrichingId === ins._id ? '判斷中...' : '🧠 判斷是否値得成文'}
-                            </button>
-                          )
-                        ) : ins.enrichmentStatus === 'transcript_too_short' ? (
-                          <span style={{ fontSize: '11px', color: '#ef4444', padding: '4px 8px', alignSelf: 'center' }}>⚠️ 內容太短，不適合成稿</span>
-                        ) : ins.enrichmentStatus === 'transcript_unavailable' ? (
-                          <span style={{ fontSize: '11px', color: '#ef4444', padding: '4px 8px', alignSelf: 'center' }}>⚠️ 無字幕，不可成稿</span>
-                        ) : ins.enrichmentStatus === 'irrelevant' ? (
-                          <span style={{ fontSize: '11px', color: '#9ca3af', padding: '4px 8px', alignSelf: 'center' }}>⏭️ 不相關</span>
-                        ) : (
-                          <button
-                            onClick={async () => {
-                              setEnrichingId(ins._id)
-                              try {
-                                const res = await fetch('/api/admin/insights/enrich-video', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ expertInsightId: ins._id })
-                                })
-                                const data = await res.json()
-                                if (data.ok) {
-                                  setCmsMsg(`✅ 已補 ${data.keyInsightsCount} 條 key insights`)
-                                  fetchCmsData()
-                                } else {
-                                  const reason = data.enrichmentStatus === 'transcript_unavailable' ? '無可用字幕'
-                                    : data.enrichmentStatus === 'irrelevant' ? '影片不相關'
-                                    : '補充失敗：' + (data.reason || data.error || '未知錯誤')
-                                  setCmsMsg(`⚠️ ${reason}`)
-                                  fetchCmsData()
-                                }
-                              } catch {
-                                setCmsMsg('⚠️ 網路錯誤')
-                              } finally {
-                                setEnrichingId(null)
-                              }
-                            }}
-                            disabled={enrichingId === ins._id}
-                            style={{ ...btnStyle('#1d4ed8'), opacity: enrichingId === ins._id ? 0.6 : 1, cursor: enrichingId === ins._id ? 'wait' : 'pointer' }}
-                          >
-                            {enrichingId === ins._id ? '讀取中...' : '🔍 先讀取影片內容'}
-                          </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
+                        {/* Inline gate result */}
+                        {inlineGateResult[ins._id] && (
+                          <div style={{ fontSize: '12px', padding: '6px 10px', borderRadius: '6px', background: inlineGateResult[ins._id].decision === 'draft_candidate' ? '#052e16' : inlineGateResult[ins._id].decision === 'material_only' ? '#422006' : inlineGateResult[ins._id].decision === 'error' ? '#450a0a' : '#1c1917', border: '1px solid', borderColor: inlineGateResult[ins._id].decision === 'draft_candidate' ? '#16a34a' : inlineGateResult[ins._id].decision === 'material_only' ? '#ca8a04' : '#dc2626' }}>
+                            <div style={{ fontWeight: 700, color: inlineGateResult[ins._id].decision === 'draft_candidate' ? '#86efac' : inlineGateResult[ins._id].decision === 'material_only' ? '#fde68a' : '#fca5a5' }}>
+                              {inlineGateResult[ins._id].decision === 'draft_candidate' ? '🔥 適合成文' : inlineGateResult[ins._id].decision === 'material_only' ? '📚 只放素材庫' : inlineGateResult[ins._id].decision === 'error' ? '⚠️ 錯誤' : '🚫 不建議處理'}
+                              {inlineGateResult[ins._id].score > 0 && ` (${inlineGateResult[ins._id].score}分)`}
+                            </div>
+                            {inlineGateResult[ins._id].reason && <div style={{ color: '#a3a3a3', marginTop: '3px', fontSize: '11px' }}>{inlineGateResult[ins._id].reason}</div>}
+                          </div>
                         )}
-                        <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'reject' }, '已拒絕')} style={btnStyle('#dc3545')}>拒絕</button>
-                        <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'archive' }, '已封存')} style={btnStyle('#6c757d')}>封存</button>
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {/* Ready/enriched items: show promote + AI suggest */}
+                          {(ins.enrichmentStatus === 'enriched' || ins.status === 'ready') && (ins.key_insights?.length > 0 || ins.keyInsights?.length > 0) ? (
+                            <>
+                              <button onClick={() => cmsAction('/api/admin/insights/promote', { expertInsightId: ins._id }, '已轉為候選文章')} style={{ ...btnStyle('#16a34a'), fontWeight: 700, fontSize: '13px', padding: '6px 14px' }}>✅ 上架到候選</button>
+                              <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
+                              <button
+                                onClick={() => handleArticleGate(ins._id)}
+                                disabled={enrichingId === ins._id}
+                                style={{ ...btnStyle('#7c3aed'), opacity: enrichingId === ins._id ? 0.6 : 1, cursor: enrichingId === ins._id ? 'wait' : 'pointer', fontSize: '11px' }}
+                              >
+                                {enrichingId === ins._id ? '判斷中...' : '🧠 AI 建議'}
+                              </button>
+                            </>
+                          ) : ins.enrichmentStatus === 'transcript_too_short' ? (
+                            <>
+                              <span style={{ fontSize: '11px', color: '#ef4444', padding: '4px 8px', alignSelf: 'center' }}>⚠️ 內容太短，不適合成稿</span>
+                              <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
+                            </>
+                          ) : ins.enrichmentStatus === 'transcript_unavailable' ? (
+                            <>
+                              <span style={{ fontSize: '11px', color: '#ef4444', padding: '4px 8px', alignSelf: 'center' }}>⚠️ 無字幕，不可成稿</span>
+                              <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
+                            </>
+                          ) : ins.enrichmentStatus === 'irrelevant' ? (
+                            <>
+                              <span style={{ fontSize: '11px', color: '#9ca3af', padding: '4px 8px', alignSelf: 'center' }}>⏭️ 不相關</span>
+                              <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={async () => {
+                                  setEnrichingId(ins._id)
+                                  try {
+                                    const res = await fetch('/api/admin/insights/enrich-video', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ expertInsightId: ins._id })
+                                    })
+                                    const data = await res.json()
+                                    if (data.ok) {
+                                      setCmsMsg(`✅ 已補 ${data.keyInsightsCount} 條 key insights`)
+                                      fetchCmsData()
+                                    } else {
+                                      const reason = data.enrichmentStatus === 'transcript_unavailable' ? '無可用字幕'
+                                        : data.enrichmentStatus === 'irrelevant' ? '影片不相關'
+                                        : '補充失敗：' + (data.reason || data.error || '未知錯誤')
+                                      setCmsMsg(`⚠️ ${reason}`)
+                                      fetchCmsData()
+                                    }
+                                  } catch {
+                                    setCmsMsg('⚠️ 網路錯誤')
+                                  } finally {
+                                    setEnrichingId(null)
+                                  }
+                                }}
+                                disabled={enrichingId === ins._id}
+                                style={{ ...btnStyle('#1d4ed8'), opacity: enrichingId === ins._id ? 0.6 : 1, cursor: enrichingId === ins._id ? 'wait' : 'pointer' }}
+                              >
+                                {enrichingId === ins._id ? '讀取中...' : '🔍 先讀取影片內容'}
+                              </button>
+                              <button onClick={() => openPreview(ins._id, 'expert_insight')} style={btnStyle('#6c757d')}>Preview</button>
+                            </>
+                          )}
+                          <button onClick={() => cmsAction('/api/admin/insights/update-status', { id: ins._id, type: 'expert_insight', action: 'reject' }, '已拒絕')} style={{ ...btnStyle('#dc3545'), fontSize: '11px' }}>拒絕</button>
+                        </div>
                       </div>
                     </div>
                   </div>
