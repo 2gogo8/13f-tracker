@@ -104,6 +104,9 @@ async function main() {
           thumbnailUrl: entry.thumbnail || null,
           rawText: null,
           rawTextType: null,
+          rawContentOriginal: null,
+          rawContentZh: null,
+          rawContentStatus: 'pending',
           status: 'queued',
           pipeline: 'youtube-rss',
           

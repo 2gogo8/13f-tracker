@@ -1086,7 +1086,7 @@ export default function ExpertsPage() {
                               color: previewTab === tab ? '#000' : '#666', border: 'none', fontWeight: previewTab === tab ? 700 : 400,
                             }}
                           >
-                            {tab === 'draft' ? '📝 草稿' : tab === 'insights' ? '🔑 Key Insights' : tab === 'insightsV2' ? '🔬 V2 全文洞察' : tab === 'transcript' ? '📄 Transcript' : '🔗 Source'}
+                            {tab === 'draft' ? '📝 草稿' : tab === 'insights' ? '🔑 Key Insights' : tab === 'insightsV2' ? '🔬 V2 全文洞察' : tab === 'transcript' ? '📄 原始素材' : '🔗 Source'}
                           </button>
                         ))}
                       </div>
@@ -1475,65 +1475,141 @@ export default function ExpertsPage() {
                         );
                       })()}
 
-                      {/* Tab: transcript — uses unified Content Resolver */}
+                      {/* Tab: 原始素材 — rawContentZh (main) + rawContentOriginal (expandable) */}
                       {previewTab === 'transcript' && (
                         <div>
-                          {/* Resolver-provided transcript (priority: rawText > transcript_sample > video_transcripts) */}
-                          {resolvedContent?.transcript ? (
-                            <div>
-                              <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '5px 10px', marginBottom: 8, fontSize: 12, color: '#856404' }}>
-                                📜 原文逐字稿 — 屬於 worker 輸入原料，主閱讀請使用 🔬 V2 全文洞察 tab
-                              </div>
-                              <div style={{ color: '#888', fontSize: 12, marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                <span>{resolvedContent.transcriptLength?.toLocaleString()} chars</span>
-                                <span>來源: {resolvedContent.transcriptSource === 'rawText' ? '📄 expert_insights.rawText（全文）' : resolvedContent.transcriptSource === 'transcript_sample' ? '📋 transcript_sample（前 600 字）' : resolvedContent.transcriptSource === 'video_transcripts' ? '🎬 video_transcripts（完整逐字稿）' : resolvedContent.transcriptSource}</span>
-                                <span>類型: {resolvedContent.transcriptType === 'full' ? '✅ 全文' : '⚠️ 片段'}</span>
-                              </div>
-                              <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                {resolvedContent.transcript}
-                              </div>
-                            </div>
-                          ) : (
-                            /* Fallback: legacy flow (transcriptData from separate API, or sample from cmsPreview) */
-                            <div>
-                              {transcriptLoading && <div style={{ color: '#888' }}>載入中...</div>}
-                              {transcriptError && <div style={{ color: '#d32f2f' }}>⚠️ {transcriptError}</div>}
-                              {transcriptData && (
+                          {/* rawContentStatus-based display */}
+                          {(() => {
+                            const rcStatus = resolvedContent?.rawContentStatus;
+                            const rcZh = resolvedContent?.rawContentZh;
+                            const rcOriginal = resolvedContent?.rawContentOriginal;
+                            
+                            // Status messages for incomplete data
+                            if (rcStatus === 'legacy_missing_raw_content') {
+                              return (
+                                <div style={{ color: '#9ca3af', fontSize: 13, padding: 16, textAlign: 'center', background: '#f9fafb', borderRadius: 6, border: '1px dashed #d1d5db' }}>
+                                  📦 此為舊資料，原始素材未存檔（legacy_incomplete）
+                                </div>
+                              );
+                            }
+                            if (rcStatus === 'transcript_unavailable') {
+                              return (
+                                <div style={{ color: '#d97706', fontSize: 13, padding: 16, textAlign: 'center', background: '#fffbeb', borderRadius: 6, border: '1px solid #fbbf24' }}>
+                                  ⚠️ 影片無字幕，無法取得逐字稿
+                                </div>
+                              );
+                            }
+                            if (rcStatus === 'fetch_failed') {
+                              return (
+                                <div style={{ color: '#dc2626', fontSize: 13, padding: 16, textAlign: 'center', background: '#fef2f2', borderRadius: 6, border: '1px solid #fca5a5' }}>
+                                  ❌ 原文抓取失敗，可手動補入
+                                </div>
+                              );
+                            }
+                            if (rcStatus === 'missing_source_url') {
+                              return (
+                                <div style={{ color: '#9ca3af', fontSize: 13, padding: 16, textAlign: 'center', background: '#f9fafb', borderRadius: 6, border: '1px dashed #d1d5db' }}>
+                                  🔗 缺少原始連結，無法自動取得原文
+                                </div>
+                              );
+                            }
+                            if (rcStatus === 'paywalled') {
+                              return (
+                                <div style={{ color: '#d97706', fontSize: 13, padding: 16, textAlign: 'center', background: '#fffbeb', borderRadius: 6, border: '1px solid #fbbf24' }}>
+                                  🔒 付費牆內容，需手動補入
+                                </div>
+                              );
+                            }
+                            
+                            // Has rawContentZh — show as main reading layer
+                            if (rcZh) {
+                              return (
+                                <div>
+                                  <div style={{ background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 6, padding: '5px 10px', marginBottom: 8, fontSize: 12, color: '#065f46' }}>
+                                    🇹🇼 中文整理版（主閱讀層）
+                                  </div>
+                                  <div style={{ fontSize: 14, lineHeight: 1.8, maxHeight: 400, overflowY: 'auto', background: '#fafafa', padding: 14, borderRadius: 6, color: '#1a1a1a', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {rcZh}
+                                  </div>
+                                  {/* Expandable original text */}
+                                  {rcOriginal && (
+                                    <details style={{ marginTop: 10 }}>
+                                      <summary style={{ cursor: 'pointer', fontSize: 12, color: '#6b7280', padding: '4px 0' }}>
+                                        📄 展開原文（{rcOriginal.length.toLocaleString()} chars）
+                                      </summary>
+                                      <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginTop: 6 }}>
+                                        {rcOriginal}
+                                      </div>
+                                    </details>
+                                  )}
+                                </div>
+                              );
+                            }
+                            
+                            // Has rawContentOriginal but no zh yet
+                            if (rcOriginal) {
+                              return (
                                 <div>
                                   <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '5px 10px', marginBottom: 8, fontSize: 12, color: '#856404' }}>
-                                    📜 原文逐字稿（英文）— 屬於 worker 輸入原料，主閱讀請使用 🔬 V2 全文洞察 tab
+                                    📜 原文（中文整理版尚未生成）
                                   </div>
                                   <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
-                                    {transcriptData.transcriptLength?.toLocaleString()} chars | 抓取: {transcriptData.fetchedAt ? new Date(transcriptData.fetchedAt).toLocaleDateString() : 'N/A'} | 到期: {transcriptData.expiresAt ? new Date(transcriptData.expiresAt).toLocaleDateString() : 'N/A'}
+                                    {rcOriginal.length.toLocaleString()} chars
                                   </div>
                                   <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                    {transcriptData.fullTranscript}
+                                    {rcOriginal}
                                   </div>
                                 </div>
-                              )}
-                              {!transcriptLoading && !transcriptError && !transcriptData && (cmsPreview?.transcript_sample || cmsPreview?.rawExpertInsight?.transcript_sample) && (
+                              );
+                            }
+                            
+                            // Fallback: use legacy transcript flow
+                            if (resolvedContent?.transcript) {
+                              return (
                                 <div>
-                                  <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Transcript Sample（前 600 字）</div>
-                                  <div style={{ fontSize: 13, color: '#444', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>{cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample}</div>
+                                  <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '5px 10px', marginBottom: 8, fontSize: 12, color: '#856404' }}>
+                                    📜 原文逐字稿（舊欄位，尚未遷移至 rawContentOriginal）
+                                  </div>
+                                  <div style={{ color: '#888', fontSize: 12, marginBottom: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <span>{resolvedContent.transcriptLength?.toLocaleString()} chars</span>
+                                    <span>來源: {resolvedContent.transcriptSource === 'rawText' ? '📄 rawText' : resolvedContent.transcriptSource === 'transcript_sample' ? '📋 transcript_sample' : resolvedContent.transcriptSource === 'video_transcripts' ? '🎬 video_transcripts' : resolvedContent.transcriptSource}</span>
+                                  </div>
+                                  <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {resolvedContent.transcript}
+                                  </div>
                                 </div>
-                              )}
-                              {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && !cmsPreview?.rawExpertInsight?.transcript_sample && (
-                                <div style={{ color: '#9ca3af', fontSize: 13, padding: 12, textAlign: 'center', background: '#f9fafb', borderRadius: 6, border: '1px dashed #d1d5db' }}>
-                                  {(cmsPreview?.source_type || cmsPreview?.sourceType) === 'youtube' || cmsPreview?.youtube_id
-                                    ? '⚠️ 逐字稿已過期或暫時無法取得（YouTube 影片）'
-                                    : '📄 此內容非影片來源，無逐字稿（文字稿來源）'}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {/* Missing fields indicator */}
-                          {resolvedContent?._missing?.includes('transcript') && (
-                            <div style={{ color: '#9ca3af', fontSize: 12, padding: '6px 10px', marginTop: 8, background: '#f9fafb', borderRadius: 6, border: '1px dashed #d1d5db' }}>
-                              {resolvedContent.youtubeId
-                                ? '⚠️ 逐字稿已過期或暫時無法取得，可在內容候選點「先讀取影片內容」重新擷取'
-                                : '📄 此內容非影片來源，無逐字稿（由 V2 洗察 / Key Insights 代替）'}
-                            </div>
-                          )}
+                              );
+                            }
+                            
+                            // Legacy fallback: transcriptData from API or sample
+                            return (
+                              <div>
+                                {transcriptLoading && <div style={{ color: '#888' }}>載入中...</div>}
+                                {transcriptError && <div style={{ color: '#d32f2f' }}>⚠️ {transcriptError}</div>}
+                                {transcriptData && (
+                                  <div>
+                                    <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                                      {transcriptData.transcriptLength?.toLocaleString()} chars | 抓取: {transcriptData.fetchedAt ? new Date(transcriptData.fetchedAt).toLocaleDateString() : 'N/A'}
+                                    </div>
+                                    <div style={{ fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, maxHeight: 400, overflowY: 'auto', background: '#f5f5f5', padding: 12, borderRadius: 4, color: '#333', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                      {transcriptData.fullTranscript}
+                                    </div>
+                                  </div>
+                                )}
+                                {!transcriptLoading && !transcriptError && !transcriptData && (cmsPreview?.transcript_sample || cmsPreview?.rawExpertInsight?.transcript_sample) && (
+                                  <div>
+                                    <div style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Transcript Sample（前 600 字）</div>
+                                    <div style={{ fontSize: 13, color: '#444', background: '#f5f5f5', padding: 12, borderRadius: 4 }}>{cmsPreview.transcript_sample || cmsPreview.rawExpertInsight?.transcript_sample}</div>
+                                  </div>
+                                )}
+                                {!transcriptLoading && !transcriptError && !transcriptData && !cmsPreview?.transcript_sample && !cmsPreview?.rawExpertInsight?.transcript_sample && (
+                                  <div style={{ color: '#9ca3af', fontSize: 13, padding: 12, textAlign: 'center', background: '#f9fafb', borderRadius: 6, border: '1px dashed #d1d5db' }}>
+                                    📄 無原始素材
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       )}
 

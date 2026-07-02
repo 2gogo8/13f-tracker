@@ -464,10 +464,51 @@ async function processItem(db, anthropic, doc, dryRun) {
     return { ok: false, status: 'skipped' };
   }
 
-  // Write rawText
+  // Write rawText + rawContentOriginal
+  const rawContentFields = {
+    rawText: transcript,
+    rawTextType: 'transcript',
+    rawContentOriginal: transcript,
+    rawContentStatus: 'complete',
+    updatedAt: new Date(),
+  };
+
+  // Generate rawContentZh (Chinese summary) before V2
+  try {
+    console.log(`  🇹🇼 Generating rawContentZh...`);
+    const zhResponse = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: `你是財經研究分析師。以下是一篇英文影片逐字稿/文章的原文。
+
+請將內容整理成**繁體中文段落摘要 + 關鍵觀點**，不是逐字翻譯。
+
+要求：
+- 用繁體中文
+- 分段整理，每段 2-4 句話
+- 保留重要數字、公司名、人名（英文原文）
+- 標出關鍵觀點（用 • 符號）
+- 總長度控制在 800-1500 字
+- 不要加標題，直接開始內容
+
+標題：${doc.sourceTitle || doc.video_title || doc.title || '(無標題)'}
+來源：${doc.sourceName || doc.channel || '(未知)'}
+
+原文：
+${transcript.slice(0, 30000)}`,
+      }],
+    });
+    rawContentFields.rawContentZh = zhResponse.content[0].text.trim();
+    console.log(`  ✅ rawContentZh generated (${rawContentFields.rawContentZh.length} chars)`);
+  } catch (err) {
+    console.log(`  ⚠️ rawContentZh generation failed: ${err.message} (continuing without zh)`);
+  }
+
   await db.collection('expert_insights').updateOne(
     { _id: doc._id },
-    { $set: { rawText: transcript, rawTextType: 'transcript', updatedAt: new Date() } }
+    { $set: rawContentFields }
   );
 
   // 3. V2 Key Insights

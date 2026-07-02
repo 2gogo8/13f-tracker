@@ -21,6 +21,8 @@ export type TranscriptType = 'full' | 'sample' | null;
 export type TranscriptSource = 'rawText' | 'transcript_sample' | 'video_transcripts' | 'refetched' | null;
 export type PublishedStatus = 'new' | 'queued' | 'ready' | 'candidate' | 'published' | 'promoted' | 'unpublished' | null;
 
+export type RawContentStatus = 'complete' | 'pending' | 'missing_source_url' | 'transcript_unavailable' | 'paywalled' | 'fetch_failed' | 'legacy_missing_raw_content' | null;
+
 export interface ResolvedContent {
   id: string;
   sourceDocId: string;                  // expert_insights _id
@@ -29,6 +31,11 @@ export interface ResolvedContent {
   sourceUrl: string | null;
   sourceName: string;                   // channel / podcast / publisher
   sourcePublishedAt: string | null;
+
+  // Raw Content (Source Material)
+  rawContentOriginal: string | null;    // original language full text
+  rawContentZh: string | null;          // Chinese summary/translation (main reading layer)
+  rawContentStatus: RawContentStatus;   // completeness status
 
   // Transcript
   transcript: string | null;
@@ -350,6 +357,23 @@ export async function resolveContent(
   // ── Lint errors ──
   const lintErrors = (Array.isArray(s.lintErrors) ? s.lintErrors : []) as string[];
 
+  // ── Raw Content (Source Material) ──
+  const rawContentOriginal =
+    safeStr(e.rawContentOriginal as string) ||
+    safeStr(e.rawText as string) ||
+    safeStr(s.rawContentOriginal as string) ||
+    null;
+
+  const rawContentZh =
+    safeStr(e.rawContentZh as string) ||
+    safeStr(s.rawContentZh as string) ||
+    null;
+
+  const rawContentStatus: RawContentStatus =
+    (safeStr(e.rawContentStatus as string) as RawContentStatus) ||
+    (safeStr(s.rawContentStatus as string) as RawContentStatus) ||
+    null;
+
   // ── Compute _missing ──
   const _missing: string[] = [];
   if (!transcript) _missing.push('transcript');
@@ -359,6 +383,8 @@ export async function resolveContent(
   if (!draft) _missing.push('draft');
   if (!sourceTitle || sourceTitle === '(無標題)') _missing.push('title');
   if (!sourceName) _missing.push('sourceName');
+  if (!rawContentOriginal) _missing.push('rawContentOriginal');
+  if (!rawContentZh) _missing.push('rawContentZh');
 
   return {
     id,
@@ -368,6 +394,9 @@ export async function resolveContent(
     sourceUrl,
     sourceName,
     sourcePublishedAt,
+    rawContentOriginal,
+    rawContentZh,
+    rawContentStatus,
     transcript,
     transcriptType,
     transcriptSource,
