@@ -114,10 +114,18 @@ export async function GET(req: NextRequest) {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
+  // Status-based pre-filter: hide pipeline-in-progress items
   const expertFilter: Record<string, unknown> = {
-    $or: [{ status: 'new' }, { status: { $exists: false } }],
+    // Exclude pipeline statuses that shouldn't appear in the CMS
+    status: { $nin: ['queued', 'fetching', 'enriching'] },
     source_type: { $ne: 'no_match' },
     $and: [
+      {
+        $or: [
+          { status: { $in: ['new', 'ready', 'needs_manual', 'failed', 'skipped'] } },
+          { status: { $exists: false } },
+        ],
+      },
       {
         $or: [
           { publish_date: { $gte: thirtyDaysAgoStr } },
@@ -155,8 +163,23 @@ export async function GET(req: NextRequest) {
     return (b.priorityScore || 0) - (a.priorityScore || 0);
   });
 
+  // Route needs_manual → needsData, failed → needsReview, skipped → invalid
+  for (const doc of sortedExperts) {
+    const docStatus = doc.status as string;
+    if (docStatus === 'needs_manual') {
+      (buckets.needsData as unknown[]).push(doc);
+    } else if (docStatus === 'failed') {
+      (buckets.needsReview as unknown[]).push(doc);
+    } else if (docStatus === 'skipped') {
+      (buckets.invalid as unknown[]).push(doc);
+    }
+  }
+
   const irrelevantCount = sortedExperts.filter(d => d.triageStatus === 'irrelevant').length;
-  const filteredExperts = sortedExperts.filter(d => d.triageStatus !== 'irrelevant');
+  const filteredExperts = sortedExperts.filter(d =>
+    d.triageStatus !== 'irrelevant' &&
+    !['needs_manual', 'failed', 'skipped'].includes(d.status as string)
+  );
 
   return NextResponse.json({
     ok: true,

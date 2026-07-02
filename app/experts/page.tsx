@@ -1495,33 +1495,64 @@ export default function ExpertsPage() {
 
                       {/* Tab: source — uses normalizeSummary */}
                       {previewTab === 'source' && (() => {
-                        const norm = normalizeSummary(cmsPreview);
+                        // Unified source tab — supports all sourceType values
+                        const sourceType = cmsPreview?.sourceType
+                          || (cmsPreview?.source_type === 'video_queue' || cmsPreview?.youtube_id ? 'youtube'
+                            : cmsPreview?.source_type === 'podcast' ? 'podcast'
+                            : cmsPreview?.source_type === 'article' || cmsPreview?.source_type === 'bloomberg' ? 'article'
+                            : cmsPreview?.source_type === 'expert-pipeline' || cmsPreview?.source_type === 'expert_pipeline' ? 'expert_pipeline'
+                            : cmsPreview?.source_type === 'manual' ? 'manual'
+                            : cmsPreview?.youtube_id ? 'youtube' : 'expert_pipeline');
+                        const sourceUrl = cmsPreview?.sourceUrl || cmsPreview?.source_url || cmsPreview?.url;
+                        const sourceName = cmsPreview?.sourceName || cmsPreview?.source_name || cmsPreview?.channel || cmsPreview?.institution;
+                        const sourceTitle = cmsPreview?.sourceTitle || cmsPreview?.video_title || cmsPreview?.title;
+                        const sourcePublishedAt = cmsPreview?.sourcePublishedAt || cmsPreview?.publish_date;
+                        const fetchedAt = cmsPreview?.fetchedAt;
+
+                        const typeEmoji: Record<string, string> = {
+                          youtube: '🎬 YouTube',
+                          podcast: '🎙️ Podcast',
+                          article: '📰 Article',
+                          expert_pipeline: '🔬 Expert Pipeline',
+                          manual: '✏️ 手動匯入',
+                        };
+                        const label = typeEmoji[sourceType] || '❓ 未知來源';
+
                         return (
                         <div style={{ fontSize: 13 }}>
-                          {norm.youtubeId && (
+                          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>{label}</div>
+
+                          {sourceUrl ? (
                             <div style={{ marginBottom: 8 }}>
-                              <a href={`https://www.youtube.com/watch?v=${norm.youtubeId}`} target="_blank" rel="noopener noreferrer"
-                                style={{ color: '#0070f3', textDecoration: 'underline' }}>
-                                ▶ 在 YouTube 觀看原影片
+                              <a href={sourceUrl} target="_blank" rel="noopener noreferrer"
+                                style={{ color: '#0070f3', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                                {sourceTitle || '查看原始來源'}
                               </a>
                             </div>
+                          ) : (
+                            <div style={{ color: '#9ca3af', marginBottom: 8 }}>⚠️ 舊資料無來源連結</div>
                           )}
-                          <div style={{ color: '#888', fontSize: 12 }}>
-                            <div>youtube_id: {norm.youtubeId || 'N/A'}</div>
-                            <div>channel: {norm.displayChannel || 'N/A'}</div>
-                            <div>source: {norm.displaySource || 'N/A'}</div>
-                            <div>sourceDate: {norm.displaySourceDate || 'N/A'}</div>
-                            <div>sourceExpertInsightId: {cmsPreview?.sourceExpertInsightId || cmsPreview?.expertInsightId || 'N/A'}</div>
-                            <div>enrichmentModel: {cmsPreview?.enrichmentModel || 'N/A'}</div>
-                            <div>insightExtractionMode: {cmsPreview?.insightExtractionMode || cmsPreview?.rawExpertInsight?.insightExtractionMode || 'N/A'}</div>
-                            <div>transcriptAvailable: {norm.transcriptAvailable ? 'Yes' : 'No'}</div>
-                            <div>transcriptLength: {norm.transcriptLength?.toLocaleString() || 'N/A'}</div>
-                            <div>transcriptSource: {norm.transcriptSource || 'N/A'}</div>
-                            <div>workerInputField: video_transcripts.fullTranscript (via youtube_id fallback)</div>
-                            {norm.transcriptMetadataWarnings.length > 0 && (
-                              <div style={{ color: '#f59e0b', marginTop: 4 }}>⚠️ {norm.transcriptMetadataWarnings.join('; ')}</div>
-                            )}
+
+                          <div style={{ color: '#888', fontSize: 12, lineHeight: 1.8 }}>
+                            {sourceName && <div>來源：{sourceName}</div>}
+                            {sourcePublishedAt && <div>發布：{sourcePublishedAt}</div>}
+                            {fetchedAt && <div>抓取：{fetchedAt}</div>}
+                            {cmsPreview?.status && <div>pipeline status: {cmsPreview.status}</div>}
+                            {cmsPreview?.sourceId && <div>sourceId: {cmsPreview.sourceId}</div>}
                           </div>
+
+                          {/* Legacy debug info */}
+                          <details style={{ marginTop: 12 }}>
+                            <summary style={{ color: '#aaa', fontSize: 11, cursor: 'pointer' }}>Debug info</summary>
+                            <div style={{ color: '#888', fontSize: 11, marginTop: 4 }}>
+                              <div>youtube_id: {cmsPreview?.youtube_id || 'N/A'}</div>
+                              <div>source_type: {cmsPreview?.source_type || 'N/A'}</div>
+                              <div>enrichmentModel: {cmsPreview?.enrichmentModel || 'N/A'}</div>
+                              <div>keyInsightsV2Status: {cmsPreview?.keyInsightsV2Status || 'N/A'}</div>
+                              <div>draftStatus: {cmsPreview?.draftStatus || 'N/A'}</div>
+                              <div>_backfilled: {cmsPreview?._backfilled ? 'Yes' : 'No'}</div>
+                            </div>
+                          </details>
                         </div>
                         );
                       })()}

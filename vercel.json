@@ -3,6 +3,10 @@
     {
       "path": "/api/sync-members",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/youtube-scan",
+      "schedule": "0 22 * * *"
     }
   ]
 }
