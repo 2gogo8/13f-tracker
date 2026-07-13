@@ -215,7 +215,7 @@ async function main() {
     youtube_id: { $exists: true, $ne: null, $nin: ['', 'N/A'] },
     $or: [
       { enrichmentStatus: { $exists: false } },
-      { enrichmentStatus: { $in: ['needs_transcript_or_insights', 'ready', null, ''] } },
+      { enrichmentStatus: { $in: ['needs_transcript_or_insights', 'ready', 'pending', null, ''] } },
     ],
     status: { $nin: ['promoted'] }
   }).sort({ insertedAt: -1 }).limit(limit).toArray();

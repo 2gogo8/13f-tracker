@@ -88,6 +88,7 @@ export default function StockDetailPage({
   const [quarterlyTrend, setQuarterlyTrend] = useState<QuarterlyTrendData[]>([]);
   const [historicalData, setHistoricalData] = useState<HistoricalPrice[]>([]);
   const [stockNews, setStockNews] = useState<{ title: string; text: string; url: string; image?: string; site: string; date: string }[]>([]);
+  const [commentary, setCommentary] = useState<{ commentary: string; news: { title: string; publishedDate: string; url: string }[]; generated_at: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState<'all' | 'active' | 'passive'>('active');
 
@@ -115,7 +116,13 @@ export default function StockDetailPage({
         setQuarterlyTrend(Array.isArray(trendData) ? trendData : []);
         setHistoricalData(historicalDataResponse.historical || []);
 
-        // Fetch news separately (non-blocking)
+        // Fetch commentary from MongoDB (non-blocking)
+        fetch(`/api/stock-commentary/${symbol}`)
+          .then(r => r.json())
+          .then(d => { if (d && d.commentary) setCommentary(d); })
+          .catch(() => {});
+
+        // Fetch news separately (non-blocking, fallback when no commentary)
         fetch(`/api/stock-news/${symbol}`)
           .then(r => r.json())
           .then(d => { if (Array.isArray(d)) setStockNews(d); })
@@ -355,6 +362,42 @@ export default function StockDetailPage({
             </div>
           </div>
         </div>
+
+        {/* JG 今日點評 */}
+        {commentary && (
+          <div className="apple-card p-6 md:p-8 mb-10 border border-amber-400/30">
+            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+              <span>📊</span>
+              <span style={{ color: '#c9a84c' }}>JG 今日點評</span>
+            </h2>
+            <p className="text-gray-800 leading-relaxed text-base whitespace-pre-line mb-6">
+              {commentary.commentary}
+            </p>
+            {commentary.news && commentary.news.length > 0 && (
+              <div className="border-t border-gray-200 pt-4">
+                <p className="text-xs text-gray-500 font-light mb-3">相關新聞</p>
+                <div className="space-y-2">
+                  {commentary.news.slice(0, 5).map((n, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                      <span className="text-gray-400 mt-0.5 shrink-0">{n.publishedDate?.split('T')[0] || ''}</span>
+                      <a
+                        href={n.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-700 hover:text-amber-600 transition-colors leading-snug"
+                      >
+                        {n.title}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-4">
+              更新時間：{commentary.generated_at ? new Date(commentary.generated_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }) : ''}
+            </p>
+          </div>
+        )}
 
         {/* 近期重大發展 */}
         {stockNews.length > 0 && (
