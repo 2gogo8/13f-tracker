@@ -64,13 +64,15 @@ export default function TwStockDetailPage({
         const historicalDataResponse: HistoricalPriceRaw[] = await historicalRes.json();
 
         setQuote(quoteData);
-        // Historical data comes back newest-first, reverse to oldest-first for calculations
-        // Convert date from number to string for PriceChart component
+        // Sort ascending (oldest → newest) for PriceChart — left=old, right=new
+        // Use explicit sort instead of .reverse() to be safe regardless of API order
         const sortedHistorical: HistoricalPrice[] = Array.isArray(historicalDataResponse) 
-          ? [...historicalDataResponse].reverse().map(d => ({
-              ...d,
-              date: new Date(d.date).toISOString().split('T')[0]
-            }))
+          ? [...historicalDataResponse]
+              .sort((a, b) => a.date - b.date)
+              .map(d => ({
+                ...d,
+                date: new Date(d.date).toISOString().split('T')[0]
+              }))
           : [];
         setHistoricalData(sortedHistorical);
 
