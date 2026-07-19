@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 
 interface Type1Supplier {
   twSymbol: string;
@@ -103,6 +104,7 @@ export default function TWSlopeScanner() {
 
   const [sort2Key, setSort2Key] = useState<SortKey2>('twSlope');
   const [sort2Asc, setSort2Asc] = useState(false);
+  const [displayCount, setDisplayCount] = useState(50);
 
   async function handleScan() {
     setLoading(true);
@@ -309,7 +311,9 @@ export default function TWSlopeScanner() {
                     {group.suppliers.map((r, i) => (
                       <tr key={`${r.twSymbol}-${r.usParent}`}
                         className={`border-t border-gray-50 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/20'}`}>
-                        <td className="px-4 py-2.5 font-mono font-bold text-gray-900 text-sm">{r.twSymbol}</td>
+                        <td className="px-4 py-2.5 font-mono font-bold text-blue-600 hover:text-blue-800 text-sm">
+                          <Link href={`/tw/${r.twSymbol.replace(/\.(TW|TWO)$/, '')}`} target="_blank">{r.twSymbol}</Link>
+                        </td>
                         <td className="px-4 py-2.5 text-gray-900 text-sm font-medium">{r.twName || '—'}</td>
                         <td className="px-4 py-2.5 text-gray-500 text-xs hidden md:table-cell max-w-[180px] truncate">{r.role}</td>
                         <td className={`px-4 py-2.5 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
@@ -349,12 +353,15 @@ export default function TWSlopeScanner() {
                 </tr>
               </thead>
               <tbody>
-                {sortedType2.slice(0, 15).map((r, i) => {
+                {sortedType2.slice(0, displayCount).map((r, i) => {
                   const relStrength = r.taiexSlope !== 0 ? (r.twSlope / Math.abs(r.taiexSlope)).toFixed(2) : '—';
+                  const code2 = r.twSymbol.replace(/\.(TW|TWO)$/, '');
                   return (
                     <tr key={r.twSymbol}
                       className={`border-t border-gray-50 hover:bg-emerald-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                      <td className="px-4 py-3 font-mono font-bold text-gray-900 text-sm">{r.twSymbol}</td>
+                      <td className="px-4 py-3 font-mono text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
+                        <Link href={`/tw/${code2}`} target="_blank">{r.twSymbol}</Link>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="text-gray-900 text-sm font-medium">{r.twName || '—'}</div>
                         {r.explosiveParents && r.explosiveParents.length > 0 && (
@@ -390,8 +397,16 @@ export default function TWSlopeScanner() {
                 })}
               </tbody>
             </table>
-            <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400 text-right">
-              顯示前 15 支 / 共 {sortedType2.length} 支 ｜ TAIEX 基準 {data.taiex_slope.toFixed(2)}%
+            <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+              <span className="text-xs text-gray-400">顯示前 {Math.min(displayCount, sortedType2.length)} 支 / 共 {sortedType2.length} 支 ｜ TAIEX 基準 {data.taiex_slope.toFixed(2)}%</span>
+              {sortedType2.length > displayCount && (
+                <button
+                  onClick={() => setDisplayCount(c => c + 50)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm"
+                >
+                  顯示更多（+50）
+                </button>
+              )}
             </div>
           </div>
         ) : (
