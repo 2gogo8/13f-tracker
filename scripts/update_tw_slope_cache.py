@@ -180,11 +180,11 @@ def main():
     d = today - timedelta(days=200)
     while d <= today:
         months.append(d.strftime("%Y%m01"))
-        # 往後推一個月
+        # 往後推一個月（固定用1號避免月底日期溢出問題，如Jan31→Feb31）
         if d.month == 12:
-            d = d.replace(year=d.year + 1, month=1)
+            d = d.replace(year=d.year + 1, month=1, day=1)
         else:
-            d = d.replace(month=d.month + 1)
+            d = d.replace(month=d.month + 1, day=1)
     months = list(dict.fromkeys(months))  # 去重
     # 確保當月一定包含（月份跳躍邏輯可能跳過當月）
     current_month = today.strftime("%Y%m01")

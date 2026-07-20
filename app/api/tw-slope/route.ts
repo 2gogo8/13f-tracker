@@ -86,6 +86,10 @@ interface Type2Result {
   twSlope: number;
   taiexSlope: number;
   explosiveParents: string[]; // 爆賺美股中，哪些是此台股的客戶
+  ma60?: number;
+  currentPrice?: number;
+  pctFromMa60?: number;   // (currentPrice - ma60) / ma60 * 100
+  ma60Zone?: 'A' | 'B1' | 'B2';  // A: >+5%, B1: -5%~+5%, B2: <-5%
 }
 
 function findClosestPrice(prices: PriceRecord[], targetDate: string): number | null {
@@ -111,6 +115,19 @@ function findClosestPrice(prices: PriceRecord[], targetDate: string): number | n
 
   // Large gap within cache range (genuine data gap)
   return null;
+}
+
+function calcMA60(prices: PriceRecord[], latestDate: string): { ma60: number; currentPrice: number } | null {
+  if (!prices || prices.length === 0) return null;
+  // Sort descending by date
+  const sorted = [...prices].sort((a, b) => (a.date > b.date ? -1 : 1));
+  // Find prices up to latestDate
+  const eligible = sorted.filter(p => p.date <= latestDate);
+  if (eligible.length < 20) return null; // need at least 20 data points
+  const window60 = eligible.slice(0, 60);
+  const ma60 = window60.reduce((sum, p) => sum + p.close, 0) / window60.length;
+  const currentPrice = eligible[0].close;
+  return { ma60: Math.round(ma60 * 100) / 100, currentPrice };
 }
 
 function calcSlope(prices: PriceRecord[], date1: string, date2: string): number | null {
@@ -260,6 +277,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Compute freshness metadata (needed for MA60 calc)
+    const taiexLatestDate = twCache.taiex?.length
+      ? twCache.taiex.reduce((a: PriceRecord, b: PriceRecord) => (a.date > b.date ? a : b)).date
+      : null;
+    const stockSampleDates = twCache.symbols.slice(0, 50).map((sym: string) => {
+      const p = twCache.prices[sym];
+      return p?.length ? p.reduce((a: PriceRecord, b: PriceRecord) => (a.date > b.date ? a : b)).date : null;
+    }).filter(Boolean) as string[];
+    const stocksLatestDate = stockSampleDates.length
+      ? stockSampleDates.sort().at(-1)!
+      : null;
+
     // ===== Type 2: 跟盤型 =====
     const type2: Type2Result[] = [];
     const roundedTaiex = Math.round(taiexSlope * 100) / 100;
@@ -276,6 +305,16 @@ export async function POST(request: NextRequest) {
       const allParents = twToUSParents.get(twTicker) || [];
       const explosiveParents = allParents.filter(us => explosiveUSStocks.has(us));
 
+      // MA60 calculation
+      const ma60Result = calcMA60(twCache.prices[twTicker] || [], stocksLatestDate || date2);
+      const ma60Data = ma60Result ? {
+        ma60: ma60Result.ma60,
+        currentPrice: ma60Result.currentPrice,
+        pctFromMa60: Math.round(((ma60Result.currentPrice - ma60Result.ma60) / ma60Result.ma60) * 10000) / 100,
+        ma60Zone: ma60Result.currentPrice > ma60Result.ma60 * 1.05 ? 'A' as const :
+                  ma60Result.currentPrice >= ma60Result.ma60 * 0.95 ? 'B1' as const : 'B2' as const,
+      } : {};
+
       type2.push({
         twSymbol: twTicker,
         twName: meta?.name || twTicker,
@@ -283,23 +322,12 @@ export async function POST(request: NextRequest) {
         twSlope,
         taiexSlope: roundedTaiex,
         explosiveParents,
+        ...ma60Data,
       });
     }
 
     // Sort Type2 by twSlope descending
     type2.sort((a, b) => b.twSlope - a.twSlope);
-
-    // Compute freshness metadata
-    const taiexLatestDate = twCache.taiex?.length
-      ? twCache.taiex.reduce((a: PriceRecord, b: PriceRecord) => (a.date > b.date ? a : b)).date
-      : null;
-    const stockSampleDates = twCache.symbols.slice(0, 50).map((sym: string) => {
-      const p = twCache.prices[sym];
-      return p?.length ? p.reduce((a: PriceRecord, b: PriceRecord) => (a.date > b.date ? a : b)).date : null;
-    }).filter(Boolean) as string[];
-    const stocksLatestDate = stockSampleDates.length
-      ? stockSampleDates.sort().at(-1)!
-      : null;
 
     return NextResponse.json({
       taiex_slope: roundedTaiex,

@@ -26,6 +26,10 @@ interface Type2Result {
   twSlope: number;
   taiexSlope: number;
   explosiveParents: string[];
+  ma60?: number;
+  currentPrice?: number;
+  pctFromMa60?: number;
+  ma60Zone?: 'A' | 'B1' | 'B2';
 }
 
 interface TWScanResponse {
@@ -105,6 +109,7 @@ export default function TWSlopeScanner() {
   const [sort2Key, setSort2Key] = useState<SortKey2>('twSlope');
   const [sort2Asc, setSort2Asc] = useState(false);
   const [displayCount, setDisplayCount] = useState(50);
+  const [ma60SubTab, setMa60SubTab] = useState<'B' | 'A'>('B');
 
   async function handleScan() {
     setLoading(true);
@@ -140,14 +145,21 @@ export default function TWSlopeScanner() {
 
   const sortedType2 = useMemo(() => {
     if (!data) return [];
-    return [...data.type2].sort((a, b) => {
+    let filtered = [...data.type2];
+    // MA60 sub-tab filter
+    if (ma60SubTab === 'B') {
+      filtered = filtered.filter(r => !r.ma60Zone || r.ma60Zone === 'B1' || r.ma60Zone === 'B2');
+    } else {
+      filtered = filtered.filter(r => r.ma60Zone === 'A');
+    }
+    return filtered.sort((a, b) => {
       const valA = a[sort2Key];
       const valB = b[sort2Key];
       if (typeof valA === 'string' && typeof valB === 'string')
         return sort2Asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
       return sort2Asc ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
     });
-  }, [data, sort2Key, sort2Asc]);
+  }, [data, sort2Key, sort2Asc, ma60SubTab]);
 
 
   function handleSort2(key: SortKey2) {
@@ -340,7 +352,34 @@ export default function TWSlopeScanner() {
 
       {/* Type2 Table */}
       {data && activeTab === 'type2' && (
-        sortedType2.length > 0 ? (
+        <>
+        {/* MA60 Sub Tabs */}
+        <div className="flex gap-2 mb-4">
+          {[
+            { key: 'B' as const, label: '🟢 季線買點', desc: '≤ MA60 +5%', color: 'bg-green-50 border-green-300 text-green-700' },
+            { key: 'A' as const, label: '🔴 季線以上', desc: '> MA60 +5%', color: 'bg-red-50 border-red-300 text-red-700' },
+          ].map(tab => {
+            const count = data?.type2.filter(r =>
+              tab.key === 'B'
+                ? (!r.ma60Zone || r.ma60Zone === 'B1' || r.ma60Zone === 'B2')
+                : r.ma60Zone === 'A'
+            ).length ?? 0;
+            const isActive = ma60SubTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setMa60SubTab(tab.key)}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                  isActive ? tab.color + ' shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}
+              >
+                {tab.label} <span className="ml-1 opacity-75">({count})</span>
+                <span className="hidden sm:inline ml-1 text-xs opacity-60">· {tab.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+        {sortedType2.length > 0 ? (
           <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
             <table className="w-full text-sm">
               <thead>
@@ -350,6 +389,7 @@ export default function TWSlopeScanner() {
                   <th className="text-center px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('sector')}>產業{si2('sector')}</th>
                   <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('twSlope')}>倍數{si2('twSlope')}</th>
                   <th className="text-right px-4 py-3">台股%</th>
+                  <th className="text-right px-4 py-3 hidden md:table-cell">季線位置</th>
                 </tr>
               </thead>
               <tbody>
@@ -392,6 +432,16 @@ export default function TWSlopeScanner() {
                       <td className={`px-4 py-3 text-right font-mono font-semibold text-sm ${slopeColor(r.twSlope)}`}>
                         {r.twSlope >= 0 ? '+' : ''}{r.twSlope.toFixed(1)}%
                       </td>
+                      <td className="px-4 py-3 text-right hidden md:table-cell">
+                        {r.pctFromMa60 !== undefined ? (
+                          <span className={`text-xs font-mono font-semibold ${
+                            r.ma60Zone === 'A' ? 'text-red-500' :
+                            r.ma60Zone === 'B1' ? 'text-green-600' : 'text-blue-500'
+                          }`}>
+                            {r.pctFromMa60 >= 0 ? '+' : ''}{r.pctFromMa60.toFixed(1)}%
+                          </span>
+                        ) : '—'}
+                      </td>
                     </tr>
                   );
                 })}
@@ -415,8 +465,9 @@ export default function TWSlopeScanner() {
             <div className="font-medium text-gray-500 mb-1">目前無符合的跟盤股</div>
             <div className="text-xs text-gray-400">條件：台股斜率 ≥ TAIEX {data.taiex_slope.toFixed(2)}%</div>
           </div>
-        )
-      )}
+        )}
+        </>)
+      }
 
       {/* Data Freshness Footer */}
       {data && (() => {
