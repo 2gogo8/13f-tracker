@@ -219,7 +219,7 @@ export default function TwStockDetailPage({
           {/* Price Chart - between price and stats */}
           {historicalData.length > 0 && (
             <div className="pt-6 pb-2">
-              <PriceChart data={[...historicalData].reverse()} symbol={symbol} inline />
+              <PriceChart data={historicalData} symbol={symbol} inline />
             </div>
           )}
 
