@@ -219,7 +219,7 @@ export default function PriceChart({ data, symbol, inline, events = [] }: PriceC
         )}
       </div>
 
-      <div className="relative w-full overflow-x-auto select-none" style={{ touchAction: isPressed ? 'none' : 'auto' }}>
+      <div className="relative w-full overflow-hidden select-none" style={{ touchAction: isPressed ? 'none' : 'auto', overscrollBehaviorX: 'contain' }}>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
