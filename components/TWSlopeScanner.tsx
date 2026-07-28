@@ -162,6 +162,66 @@ export default function TWSlopeScanner() {
   }, [data, sort2Key, sort2Asc, ma60SubTab]);
 
 
+  // ── Export CSV ──────────────────────────────────────────────────────────
+  function exportCSV() {
+    if (!data) return;
+    const date1Str = date1.replace(/-/g, '');
+    const date2Str = date2.replace(/-/g, '');
+    let csvContent = '';
+    let filename = '';
+
+    if (activeTab === 'type1') {
+      // 供應鏈補漲
+      filename = `供應鏈補漲_${date1Str}_${date2Str}.csv`;
+      const rows: string[][] = [['代碼', '名稱', '產業類別', '供應角色', '台股%', '美股母公司', '美股倍數']];
+      for (const group of data.type1) {
+        for (const r of group.suppliers) {
+          rows.push([
+            r.twSymbol,
+            r.twName || '',
+            group.industry,
+            r.role || '',
+            (r.twSlope >= 0 ? '+' : '') + r.twSlope.toFixed(1) + '%',
+            r.usParent,
+            (r.usSlope / 100 + 1).toFixed(2) + 'x',
+          ]);
+        }
+      }
+      csvContent = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    } else {
+      // 跟盤型（目前篩選後的清單）
+      const zone = ma60SubTab === 'B' ? '季線買點' : '季線以上';
+      filename = `跟盤型_${zone}_${date1Str}_${date2Str}.csv`;
+      const rows: string[][] = [['代碼', '名稱', '產業', '倍數', '台股%', '季線位置', 'TAIEX基準%', '爆賺母股']];
+      for (const r of sortedType2) {
+        const relStrength = r.taiexSlope !== 0 ? (r.twSlope / Math.abs(r.taiexSlope)).toFixed(2) + 'x' : '—';
+        rows.push([
+          r.twSymbol,
+          r.twName || '',
+          r.sector || '',
+          relStrength,
+          (r.twSlope >= 0 ? '+' : '') + r.twSlope.toFixed(1) + '%',
+          r.pctFromMa60 !== undefined ? (r.pctFromMa60 >= 0 ? '+' : '') + r.pctFromMa60.toFixed(1) + '%' : '',
+          (r.taiexSlope >= 0 ? '+' : '') + r.taiexSlope.toFixed(2) + '%',
+          (r.explosiveParents || []).join(' / '),
+        ]);
+      }
+      csvContent = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    }
+
+    // BOM for Excel UTF-8 compatibility
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function handleSort2(key: SortKey2) {
     if (sort2Key === key) setSort2Asc(!sort2Asc);
     else { setSort2Key(key); setSort2Asc(false); }
@@ -265,9 +325,10 @@ export default function TWSlopeScanner() {
         </div>
       )}
 
-      {/* Tabs */}
+      {/* Tabs + Export */}
       {data && (
-        <div className="flex gap-2 mb-5 border-b border-gray-100 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5 border-b border-gray-100 pb-4">
+          <div className="flex gap-2">  {/* tab buttons wrapper */}
           {([
             { key: 'type1' as TabKey, emoji: '🔗', label: '供應鏈補漲', count: data.type1.reduce((s, g) => s + g.suppliers.length, 0), desc: '美股爆賺股的台灣供應商，且回檔 ≥15%' },
             { key: 'type2' as TabKey, emoji: '📈', label: '跟盤型', count: data.type2.length, desc: `斜率 ≥ TAIEX ${data.taiex_slope.toFixed(2)}%` },
@@ -287,7 +348,18 @@ export default function TWSlopeScanner() {
               </span>
             </button>
           ))}
-
+          </div>
+          {/* Export Button */}
+          <button
+            onClick={exportCSV}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold transition-all active:scale-95"
+            title="匯出目前篩選結果為 CSV（可用 Excel 開啟）"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            匯出 CSV
+          </button>
         </div>
       )}
 
