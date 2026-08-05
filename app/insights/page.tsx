@@ -1079,7 +1079,7 @@ export default function InsightsPage() {
                 const isPos = pct != null && pct >= 0;
                 const pctColor = pct == null ? '#aaa' : isPos ? '#22c55e' : '#ef5350';
                 const pctText = pct == null ? '—' : `${isPos ? '+' : ''}${pct.toFixed(1)}%`;
-                const dateStr = pick.first_date.slice(2).replace(/-/g, '-');
+                const dateStr = (pick.first_date || '').slice(2).replace(/-/g, '-');
                 const fmtPx = (p: number) =>
                   p >= 1000 ? '$' + Math.round(p).toLocaleString('en-US') : '$' + p.toFixed(2);
                 const mmdd = pick.latestCloseDate

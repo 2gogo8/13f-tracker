@@ -23,8 +23,9 @@ interface ApiResponse {
   updated_at?: string;
 }
 
-function formatDate(d: string) {
+function formatDate(d: string | undefined | null) {
   // "2025-07-24" → "25-07-24"
+  if (!d) return '—';
   return d.slice(2).replace(/-/g, '-');
 }
 
