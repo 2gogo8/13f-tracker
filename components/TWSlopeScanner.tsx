@@ -48,7 +48,7 @@ interface TWScanResponse {
 
 type TabKey = 'type1' | 'type2';
 type SortKey1 = 'twSymbol' | 'twSlope' | 'usSlope' | 'usParent';
-type SortKey2 = 'twSymbol' | 'twSlope' | 'sector';
+type SortKey2 = 'twSymbol' | 'twSlope' | 'sector' | 'pctFromMa60';
 
 function StatCard({
   label,
@@ -109,7 +109,7 @@ export default function TWSlopeScanner() {
   const [sort2Key, setSort2Key] = useState<SortKey2>('twSlope');
   const [sort2Asc, setSort2Asc] = useState(false);
   const [displayCount, setDisplayCount] = useState(50);
-  const [ma60SubTab, setMa60SubTab] = useState<'B' | 'A'>('B');
+  const [ma60SubTab, setMa60SubTab] = useState<'B' | 'A' | 'C'>('B');
 
   async function handleScan() {
     setLoading(true);
@@ -149,12 +149,15 @@ export default function TWSlopeScanner() {
     // MA60 sub-tab filter
     if (ma60SubTab === 'B') {
       filtered = filtered.filter(r => !r.ma60Zone || r.ma60Zone === 'B1' || r.ma60Zone === 'B2');
-    } else {
+    } else if (ma60SubTab === 'A') {
       filtered = filtered.filter(r => r.ma60Zone === 'A');
+    } else {
+      // C: 季線以下，pctFromMa60 < 0
+      filtered = filtered.filter(r => r.pctFromMa60 !== undefined && r.pctFromMa60 < 0);
     }
     return filtered.sort((a, b) => {
-      const valA = a[sort2Key];
-      const valB = b[sort2Key];
+      const valA = sort2Key === 'pctFromMa60' ? (a.pctFromMa60 ?? 0) : a[sort2Key as 'twSymbol' | 'twSlope' | 'sector'];
+      const valB = sort2Key === 'pctFromMa60' ? (b.pctFromMa60 ?? 0) : b[sort2Key as 'twSymbol' | 'twSlope' | 'sector'];
       if (typeof valA === 'string' && typeof valB === 'string')
         return sort2Asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
       return sort2Asc ? (valA as number) - (valB as number) : (valB as number) - (valA as number);
@@ -190,7 +193,7 @@ export default function TWSlopeScanner() {
       csvContent = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
     } else {
       // 跟盤型（目前篩選後的清單）
-      const zone = ma60SubTab === 'B' ? '季線買點' : '季線以上';
+      const zone = ma60SubTab === 'B' ? '季線買點' : ma60SubTab === 'A' ? '季線以上' : '季線以下';
       filename = `跟盤型_${zone}_${date1Str}_${date2Str}.csv`;
       const rows: string[][] = [['代碼', '名稱', '產業', '倍數', '台股%', '季線位置', 'TAIEX基準%', '爆賺母股']];
       for (const r of sortedType2) {
@@ -430,17 +433,26 @@ export default function TWSlopeScanner() {
           {[
             { key: 'B' as const, label: '🟢 季線買點', desc: '≤ MA60 +5%', color: 'bg-green-50 border-green-300 text-green-700' },
             { key: 'A' as const, label: '🔴 季線以上', desc: '> MA60 +5%', color: 'bg-red-50 border-red-300 text-red-700' },
+            { key: 'C' as const, label: '🔵 季線以下', desc: 'MA60 以下（跌幅排序）', color: 'bg-blue-50 border-blue-300 text-blue-700' },
           ].map(tab => {
             const count = data?.type2.filter(r =>
               tab.key === 'B'
                 ? (!r.ma60Zone || r.ma60Zone === 'B1' || r.ma60Zone === 'B2')
-                : r.ma60Zone === 'A'
+                : tab.key === 'A'
+                  ? r.ma60Zone === 'A'
+                  : (r.pctFromMa60 !== undefined && r.pctFromMa60 < 0)
             ).length ?? 0;
             const isActive = ma60SubTab === tab.key;
             return (
               <button
                 key={tab.key}
-                onClick={() => setMa60SubTab(tab.key)}
+                onClick={() => {
+                  setMa60SubTab(tab.key);
+                  if (tab.key === 'C') {
+                    setSort2Key('pctFromMa60');
+                    setSort2Asc(true);
+                  }
+                }}
                 className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                   isActive ? tab.color + ' shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
                 }`}
@@ -461,7 +473,7 @@ export default function TWSlopeScanner() {
                   <th className="text-center px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('sector')}>產業{si2('sector')}</th>
                   <th className="text-right px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('twSlope')}>倍數{si2('twSlope')}</th>
                   <th className="text-right px-4 py-3">台股%</th>
-                  <th className="text-right px-4 py-3 hidden md:table-cell">季線位置</th>
+                  <th className="text-right px-4 py-3 hidden md:table-cell cursor-pointer hover:text-gray-800" onClick={() => handleSort2('pctFromMa60')}>季線位置{si2('pctFromMa60')}</th>
                 </tr>
               </thead>
               <tbody>
