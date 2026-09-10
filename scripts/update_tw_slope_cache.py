@@ -195,8 +195,18 @@ def main():
     print(f"\n[1/3] 抓取 TAIEX ({len(months)} 個月)...")
     taiex_data = fetch_taiex(months)
 
+    # 🔴 安全防護：TAIEX 抓不到時，中止更新，避免覆蓋好資料
+    if not taiex_data:
+        print("\n❌ TAIEX 資料為空，可能是 DNS/網路問題。中止更新，保留現有 cache。")
+        sys.exit(1)
+
     print("\n[2/3] 抓取台股清單...")
     stocks = fetch_stock_list()
+
+    # 🔴 安全防護：股票清單抓不到時，中止更新
+    if not stocks:
+        print("\n❌ 台股清單為空，可能是 DNS/網路問題。中止更新，保留現有 cache。")
+        sys.exit(1)
 
     # 建立 metadata
     metadata: dict[str, dict] = {}
