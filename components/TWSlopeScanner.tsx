@@ -465,7 +465,7 @@ export default function TWSlopeScanner() {
         </div>
         {sortedType2.length > 0 ? (
           <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" translate="no">
               <thead>
                 <tr className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   <th className="text-left px-4 py-3 cursor-pointer hover:text-gray-800" onClick={() => handleSort2('twSymbol')}>代碼{si2('twSymbol')}</th>
@@ -481,7 +481,7 @@ export default function TWSlopeScanner() {
                   const relStrength = r.taiexSlope !== 0 ? (r.twSlope / Math.abs(r.taiexSlope)).toFixed(2) : '—';
                   const code2 = r.twSymbol.replace(/\.(TW|TWO)$/, '');
                   return (
-                    <tr key={r.twSymbol}
+                    <tr key={`${ma60SubTab}-${r.twSymbol}`}
                       className={`border-t border-gray-50 hover:bg-emerald-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                       <td className="px-4 py-3 font-mono text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
                         <Link href={`/tw/${code2}`} target="_blank">{r.twSymbol}</Link>
