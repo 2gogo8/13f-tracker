@@ -146,6 +146,40 @@ export default function SlopeScanner() {
     return results;
   }, [data, activeFilter, sortKey, sortAsc]);
 
+  function exportCSV() {
+    if (!data || filteredResults.length === 0) return;
+    const d1 = date1.replace(/-/g, '');
+    const d2 = date2.replace(/-/g, '');
+    const groupLabel = activeFilter === 'all' ? '全部' :
+      activeFilter === 'triple' ? '三重過濾' : activeFilter;
+    const filename = `美股爆賺選股_${groupLabel}_${d1}_${d2}.csv`;
+    const rows: string[][] = [['代號', '組別', '反市選股指標%', '股價倍數', '空頭比例%', '回補天數', '台股供應商']];
+    for (const r of filteredResults) {
+      rows.push([
+        r.symbol,
+        r.group,
+        (r.slope >= 0 ? '+' : '') + r.slope.toFixed(1) + '%',
+        (1 + r.post_return / 100).toFixed(2) + 'x',
+        r.short_pct.toFixed(1) + '%',
+        r.short_ratio.toFixed(1),
+        (r.tw_suppliers || []).join(' / '),
+      ]);
+    }
+    const csvContent = rows.map(row =>
+      row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function handleSort(key: SortKey) {
     if (sortKey === key) {
       setSortAsc(!sortAsc);
@@ -321,6 +355,14 @@ export default function SlopeScanner() {
           <span className="text-xs text-gray-400">
             顯示 {filteredResults.length} / {data.results.length} 支
           </span>
+          <button
+            onClick={exportCSV}
+            disabled={filteredResults.length === 0}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="匯出目前篩選結果為 CSV（可用 Excel 開啟）"
+          >
+            ⬇ 匯出 CSV
+          </button>
         </div>
       )}
 
